@@ -220,3 +220,6 @@ service fan_control_turn_off /vendor/bin/fan_control 0
     user root
     disabled
     oneshot
+
+# Disable statsd service to prevent additional battery drain
+    stop statsd
