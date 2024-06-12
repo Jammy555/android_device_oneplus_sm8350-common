@@ -1,5 +1,5 @@
 # DeviceAsWebcam
-#TARGET_BUILD_DEVICE_AS_WEBCAM := true
+TARGET_BUILD_DEVICE_AS_WEBCAM := true
 
 # OnePlus OOS Camera
 #$(call inherit-product-if-exists, vendor/oplus/camera/opluscamera.mk)
