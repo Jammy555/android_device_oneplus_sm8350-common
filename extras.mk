@@ -6,3 +6,7 @@ $(call inherit-product-if-exists, vendor/oplus/camera/opluscamera.mk)
 
 # Dolby 
 $(call inherit-product, hardware/oplus/dolby/dolby.mk)
+
+# KProfiles
+PRODUCT_PACKAGES += \
+    KProfiles 
