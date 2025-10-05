@@ -12,8 +12,10 @@ $(call inherit-product, vendor/oneplus/dolby/oplusdolby.mk)
 
 # powerhal properties
 PRODUCT_SYSTEM_PROPERTIES += \
-    pm.sleep_mode=1
+    pm.sleep_mode=1 \
+    ro.iorapd.enable=false \
+    iorapd.perfetto.enable=false 
+
 
 PRODUCT_VENDOR_PROPERTIES += \
     vendor.post_boot.parsed=1
-
