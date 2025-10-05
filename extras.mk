@@ -9,3 +9,13 @@ $(call soong_config_set,libcameraservice,ext_lib,//$(LOCAL_PATH):libcameraservic
 
 # Dolby 
 #$(call inherit-product, hardware/oplus/dolby/dolby.mk)
+
+# powerhal properties
+PRODUCT_SYSTEM_PROPERTIES += \
+    pm.sleep_mode=1 \
+    ro.iorapd.enable=false \
+    iorapd.perfetto.enable=false 
+
+
+PRODUCT_VENDOR_PROPERTIES += \
+    vendor.post_boot.parsed=1
