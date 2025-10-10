@@ -14,8 +14,10 @@ $(call inherit-product, vendor/oneplus/dolby/oplusdolby.mk)
 PRODUCT_SYSTEM_PROPERTIES += \
     pm.sleep_mode=1 \
     ro.iorapd.enable=false \
-    iorapd.perfetto.enable=false 
-
+    iorapd.perfetto.enable=false \
+    persist.sys.perf.scroll_opt=true \
+    persist.sys.perf.scroll_opt.heavy_app=1
 
 PRODUCT_VENDOR_PROPERTIES += \
     vendor.post_boot.parsed=1
+
