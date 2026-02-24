@@ -10,3 +10,6 @@ ro.bpf.kver_override=5.10.239
 
 # GMS
 ro.opa.device_model_id=ga-oplus-skill-os121-211011
+ 
+# maintainer
+ro.lunaris.maintainer= P Ř /\ T I=I /\ P | @SuperJammy
