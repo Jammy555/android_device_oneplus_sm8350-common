@@ -1,0 +1,27 @@
+[
+  {
+    "repository": "Jammy555/android_kernel_oneplus_sm8350",
+    "target_path": "kernel/oneplus/sm8350"
+    "branch": "Lunaris"
+  },
+  {
+    "repository": "Jammy555/hardware_oplus",
+    "target_path": "hardware/oplus"
+    "branch": "Luntest"
+  },
+  {
+    "repository": "LineageOS/android_hardware_pixelworks_interfaces",
+    "target_path": "hardware/pixelworks/interfaces",
+    "branch": "lineage-23.2"
+  },
+  {
+    "repository": "Jammy555/vendor_oneplus_sm8350-common",
+    "target_path": "vendor/oneplus/sm8350-common",
+    "branch": "Lun"
+  },
+    {
+    "repository": "Jammy555/vendor_oplus_camera",
+    "target_path": "vendor/oplus/camera",
+    "branch": "16"
+  }
+]
