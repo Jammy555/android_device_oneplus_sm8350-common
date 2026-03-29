@@ -8,7 +8,7 @@ $(call soong_config_set,libcameraservice,ext_lib,//$(LOCAL_PATH):libcameraservic
 $(call inherit-product-if-exists, vendor/oplus/camera/opluscamera.mk)
 
 # Dolby 
-$(call inherit-product, vendor/oneplus/dolby/oplusdolby.mk)
+$(call inherit-product, vendor/sony/dolby/sonydolby.mk)
 
 # powerhal properties
 PRODUCT_SYSTEM_PROPERTIES += \
