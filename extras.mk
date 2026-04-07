@@ -10,7 +10,7 @@ $(call inherit-product-if-exists, vendor/oplus/camera/opluscamera.mk)
 # Dolby 
 $(call inherit-product, vendor/sony/dolby/sonydolby.mk)
 
-# powerhal properties
+# System properties
 PRODUCT_SYSTEM_PROPERTIES += \
     pm.sleep_mode=1 \
     ro.iorapd.enable=false \
