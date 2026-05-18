@@ -57,6 +57,7 @@ public class ThermalMonitorService extends Service {
     private static volatile float sBatteryTempC = 0f;
     private static volatile float sCpuTempC = 0f;
     private static volatile float sGpuTempC = 0f;
+    private static volatile float sEffectiveTempC = 0f;
 
     private HandlerThread mWorkerThread;
     private Handler mHandler;
@@ -67,6 +68,7 @@ public class ThermalMonitorService extends Service {
     public static float getBatteryTempC() { return sBatteryTempC; }
     public static float getCpuTempC() { return sCpuTempC; }
     public static float getGpuTempC() { return sGpuTempC; }
+    public static float getEffectiveTempC() { return sEffectiveTempC; }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -121,8 +123,13 @@ public class ThermalMonitorService extends Service {
             @Override
             public void run() {
                 readAllTemperatures();
-                int batteryC = (int) sBatteryTempC;
-                int newState = calculateState(batteryC);
+
+                // Use the HOTTEST sensor to drive throttle decisions.
+                int effectiveC = (int) Math.max(sBatteryTempC,
+                                      Math.max(sCpuTempC, sGpuTempC));
+                sEffectiveTempC = effectiveC;
+
+                int newState = calculateState(effectiveC);
                 
                 applyStateIfChanged(newState);
 
@@ -131,7 +138,7 @@ public class ThermalMonitorService extends Service {
                     updateNotificationTemp();
                 }
 
-                mHandler.postDelayed(this, getPollingDelayMs(batteryC));
+                mHandler.postDelayed(this, getPollingDelayMs(effectiveC));
             }
         };
         mHandler.post(mMonitorRunnable);
@@ -160,10 +167,10 @@ public class ThermalMonitorService extends Service {
         return STATE_NORMAL;
     }
 
-    private int getPollingDelayMs(int batteryC) {
-        if (batteryC >= THRESH_HEAVY) return 1500;
-        if (batteryC >= THRESH_MEDIUM) return 2000;
-        if (batteryC >= THRESH_LIGHT) return 2500;
+    private int getPollingDelayMs(int effectiveC) {
+        if (effectiveC >= THRESH_HEAVY) return 1500;
+        if (effectiveC >= THRESH_MEDIUM) return 2000;
+        if (effectiveC >= THRESH_LIGHT) return 2500;
         return 4000; // Normal polling interval
     }
 
@@ -174,7 +181,11 @@ public class ThermalMonitorService extends Service {
         applyProfileToHardware(targetState);
         updateGlobalSettings(targetState);
 
-        Log.i(TAG, String.format("Auto Thermal: Battery=%.1f\u00b0C -> %s", sBatteryTempC, STATE_LABELS[targetState]));
+        // Identify which sensor is driving the throttle decision
+        String hottest = (sCpuTempC >= sGpuTempC && sCpuTempC >= sBatteryTempC) ? "CPU"
+                       : (sGpuTempC >= sBatteryTempC) ? "GPU" : "Battery";
+        Log.i(TAG, String.format("Auto Thermal: %s=%.1f\u00b0C (Bat:%.1f CPU:%.1f GPU:%.1f) -> %s",
+                hottest, sEffectiveTempC, sBatteryTempC, sCpuTempC, sGpuTempC, STATE_LABELS[targetState]));
 
         updateNotification(STATE_LABELS[targetState], 
             String.format("Bat:%.0f\u00b0C CPU:%.0f\u00b0C GPU:%.0f\u00b0C", sBatteryTempC, sCpuTempC, sGpuTempC));

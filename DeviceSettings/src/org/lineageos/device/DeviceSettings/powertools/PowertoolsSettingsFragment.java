@@ -266,6 +266,9 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         if (!isChecked(mAutoThermalPref)) return;
         
         float battC = ThermalMonitorService.getBatteryTempC();
+        float cpuC = ThermalMonitorService.getCpuTempC();
+        float gpuC = ThermalMonitorService.getGpuTempC();
+        float effectiveC = ThermalMonitorService.getEffectiveTempC();
         int state = ThermalMonitorService.getCurrentState();
         
         String stateStr = (state == ThermalMonitorService.STATE_HEAVY) ? "Heavy throttle (\u2265 55\u00b0C)"
@@ -275,7 +278,8 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
         if (mAutoStatusPref != null) mAutoStatusPref.setSummary("Monitoring");
         if (mAutoThermalPref != null) {
-            mAutoThermalPref.setSummary(getString(R.string.auto_thermal_live_summary, String.format("%.1f\u00b0C", battC), stateStr));
+            String temps = String.format("Bat:%.0f\u00b0C  CPU:%.0f\u00b0C  GPU:%.0f\u00b0C", battC, cpuC, gpuC);
+            mAutoThermalPref.setSummary(getString(R.string.auto_thermal_live_summary, temps, stateStr));
         }
         
         mMainHandler.postDelayed(mThermalUpdater, 2500);

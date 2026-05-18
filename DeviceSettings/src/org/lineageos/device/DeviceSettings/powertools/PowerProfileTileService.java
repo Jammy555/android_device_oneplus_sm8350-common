@@ -92,6 +92,17 @@ public class PowerProfileTileService extends TileService {
         Tile tile = getQsTile();
         if (tile == null) return;
 
+        // When auto thermal is active, grey out the tile completely
+        // so the user knows manual toggling is locked out
+        if (mManager.isAutoModeEnabled()) {
+            tile.setState(Tile.STATE_UNAVAILABLE);
+            tile.setIcon(Icon.createWithResource(this, R.drawable.ic_thermal_balance));
+            tile.setLabel(getString(R.string.powerprofile_tile_label));
+            tile.setSubtitle("Auto (locked)");
+            tile.updateTile();
+            return;
+        }
+
         int mode = mManager.getManagedMode();
         
         if (mode < 0 || mode >= TILE_STATES.length) {
