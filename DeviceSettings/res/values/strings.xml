@@ -111,4 +111,23 @@
 
     <string name="widget_name">System Monitor</string>
     <string name="widget_description">Live CPU, GPU, Memory, Battery \ Storage stats</string>
+
+    <!-- Display Resolution -->
+    <string name="display_settings_title">Display</string>
+    <string name="display_settings_summary">Change screen resolution</string>
+    <string name="display_resolution_category_title">Screen Resolution</string>
+    <string name="display_current_resolution_title">Current Resolution</string>
+    <string name="display_resolution_preset_title">Resolution Preset</string>
+    <string name="display_resolution_custom_title">Custom Resolution</string>
+    <string name="display_resolution_custom_summary">Enter a custom WxH resolution</string>
+    <string name="display_resolution_reset_title">Reset to Default</string>
+    <string name="display_resolution_reset_summary">Restore the native panel resolution</string>
+    <string name="display_resolution_footer">Changes are applied via the Android WindowManager and persist across reboots. Use Reset to restore the native resolution if the display becomes unusable.</string>
+    <string name="display_resolution_custom_dialog_title">Custom Resolution</string>
+    <string name="display_resolution_width_hint">Width (e.g. 1080)</string>
+    <string name="display_resolution_height_hint">Height (e.g. 2400)</string>
+    <string name="display_resolution_applied">Resolution set to %s</string>
+    <string name="display_resolution_reset_done">Resolution reset to default</string>
+    <string name="display_resolution_invalid">Invalid resolution values</string>
+
 </resources>
