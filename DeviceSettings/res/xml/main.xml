@@ -77,20 +77,6 @@
             android:defaultValue="3" />
     </PreferenceCategory>
 
-    <!-- Display: Resolution changer -->
-    <PreferenceCategory
-        android:key="display_category"
-        android:title="@string/display_settings_title">
-
-        <Preference
-            android:key="display_entry"
-            android:icon="@drawable/ic_display_resolution"
-            android:title="@string/display_settings_title"
-            android:summary="@string/display_settings_summary"
-            android:fragment="org.lineageos.device.DeviceSettings.powertools.DisplaySettingsFragment" />
-
-    </PreferenceCategory>
-
     <!-- Powertools: Power profiles, CPU/GPU frequency tuning -->
     <PreferenceCategory
         android:key="powertools_category"

@@ -258,26 +258,5 @@
 </string-array>
 
 
-    <!-- Display Resolution Presets (OnePlus 9 native: 1080x2400) -->
-    <string-array name="display_resolution_entries" translatable="false">
-        <item>1080 x 2400 (Native FHD+)</item>
-        <item>1080 x 2340</item>
-        <item>1080 x 1920 (FHD)</item>
-        <item>720 x 1600 (HD+)</item>
-        <item>720 x 1520</item>
-        <item>720 x 1280 (HD)</item>
-        <item>1440 x 3200 (QHD+ upscale)</item>
-        <item>1440 x 3088</item>
-    </string-array>
-    <string-array name="display_resolution_values" translatable="false">
-        <item>1080x2400</item>
-        <item>1080x2340</item>
-        <item>1080x1920</item>
-        <item>720x1600</item>
-        <item>720x1520</item>
-        <item>720x1280</item>
-        <item>1440x3200</item>
-        <item>1440x3088</item>
-    </string-array>
 
 </resources>
