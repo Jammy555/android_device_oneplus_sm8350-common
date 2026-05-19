@@ -7,7 +7,10 @@ package org.lineageos.device.DeviceSettings.powertools;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.InputType;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.EditText;
@@ -34,6 +37,8 @@ public class DisplaySettingsFragment extends PreferenceFragmentCompat
     private ListPreference mPresetPref;
     private Preference mCustomPref;
     private Preference mResetPref;
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -93,18 +98,10 @@ public class DisplaySettingsFragment extends PreferenceFragmentCompat
     private void refreshCurrentResolution() {
         try {
             WindowManager wm = requireContext().getSystemService(WindowManager.class);
-            int w, h;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
-                wm.getDefaultDisplay().getRealMetrics(dm);
-                w = dm.widthPixels;
-                h = dm.heightPixels;
-            } else {
-                Point size = new Point();
-                wm.getDefaultDisplay().getRealSize(size);
-                w = size.x;
-                h = size.y;
-            }
+            DisplayMetrics dm = new DisplayMetrics();
+            wm.getDefaultDisplay().getRealMetrics(dm);
+            int w = dm.widthPixels;
+            int h = dm.heightPixels;
             String current = w + " x " + h;
 
             if (mCurrentResPref != null) {
@@ -133,9 +130,7 @@ public class DisplaySettingsFragment extends PreferenceFragmentCompat
             Log.i(TAG, "Resolution set to " + res);
 
             // Delay refresh slightly to let WM apply the change
-            if (mCurrentResPref != null) {
-                mCurrentResPref.postDelayed(this::refreshCurrentResolution, 500);
-            }
+            mHandler.postDelayed(this::refreshCurrentResolution, 500);
         } catch (Exception e) {
             Log.e(TAG, "Failed to set resolution", e);
             showToast(getString(R.string.display_resolution_invalid));
@@ -152,9 +147,7 @@ public class DisplaySettingsFragment extends PreferenceFragmentCompat
             showToast(getString(R.string.display_resolution_reset_done));
             Log.i(TAG, "Resolution reset to default");
 
-            if (mCurrentResPref != null) {
-                mCurrentResPref.postDelayed(this::refreshCurrentResolution, 500);
-            }
+            mHandler.postDelayed(this::refreshCurrentResolution, 500);
         } catch (Exception e) {
             Log.e(TAG, "Failed to reset resolution", e);
         }

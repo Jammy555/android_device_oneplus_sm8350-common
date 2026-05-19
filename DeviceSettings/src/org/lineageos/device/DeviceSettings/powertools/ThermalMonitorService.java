@@ -42,6 +42,14 @@ public class ThermalMonitorService extends Service {
     public static final int THRESH_MEDIUM = 49;
     public static final int THRESH_HEAVY = 55;
 
+    // Hysteresis: must drop this many degrees BELOW the threshold to step down.
+    // Prevents rapid flapping when CPU temp hovers around a boundary.
+    private static final int HYSTERESIS = 3;
+
+    // Debounce: new state must be seen for this many consecutive polls before applying.
+    // Prevents reacting to transient CPU spikes (45→80→50 in 1 second).
+    private static final int DEBOUNCE_TICKS = 2;
+
 
     private static final int[] SETTING_LOW_POWER = {0, 0, 0, 1}; // 1 at HEAVY
     private static final int[] SETTING_BLUR_DISABLE = {0, 0, 1, 1}; // 1 at MEDIUM and HEAVY
@@ -63,6 +71,8 @@ public class ThermalMonitorService extends Service {
     private Handler mHandler;
     private Runnable mMonitorRunnable;
     private boolean mFirstTick = true;
+    private int mPendingState = -1;   // state being debounced
+    private int mDebounceCount = 0;   // consecutive ticks at mPendingState
 
     public static int getCurrentState() { return Math.max(0, sCurrentState); }
     public static float getBatteryTempC() { return sBatteryTempC; }
@@ -160,10 +170,25 @@ public class ThermalMonitorService extends Service {
         sGpuTempC = rawGPU > 1000 ? rawGPU / 1000f : rawGPU / 10f;
     }
 
+    /**
+     * Calculate target state with hysteresis.
+     * Stepping UP uses the normal threshold, stepping DOWN requires
+     * the temp to drop HYSTERESIS degrees below the threshold.
+     * This prevents flapping when temp hovers around a boundary.
+     */
     private int calculateState(int tempC) {
+        int cur = Math.max(0, sCurrentState);
+
+        // Stepping UP — use normal thresholds (react immediately to heat)
         if (tempC >= THRESH_HEAVY) return STATE_HEAVY;
-        if (tempC >= THRESH_MEDIUM) return STATE_MEDIUM;
-        if (tempC >= THRESH_LIGHT) return STATE_LIGHT;
+        if (tempC >= THRESH_MEDIUM) return Math.max(cur, STATE_MEDIUM);
+        if (tempC >= THRESH_LIGHT)  return Math.max(cur, STATE_LIGHT);
+
+        // Stepping DOWN — require temp to drop HYSTERESIS below the threshold
+        if (cur == STATE_HEAVY  && tempC >= THRESH_HEAVY  - HYSTERESIS) return STATE_HEAVY;
+        if (cur >= STATE_MEDIUM && tempC >= THRESH_MEDIUM - HYSTERESIS) return STATE_MEDIUM;
+        if (cur >= STATE_LIGHT  && tempC >= THRESH_LIGHT  - HYSTERESIS) return STATE_LIGHT;
+
         return STATE_NORMAL;
     }
 
@@ -175,7 +200,30 @@ public class ThermalMonitorService extends Service {
     }
 
     private void applyStateIfChanged(int targetState) {
-        if (targetState == sCurrentState) return;
+        if (targetState == sCurrentState) {
+            // Stable — reset debounce
+            mPendingState = -1;
+            mDebounceCount = 0;
+            return;
+        }
+
+        // Debounce: must see the same new state for DEBOUNCE_TICKS consecutive polls
+        if (targetState == mPendingState) {
+            mDebounceCount++;
+        } else {
+            mPendingState = targetState;
+            mDebounceCount = 1;
+        }
+
+        if (mDebounceCount < DEBOUNCE_TICKS) {
+            Log.d(TAG, String.format("Debounce: want %d, tick %d/%d (eff=%.0f°C)",
+                    targetState, mDebounceCount, DEBOUNCE_TICKS, sEffectiveTempC));
+            return;
+        }
+
+        // Debounce passed — commit the state change
+        mPendingState = -1;
+        mDebounceCount = 0;
         sCurrentState = targetState;
 
         applyProfileToHardware(targetState);
