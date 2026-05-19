@@ -51,7 +51,9 @@ public class ThermalMonitorService extends Service {
     private static final int DEBOUNCE_TICKS = 2;
 
 
-    private static final int[] SETTING_LOW_POWER = {0, 0, 0, 1}; // 1 at HEAVY
+    // HEAVY throttle should NOT enable battery saver — that makes the phone
+    // terribly slow and unusable. Only disable blur effects at high temps.
+    private static final int[] SETTING_LOW_POWER = {0, 0, 0, 0};
     private static final int[] SETTING_BLUR_DISABLE = {0, 0, 1, 1}; // 1 at MEDIUM and HEAVY
     
     private static final String[] STATE_LABELS = {
@@ -135,9 +137,10 @@ public class ThermalMonitorService extends Service {
                 readAllTemperatures();
 
                 // Use the HOTTEST sensor to drive throttle decisions.
-                int effectiveC = (int) Math.max(sBatteryTempC,
+                float effectiveF = Math.max(sBatteryTempC,
                                       Math.max(sCpuTempC, sGpuTempC));
-                sEffectiveTempC = effectiveC;
+                sEffectiveTempC = effectiveF;
+                int effectiveC = Math.round(effectiveF);
 
                 int newState = calculateState(effectiveC);
                 
@@ -172,24 +175,37 @@ public class ThermalMonitorService extends Service {
 
     /**
      * Calculate target state with hysteresis.
-     * Stepping UP uses the normal threshold, stepping DOWN requires
-     * the temp to drop HYSTERESIS degrees below the threshold.
-     * This prevents flapping when temp hovers around a boundary.
+     * Stepping UP uses the normal thresholds.
+     * Stepping DOWN requires the temp to drop HYSTERESIS degrees
+     * below the current state's threshold to prevent flapping.
      */
     private int calculateState(int tempC) {
         int cur = Math.max(0, sCurrentState);
 
-        // Stepping UP — use normal thresholds (react immediately to heat)
-        if (tempC >= THRESH_HEAVY) return STATE_HEAVY;
-        if (tempC >= THRESH_MEDIUM) return Math.max(cur, STATE_MEDIUM);
-        if (tempC >= THRESH_LIGHT)  return Math.max(cur, STATE_LIGHT);
+        // --- ESCALATION: always step UP immediately ---
+        if (tempC >= THRESH_HEAVY)  return STATE_HEAVY;
+        if (tempC >= THRESH_MEDIUM) return STATE_MEDIUM;
+        if (tempC >= THRESH_LIGHT)  return STATE_LIGHT;
 
-        // Stepping DOWN — require temp to drop HYSTERESIS below the threshold
-        if (cur == STATE_HEAVY  && tempC >= THRESH_HEAVY  - HYSTERESIS) return STATE_HEAVY;
-        if (cur >= STATE_MEDIUM && tempC >= THRESH_MEDIUM - HYSTERESIS) return STATE_MEDIUM;
-        if (cur >= STATE_LIGHT  && tempC >= THRESH_LIGHT  - HYSTERESIS) return STATE_LIGHT;
-
-        return STATE_NORMAL;
+        // --- DE-ESCALATION: require HYSTERESIS drop below current threshold ---
+        // If we're in HEAVY, stay in HEAVY until we drop below THRESH_HEAVY - HYSTERESIS
+        switch (cur) {
+            case STATE_HEAVY:
+                if (tempC >= THRESH_HEAVY - HYSTERESIS) return STATE_HEAVY;
+                // fell through heavy hysteresis, check medium
+                if (tempC >= THRESH_MEDIUM - HYSTERESIS) return STATE_MEDIUM;
+                if (tempC >= THRESH_LIGHT - HYSTERESIS)  return STATE_LIGHT;
+                return STATE_NORMAL;
+            case STATE_MEDIUM:
+                if (tempC >= THRESH_MEDIUM - HYSTERESIS) return STATE_MEDIUM;
+                if (tempC >= THRESH_LIGHT - HYSTERESIS)  return STATE_LIGHT;
+                return STATE_NORMAL;
+            case STATE_LIGHT:
+                if (tempC >= THRESH_LIGHT - HYSTERESIS) return STATE_LIGHT;
+                return STATE_NORMAL;
+            default:
+                return STATE_NORMAL;
+        }
     }
 
     private int getPollingDelayMs(int effectiveC) {
