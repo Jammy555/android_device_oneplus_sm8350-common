@@ -276,14 +276,14 @@ on property:sys.thermal_state=3
     write /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq 1555200
     write /sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq 1766400
     write /sys/class/kgsl/kgsl-3d0/devfreq/max_freq 379000000
-    write /sys/devices/system/cpu/cpufreq/policy0/scaling_governor powersave
-    write /sys/devices/system/cpu/cpufreq/policy4/scaling_governor powersave
-    write /sys/devices/system/cpu/cpufreq/policy7/scaling_governor powersave
-    write /sys/class/kgsl/kgsl-3d0/devfreq/governor powersave
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_governor conservative
+    write /sys/devices/system/cpu/cpufreq/policy4/scaling_governor conservative
+    write /sys/devices/system/cpu/cpufreq/policy7/scaling_governor conservative
+    write /sys/class/kgsl/kgsl-3d0/devfreq/governor simple_ondemand
     write /sys/block/sda/queue/scheduler bfq
-    write /dev/cpuset/foreground/cpus 0-3
+    write /dev/cpuset/foreground/cpus 0-5
     write /dev/cpuset/system-background/cpus 0-1
-    write /sys/devices/system/cpu/cpu4/core_ctl/min_cpus 0
+    write /sys/devices/system/cpu/cpu4/core_ctl/min_cpus 1
     write /sys/devices/system/cpu/cpu7/core_ctl/min_cpus 0
-    write /proc/sys/kernel/sched_upmigrate "98 98"
-    write /proc/sys/kernel/sched_downmigrate "95 95"
+    write /proc/sys/kernel/sched_upmigrate "95 95"
+    write /proc/sys/kernel/sched_downmigrate "90 90"

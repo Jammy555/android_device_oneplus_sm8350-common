@@ -15,7 +15,9 @@ import androidx.preference.PreferenceManager;
 import org.lineageos.device.DeviceSettings.R;
 import org.lineageos.device.DeviceSettings.Utils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PowerProfileUtil {
@@ -137,23 +139,66 @@ public class PowerProfileUtil {
                 mContext.getPackageName() + "_preferences", Context.MODE_PRIVATE);
         prefs.edit().putString(KEY_LAST_PROFILE, String.valueOf(mode)).apply();
     }
+    private final List<String> mFallbackMessages = new ArrayList<>();
 
     public void syncUiToMode(int mode) {
+        mFallbackMessages.clear();
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = prefs.edit();
 
         for (String key : PERSIST_KEYS) {
-            editor.putString(key, getStockValueForMode(mode, key));
+            String val = getStockValueForMode(mode, key);
+            if (isGovernorKey(key)) val = validateGovernor(key, val);
+            editor.putString(key, val);
         }
-        
+
         editor.apply();
+    }
+
+    public List<String> getAndClearFallbacks() {
+        List<String> copy = new ArrayList<>(mFallbackMessages);
+        mFallbackMessages.clear();
+        return copy;
     }
 
     public String getStockValueForMode(int mode, String key) {
         int targetIndex = (mode == MODE_BATTERY_SAVER || mode == MODE_PERFORMANCE) ? mode : MODE_BALANCE;
-        
+
         String[] values = PROFILE_DEFAULTS.get(key);
         return values != null ? values[targetIndex] : "";
+    }
+
+    private boolean isGovernorKey(String key) {
+        return key.equals(KEY_CPU_LITTLE_GOVERNOR) || key.equals(KEY_CPU_BIG_GOVERNOR)
+                || key.equals(KEY_CPU_PRIME_GOVERNOR) || key.equals(KEY_GPU_GOVERNOR)
+                || key.equals(KEY_IO_SCHEDULER);
+    }
+
+    private String validateGovernor(String key, String requested) {
+        String sysfsPath = getSysfsPathForKey(key);
+        if (sysfsPath == null) return requested;
+        String available = SysfsUtils.readLine(sysfsPath);
+        if (available == null) return requested;
+        available = available.replace("[", "").replace("]", "");
+        for (String g : available.split("\\s+")) {
+            if (g.equals(requested)) return requested;
+        }
+        String fallback = key.equals(KEY_GPU_GOVERNOR) ? "msm-adreno-tz" : "schedutil";
+        String label = key.replace("_governor", "").replace("_", " ").replace("io scheduler", "IO");
+        mFallbackMessages.add("'" + requested + "' not available for " + label + ", using " + fallback);
+        Log.w(TAG, mFallbackMessages.get(mFallbackMessages.size() - 1));
+        return fallback;
+    }
+
+    private String getSysfsPathForKey(String key) {
+        switch (key) {
+            case KEY_CPU_LITTLE_GOVERNOR: return "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors";
+            case KEY_CPU_BIG_GOVERNOR:    return "/sys/devices/system/cpu/cpufreq/policy4/scaling_available_governors";
+            case KEY_CPU_PRIME_GOVERNOR:  return "/sys/devices/system/cpu/cpufreq/policy7/scaling_available_governors";
+            case KEY_GPU_GOVERNOR:        return "/sys/class/kgsl/kgsl-3d0/devfreq/available_governors";
+            case KEY_IO_SCHEDULER:        return "/sys/block/sda/queue/scheduler";
+            default: return null;
+        }
     }
 
     private void applyUserTouchPanel() {

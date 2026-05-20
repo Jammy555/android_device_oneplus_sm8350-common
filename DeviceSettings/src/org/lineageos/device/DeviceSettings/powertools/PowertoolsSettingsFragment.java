@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemProperties;
 import android.widget.Toast;
 
 import androidx.preference.ListPreference;
@@ -264,16 +265,15 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private void updateThermalLiveData() {
         if (!isChecked(mAutoThermalPref)) return;
-        
+
         float battC = ThermalMonitorService.getBatteryTempC();
         float cpuC = ThermalMonitorService.getCpuTempC();
         float gpuC = ThermalMonitorService.getGpuTempC();
-        float effectiveC = ThermalMonitorService.getEffectiveTempC();
         int state = ThermalMonitorService.getCurrentState();
-        
-        String stateStr = (state == ThermalMonitorService.STATE_HEAVY) ? "Heavy throttle (\u2265 55\u00b0C)"
-                : (state == ThermalMonitorService.STATE_MEDIUM) ? "Medium throttle (\u2265 49\u00b0C)"
-                : (state == ThermalMonitorService.STATE_LIGHT) ? "Light throttle (\u2265 45\u00b0C)"
+
+        String stateStr = (state == ThermalMonitorService.STATE_HEAVY) ? "Heavy throttle (skin \u226554\u00b0C)"
+                : (state == ThermalMonitorService.STATE_MEDIUM) ? "Medium throttle (skin \u226548\u00b0C)"
+                : (state == ThermalMonitorService.STATE_LIGHT) ? "Light throttle (skin \u226544\u00b0C)"
                 : "Normal (no throttle)";
 
         if (mAutoStatusPref != null) mAutoStatusPref.setSummary("Monitoring");
@@ -281,7 +281,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
             String temps = String.format("Bat:%.0f\u00b0C  CPU:%.0f\u00b0C  GPU:%.0f\u00b0C", battC, cpuC, gpuC);
             mAutoThermalPref.setSummary(getString(R.string.auto_thermal_live_summary, temps, stateStr));
         }
-        
+
         mMainHandler.postDelayed(mThermalUpdater, 2500);
     }
 
@@ -315,14 +315,20 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         if (mApplying) return;
         lockForApply("Applying Auto Thermal...");
         Intent svc = new Intent(requireContext(), ThermalMonitorService.class);
-        mPowerProfileUtil.setMode(PowerProfileUtil.MODE_BALANCE);
 
         if (enable) {
+            mPowerProfileUtil.setMode(PowerProfileUtil.MODE_BALANCE);
             mPowerProfileUtil.syncUiToMode(PowerProfileUtil.MODE_BALANCE);
+            showFallbackToasts();
             requireContext().startForegroundService(svc);
         } else {
             requireContext().stopService(svc);
+            SystemProperties.set("sys.thermal_state", "0");
+            SystemProperties.set("sys.perf_mode_active",
+                    String.valueOf(PowerProfileUtil.MODE_BALANCE));
+            mPowerProfileUtil.setMode(PowerProfileUtil.MODE_BALANCE);
             mPowerProfileUtil.syncUiToMode(getCurrentProfileMode());
+            showFallbackToasts();
         }
         refreshUI();
         mMainHandler.postDelayed(() -> {
@@ -342,6 +348,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         if (mStorageEnablePref != null) mStorageEnablePref.setChecked(false);
 
         mPowerProfileUtil.setMode(mode);
+        showFallbackToasts();
 
         if (mPowerProfilePref != null) {
             mPowerProfilePref.setValue(newValue);
@@ -622,11 +629,55 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     }
 
     private void updateGovernorDropdowns(int mode) {
-        setListPreferenceData(mCpuLittleGovernorPref, R.array.cpu_governor_entries, R.array.cpu_governor_values);
-        setListPreferenceData(mCpuBigGovernorPref, R.array.cpu_governor_entries, R.array.cpu_governor_values);
-        setListPreferenceData(mCpuPrimeGovernorPref, R.array.cpu_governor_entries, R.array.cpu_governor_values);
-        setListPreferenceData(mGpuGovernorPref, R.array.gpu_governor_entries, R.array.gpu_governor_values);
-        setListPreferenceData(mIoSchedulerPref, R.array.io_scheduler_entries, R.array.io_scheduler_values);
+        populateFromSysfs(mCpuLittleGovernorPref,
+                "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors",
+                R.array.cpu_governor_entries, R.array.cpu_governor_values);
+        populateFromSysfs(mCpuBigGovernorPref,
+                "/sys/devices/system/cpu/cpufreq/policy4/scaling_available_governors",
+                R.array.cpu_governor_entries, R.array.cpu_governor_values);
+        populateFromSysfs(mCpuPrimeGovernorPref,
+                "/sys/devices/system/cpu/cpufreq/policy7/scaling_available_governors",
+                R.array.cpu_governor_entries, R.array.cpu_governor_values);
+        populateFromSysfs(mGpuGovernorPref,
+                "/sys/class/kgsl/kgsl-3d0/devfreq/available_governors",
+                R.array.gpu_governor_entries, R.array.gpu_governor_values);
+        populateFromSysfs(mIoSchedulerPref,
+                "/sys/block/sda/queue/scheduler",
+                R.array.io_scheduler_entries, R.array.io_scheduler_values);
+    }
+
+    private void populateFromSysfs(ListPreference pref, String sysfsPath, int fallbackEntries, int fallbackValues) {
+        if (pref == null) return;
+        String raw = SysfsUtils.readLine(sysfsPath);
+        if (raw == null || raw.isEmpty()) {
+            pref.setEntries(fallbackEntries);
+            pref.setEntryValues(fallbackValues);
+            return;
+        }
+        // IO scheduler format: "none [bfq] kyber mq-deadline" — strip brackets
+        raw = raw.replace("[", "").replace("]", "");
+        String[] items = raw.trim().split("\\s+");
+        // Filter out "none" for schedulers
+        List<String> filtered = new ArrayList<>();
+        for (String s : items) {
+            if (!s.isEmpty() && !"none".equals(s)) filtered.add(s);
+        }
+        String[] values = filtered.toArray(new String[0]);
+        String[] entries = new String[values.length];
+        for (int i = 0; i < values.length; i++) {
+            entries[i] = prettifyName(values[i]);
+        }
+        pref.setEntries(entries);
+        pref.setEntryValues(values);
+    }
+
+    private String prettifyName(String raw) {
+        if (raw.equals("msm-adreno-tz")) return "MSM Adreno TZ";
+        if (raw.equals("simple_ondemand")) return "Simple Ondemand";
+        if (raw.equals("mq-deadline")) return "MQ-Deadline";
+        if (raw.equals("schedutil")) return "Schedutil";
+        if (raw.length() <= 4) return raw.toUpperCase();
+        return raw.substring(0, 1).toUpperCase() + raw.substring(1);
     }
 
     private void updateCpuSubPrefsEnabled(boolean enabled) {
@@ -639,13 +690,6 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         safeSetEnabled(mCpuPrimeMinFreqPref, enabled);
         safeSetEnabled(mCpuPrimeMaxFreqPref, enabled);
         safeSetEnabled(mCpuPrimeGovernorPref, enabled);
-    }
-
-    private void setListPreferenceData(ListPreference pref, int entriesResId, int valuesResId) {
-        if (pref != null) {
-            pref.setEntries(entriesResId);
-            pref.setEntryValues(valuesResId);
-        }
     }
 
     private void setControlsEnabled(List<Preference> prefs, boolean enabled) {
@@ -685,7 +729,16 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         try {
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
         } catch (IllegalStateException ignored) {
-            // Fragment not attached — silently skip
+        }
+    }
+
+    private void showFallbackToasts() {
+        java.util.List<String> fallbacks = mPowerProfileUtil.getAndClearFallbacks();
+        for (String msg : fallbacks) {
+            try {
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+            } catch (IllegalStateException ignored) {
+            }
         }
     }
 }
