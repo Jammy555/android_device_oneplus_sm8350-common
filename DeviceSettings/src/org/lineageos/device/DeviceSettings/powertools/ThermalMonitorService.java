@@ -24,6 +24,9 @@ import android.util.Log;
 
 import org.lineageos.device.DeviceSettings.R;
 
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+
 public class ThermalMonitorService extends Service {
 
     private static final String TAG = "ThermalMonitorService";
@@ -40,8 +43,7 @@ public class ThermalMonitorService extends Service {
     public static final int STATE_MEDIUM = 2;
     public static final int STATE_HEAVY  = 3;
 
-    private static final long STATE_LOCK_MS = 3 * 60 * 1000L;
-    private static final float MASSIVE_DROP_C = 5.0f;
+    private static final long ESCALATE_COOLDOWN_MS = 10_000L;
 
     private static final int BG_LIMIT_NORMAL = -1;
     private static final int BG_LIMIT_MEDIUM = 4;
@@ -58,14 +60,21 @@ public class ThermalMonitorService extends Service {
     private static volatile float sGpuTempC;
     private static volatile float sSkinTempC;
     private static volatile float sEffectiveTempC;
+    private boolean mNotifDismissed = false;
 
     private HandlerThread mWorkerThread;
     private Handler       mHandler;
     private Runnable      mMonitorRunnable;
     private boolean       mFirstTick = true;
     private long          mLastStateChangeMs;
-    private float         mTempAtLastChange;
     private int           mSavedBgLimit = -1;
+
+    private final BroadcastReceiver mDismissReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context context, Intent intent) {
+            mNotifDismissed = true;
+        }
+    };
 
     public static int   getCurrentState()   { return Math.max(0, sCurrentState); }
     public static float getBatteryTempC()   { return sBatteryTempC; }
@@ -87,7 +96,10 @@ public class ThermalMonitorService extends Service {
         mWorkerThread.start();
         mHandler = new Handler(mWorkerThread.getLooper());
         mLastStateChangeMs = SystemClock.elapsedRealtime();
-        mTempAtLastChange = 0f;
+
+        registerReceiver(mDismissReceiver,
+                new IntentFilter("org.lineageos.device.THERMAL_NOTIF_DISMISSED"),
+                android.content.Context.RECEIVER_NOT_EXPORTED);
 
         mSavedBgLimit = Settings.Global.getInt(getContentResolver(),
                 Settings.Global.ALWAYS_FINISH_ACTIVITIES, -1);
@@ -103,13 +115,17 @@ public class ThermalMonitorService extends Service {
     @Override
     public void onDestroy() {
         stopMonitoring();
+        try { unregisterReceiver(mDismissReceiver); } catch (Exception ignored) {}
         if (mHandler != null) {
             mHandler.post(this::resetToNormal);
             mWorkerThread.quitSafely();
         }
         stopForeground(true);
         NotificationManager nm = getSystemService(NotificationManager.class);
-        if (nm != null) nm.cancel(NOTIF_ID);
+        if (nm != null) {
+            nm.cancel(NOTIF_ID);
+            nm.cancel(STATUS_NOTIF_ID);
+        }
         Log.i(TAG, "Stopped thermal service");
         super.onDestroy();
     }
@@ -171,29 +187,24 @@ public class ThermalMonitorService extends Service {
         long elapsed = now - mLastStateChangeMs;
 
         if (target > cur) {
-            commitState(target, now);
+            if (elapsed >= ESCALATE_COOLDOWN_MS) commitState(target, now);
         } else {
-            float drop = mTempAtLastChange - sEffectiveTempC;
-            if (elapsed >= STATE_LOCK_MS || drop >= MASSIVE_DROP_C) {
-                commitState(target, now);
-            }
+            commitState(target, now);
         }
     }
 
     private void commitState(int state, long now) {
         sCurrentState = state;
         mLastStateChangeMs = now;
-        mTempAtLastChange = sEffectiveTempC;
 
         applyHardware(state);
         applySettings(state);
 
-        Log.i(TAG, String.format("Thermal → %s (Skin:%.1f Bat:%.1f CPU:%.1f GPU:%.1f)",
-                STATE_LABELS[state], sSkinTempC, sBatteryTempC, sCpuTempC, sGpuTempC));
+        Log.i(TAG, String.format("Thermal → %s (Skin:%.1f Bat:%.1f)",
+                STATE_LABELS[state], sSkinTempC, sBatteryTempC));
 
-        updateNotification(STATE_LABELS[state],
-            String.format("Skin:%.0f°C Bat:%.0f°C CPU:%.0f°C GPU:%.0f°C",
-                    sSkinTempC, sBatteryTempC, sCpuTempC, sGpuTempC));
+        mNotifDismissed = false;
+        updateNotification(STATE_LABELS[state]);
     }
 
     private void applyHardware(int state) {
@@ -258,8 +269,15 @@ public class ThermalMonitorService extends Service {
         return s == STATE_HEAVY ? 2000 : s == STATE_MEDIUM ? 3000 : s == STATE_LIGHT ? 4000 : 6000;
     }
 
+    private static final int STATUS_NOTIF_ID = 2002;
+
     private void startForegroundServiceSafe() {
-        Notification n = buildNotification("Thermal Monitor", "Starting...");
+        Notification n = new Notification.Builder(this, NOTIF_CHANNEL)
+                .setSmallIcon(R.drawable.ic_thermal_balance)
+                .setContentTitle("Thermal Monitor")
+                .setContentText("Active")
+                .setOngoing(true)
+                .build();
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else if (Build.VERSION.SDK_INT >= 29) {
@@ -278,28 +296,30 @@ public class ThermalMonitorService extends Service {
         getSystemService(NotificationManager.class).createNotificationChannel(ch);
     }
 
-    private Notification buildNotification(String title, String text) {
-        return new Notification.Builder(this, NOTIF_CHANNEL)
+    private void updateNotification(String stateLabel) {
+        if (mNotifDismissed) return;
+        Notification n = new Notification.Builder(this, NOTIF_CHANNEL)
                 .setSmallIcon(R.drawable.ic_thermal_balance)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setOngoing(true)
+                .setContentTitle("Auto Thermal")
+                .setContentText(stateLabel)
+                .setOngoing(false)
+                .setAutoCancel(false)
+                .setDeleteIntent(getDismissIntent())
                 .build();
+        getSystemService(NotificationManager.class).notify(STATUS_NOTIF_ID, n);
     }
 
-    private void updateNotification(String stateLabel, String temps) {
-        Notification n = buildNotification(
-                getString(R.string.auto_thermal_notif_title),
-                getString(R.string.auto_thermal_notif_text, temps, stateLabel));
-        getSystemService(NotificationManager.class).notify(NOTIF_ID, n);
+    private android.app.PendingIntent getDismissIntent() {
+        Intent i = new Intent("org.lineageos.device.THERMAL_NOTIF_DISMISSED");
+        i.setPackage(getPackageName());
+        return android.app.PendingIntent.getBroadcast(this, 0, i,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
     }
 
     private void updateNotificationTemp() {
+        if (mNotifDismissed) return;
         int state = getCurrentState();
-        String temps = String.format("Skin:%.0f°C Bat:%.0f°C CPU:%.0f°C GPU:%.0f°C",
-                sSkinTempC, sBatteryTempC, sCpuTempC, sGpuTempC);
         String label = (state >= 0 && state < STATE_LABELS.length) ? STATE_LABELS[state] : "Normal";
-        if (label.contains("(")) label = label.substring(0, label.indexOf("(")).trim();
-        updateNotification(label, temps);
+        updateNotification(label);
     }
 }

@@ -266,20 +266,16 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private void updateThermalLiveData() {
         if (!isChecked(mAutoThermalPref)) return;
 
-        float battC = ThermalMonitorService.getBatteryTempC();
-        float cpuC = ThermalMonitorService.getCpuTempC();
-        float gpuC = ThermalMonitorService.getGpuTempC();
         int state = ThermalMonitorService.getCurrentState();
 
-        String stateStr = (state == ThermalMonitorService.STATE_HEAVY) ? "Heavy throttle (skin \u226554\u00b0C)"
-                : (state == ThermalMonitorService.STATE_MEDIUM) ? "Medium throttle (skin \u226548\u00b0C)"
-                : (state == ThermalMonitorService.STATE_LIGHT) ? "Light throttle (skin \u226544\u00b0C)"
-                : "Normal (no throttle)";
+        String stateStr = (state == ThermalMonitorService.STATE_HEAVY) ? "Heavy throttle"
+                : (state == ThermalMonitorService.STATE_MEDIUM) ? "Medium throttle"
+                : (state == ThermalMonitorService.STATE_LIGHT) ? "Light throttle"
+                : "Normal";
 
         if (mAutoStatusPref != null) mAutoStatusPref.setSummary("Monitoring");
         if (mAutoThermalPref != null) {
-            String temps = String.format("Bat:%.0f\u00b0C  CPU:%.0f\u00b0C  GPU:%.0f\u00b0C", battC, cpuC, gpuC);
-            mAutoThermalPref.setSummary(getString(R.string.auto_thermal_live_summary, temps, stateStr));
+            mAutoThermalPref.setSummary(stateStr);
         }
 
         mMainHandler.postDelayed(mThermalUpdater, 2500);
