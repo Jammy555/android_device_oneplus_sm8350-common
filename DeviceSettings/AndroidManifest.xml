@@ -130,15 +130,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Auto Thermal Monitor (foreground service) -->
-        <service
-            android:name=".powertools.ThermalMonitorService"
-            android:foregroundServiceType="specialUse"
-            android:exported="false">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="thermal_monitoring" />
-        </service>
+
 
         <!-- System Monitor Widget -->
         <receiver

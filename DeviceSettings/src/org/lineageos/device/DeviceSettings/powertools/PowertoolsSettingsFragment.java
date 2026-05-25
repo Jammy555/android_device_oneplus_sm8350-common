@@ -30,8 +30,6 @@ import java.util.stream.Stream;
 public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         implements Preference.OnPreferenceChangeListener {
 
-    private static final String KEY_AUTO_THERMAL = "auto_thermal_enable";
-    private static final String KEY_AUTO_STATUS = "auto_thermal_status";
     private static final String KEY_POWER_PROFILE_MODE = "power_profile_mode";
     private static final String KEY_MODE_STATUS = "mode_status_info";
 
@@ -68,8 +66,8 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private static final String CPU_PRIME_DEFAULT_MAX = "2841600";
     private static final String CPU_PRIME_DEFAULT_GOV = "schedutil";
 
-    private SwitchPreferenceCompat mAutoThermalPref, mStorageEnablePref, mGpuEnablePref, mCpuEnablePref;
-    private Preference mAutoStatusPref, mModeStatusPref;
+    private SwitchPreferenceCompat mStorageEnablePref, mGpuEnablePref, mCpuEnablePref;
+    private Preference mModeStatusPref;
     private ListPreference mPowerProfilePref, mIoSchedulerPref;
     private ListPreference mGpuMinFreqPref, mGpuMaxFreqPref, mGpuGovernorPref;
     private ListPreference mCpuLittleMinFreqPref, mCpuLittleMaxFreqPref, mCpuLittleGovernorPref;
@@ -81,22 +79,13 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
     private final List<Preference> mAllControlPrefs = new ArrayList<>();
     private boolean mApplying = false;
-    
-    private final Runnable mThermalUpdater = new Runnable() {
-        @Override
-        public void run() {
-            updateThermalLiveData();
-        }
-    };
+
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.powertools_settings, rootKey);
         mPowerProfileUtil = new PowerProfileUtil(requireContext());
 
-        mAutoThermalPref = bindPref(KEY_AUTO_THERMAL);
-        mAutoStatusPref = findPreference(KEY_AUTO_STATUS);
-        
         mPowerProfilePref = bindPref(KEY_POWER_PROFILE_MODE);
         mModeStatusPref = findPreference(KEY_MODE_STATUS);
 
@@ -124,13 +113,12 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         // Pre-populate mode card and summaries immediately so there is no blank flash
         // when the fragment is first drawn. onResume will do a full sync afterwards.
         syncActiveModeUI();
-        boolean autoOn = isChecked(mAutoThermalPref);
         int mode = getCurrentProfileMode();
         if (mPowerProfilePref != null) {
             CharSequence entry = mPowerProfilePref.getEntry();
-            if (entry != null) mPowerProfilePref.setSummary(autoOn ? "Auto" : entry);
+            if (entry != null) mPowerProfilePref.setSummary(entry);
         }
-        updateModeDisplays(autoOn ? PowerProfileUtil.MODE_AUTO : mode, autoOn);
+        updateModeDisplays(mode);
     }
 
     @SuppressWarnings("unchecked")
@@ -184,27 +172,10 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     }
 
     private void refreshUI() {
-        boolean autoOn = isChecked(mAutoThermalPref);
-        
-        setControlsEnabled(mAllControlPrefs, !autoOn);
-        if (mAutoThermalPref != null) mAutoThermalPref.setEnabled(true); // Always keep master toggle responsive
-        
-        if (mAutoStatusPref != null) mAutoStatusPref.setVisible(autoOn);
-        Preference autoFooter = findPreference("auto_thermal_footer");
-        if (autoFooter != null) autoFooter.setVisible(autoOn);
+        setControlsEnabled(mAllControlPrefs, true);
         if (mPowerProfilePref != null) mPowerProfilePref.setVisible(true);
 
-        if (autoOn) {
-            startTempUpdater();
-            if (mPowerProfilePref != null) {
-                mPowerProfilePref.setEnabled(false);
-                mPowerProfilePref.setSummary("Auto");
-            }
-            updateModeDisplays(PowerProfileUtil.MODE_AUTO, true);
-        } else {
-            mMainHandler.removeCallbacks(mThermalUpdater);
-            refreshModeState();
-        }
+        refreshModeState();
     }
 
     private void refreshModeState() {
@@ -215,23 +186,22 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
 
     private void configurePresetModeUI() {
-        boolean autoOn = isChecked(mAutoThermalPref);
         int mode = getCurrentProfileMode();
 
         if (mPowerProfilePref != null) {
-            mPowerProfilePref.setEnabled(!autoOn);
-            mPowerProfilePref.setSummary(autoOn ? "Auto" : mPowerProfilePref.getEntry());
+            mPowerProfilePref.setEnabled(true);
+            mPowerProfilePref.setSummary(mPowerProfilePref.getEntry());
         }
 
-        updateModeDisplays(mode, autoOn);
+        updateModeDisplays(mode);
 
-        boolean cpuEnabled = !autoOn && isChecked(mCpuEnablePref);
-        boolean gpuEnabled = !autoOn && isChecked(mGpuEnablePref);
-        boolean storageEnabled = !autoOn && isChecked(mStorageEnablePref);
+        boolean cpuEnabled = isChecked(mCpuEnablePref);
+        boolean gpuEnabled = isChecked(mGpuEnablePref);
+        boolean storageEnabled = isChecked(mStorageEnablePref);
 
-        safeSetEnabled(mCpuEnablePref, !autoOn);
-        safeSetEnabled(mGpuEnablePref, !autoOn);
-        safeSetEnabled(mStorageEnablePref, !autoOn);
+        safeSetEnabled(mCpuEnablePref, true);
+        safeSetEnabled(mGpuEnablePref, true);
+        safeSetEnabled(mStorageEnablePref, true);
 
         updateGovernorDropdowns(mode);
 
@@ -258,28 +228,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
 
 
-    private void startTempUpdater() {
-        mMainHandler.removeCallbacks(mThermalUpdater);
-        mMainHandler.post(mThermalUpdater);
-    }
 
-    private void updateThermalLiveData() {
-        if (!isChecked(mAutoThermalPref)) return;
-
-        int state = ThermalMonitorService.getCurrentState();
-
-        String stateStr = (state == ThermalMonitorService.STATE_HEAVY) ? "Heavy throttle"
-                : (state == ThermalMonitorService.STATE_MEDIUM) ? "Medium throttle"
-                : (state == ThermalMonitorService.STATE_LIGHT) ? "Light throttle"
-                : "Normal";
-
-        if (mAutoStatusPref != null) mAutoStatusPref.setSummary("Monitoring");
-        if (mAutoThermalPref != null) {
-            mAutoThermalPref.setSummary(stateStr);
-        }
-
-        mMainHandler.postDelayed(mThermalUpdater, 2500);
-    }
 
 
     @Override
@@ -288,9 +237,6 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         String newValStr = newValue.toString();
 
         switch (key) {
-            case KEY_AUTO_THERMAL:
-                handleAutoThermalToggle((Boolean) newValue);
-                return true;
 
             case KEY_POWER_PROFILE_MODE:
                 handleProfileModeChange(newValStr);
@@ -307,31 +253,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         }
     }
 
-    private void handleAutoThermalToggle(boolean enable) {
-        if (mApplying) return;
-        lockForApply("Applying Auto Thermal...");
-        Intent svc = new Intent(requireContext(), ThermalMonitorService.class);
 
-        if (enable) {
-            mPowerProfileUtil.setMode(PowerProfileUtil.MODE_BALANCE);
-            mPowerProfileUtil.syncUiToMode(PowerProfileUtil.MODE_BALANCE);
-            showFallbackToasts();
-            requireContext().startForegroundService(svc);
-        } else {
-            requireContext().stopService(svc);
-            SystemProperties.set("sys.thermal_state", "0");
-            SystemProperties.set("sys.perf_mode_active",
-                    String.valueOf(PowerProfileUtil.MODE_BALANCE));
-            mPowerProfileUtil.setMode(PowerProfileUtil.MODE_BALANCE);
-            mPowerProfileUtil.syncUiToMode(getCurrentProfileMode());
-            showFallbackToasts();
-        }
-        refreshUI();
-        mMainHandler.postDelayed(() -> {
-            refreshModeState();
-            unlockAfterApply(enable ? "Auto Thermal enabled" : "Auto Thermal disabled");
-        }, 1500);
-    }
 
 
     private void handleProfileModeChange(String newValue) {
@@ -503,12 +425,11 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         return (pref != null && pref.getValue() != null) ? pref.getValue() : fallback;
     }
 
-    private void updateModeDisplays(int mode, boolean isAuto) {
+    private void updateModeDisplays(int mode) {
         if (mModeStatusPref != null) {
-            mModeStatusPref.setSummary(isAuto ? "Dynamically throttling based on device temperature" 
-                                              : getString(getStatusSummaryForMode(mode)));
+            mModeStatusPref.setSummary(getString(getStatusSummaryForMode(mode)));
         }
-        updateModeCard(mode, isAuto);
+        updateModeCard(mode);
     }
 
     private int getStatusSummaryForMode(int mode) {
@@ -519,16 +440,9 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         }
     }
 
-    private void updateModeCard(int mode, boolean isAuto) {
+    private void updateModeCard(int mode) {
         Preference card = findPreference("mode_card_header");
         if (card == null) return;
-
-        if (isAuto) {
-            card.setTitle("Auto Thermal");
-            card.setSummary("Adaptive throttling based on temperature \u2022 Manages all CPU/GPU via base Normal mode");
-            card.setIcon(R.drawable.ic_thermal_balance); 
-            return;
-        }
 
         switch (mode) {
             case PowerProfileUtil.MODE_PERFORMANCE:

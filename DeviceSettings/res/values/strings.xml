@@ -82,18 +82,7 @@
     <string name="powertools_max_freq">Maximum Frequency</string>
     <string name="powertools_governor">Governor</string>
 
-    <string name="auto_thermal_category_title">Automatic Thermal Engine</string>
-    <string name="auto_thermal_enable_title">Enable Auto Thermal</string>
-    <string name="auto_thermal_enable_summary">Dynamically throttle hardware based on battery temperature thresholds (45°C / 49°C / 55°C)</string>
-    <string name="auto_thermal_footer">When Auto Thermal is enabled, manual controls are locked. The system continuously monitors battery thermals and steps down CPU/GPU clocks to safely dissipate heat.</string>
-    <string name="auto_thermal_live_summary">%1$s — %2$s</string>
-    
-    <string name="auto_thermal_notif_channel">Thermal Monitor</string>
-    <string name="auto_thermal_notif_title">Auto Thermal Monitor</string>
-    <string name="auto_thermal_notif_text">%1$s — %2$s</string>
-    <string name="auto_thermal_temp_battery">Battery: %1$s°C</string>
-    <string name="auto_thermal_temp_cpu">CPU: %1$s°C</string>
-    <string name="auto_thermal_temp_gpu">GPU: %1$s°C</string>
+
 
     <string name="misc_category_title">Miscellaneous</string>
     <string name="reset_on_boot_title">Reset on boot</string>

@@ -33,7 +33,6 @@ public class PowerProfileUtil {
     public static final int MODE_BALANCE = 1;
     public static final int MODE_PERFORMANCE = 2;
     public static final int MODE_UNKNOWN = 4;
-    public static final int MODE_AUTO = 5;
 
     public static final String KEY_GPU_MIN_FREQ = "gpu_min_frequency";
     public static final String KEY_GPU_MAX_FREQ = "gpu_max_frequency";
@@ -88,15 +87,11 @@ public class PowerProfileUtil {
                 mContext.getString(R.string.powerprofile_mode_balance),
                 mContext.getString(R.string.powerprofile_mode_performance),
                 "", // Blank placeholder for index 3
-                mContext.getString(R.string.powerprofile_mode_unknown),
-                "Auto"
+                mContext.getString(R.string.powerprofile_mode_unknown)
         };
     }
 
-    public boolean isAutoModeEnabled() {
-        return PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getBoolean("auto_thermal_enable", false);
-    }
+
 
     public int getCurrentMode() {
         return SystemProperties.getInt(SYS_PROP, MODE_BALANCE);
@@ -227,12 +222,11 @@ public class PowerProfileUtil {
     }
 
     public int getManagedMode() {
-        return isAutoModeEnabled() ? MODE_AUTO : getCurrentMode();
+        return getCurrentMode();
     }
 
     public String getModeLabel() {
         int mode = getManagedMode();
-        if (mode == MODE_AUTO) return "Auto";
         if (mode == MODE_BATTERY_SAVER) return "PowerSave";
         if (mode == MODE_BALANCE) return "Normal";
         return (mode >= 0 && mode < mModes.length) ? mModes[mode] : mModes[MODE_UNKNOWN];

@@ -35,8 +35,7 @@ public class PowerProfileTileService extends TileService {
         Tile.STATE_INACTIVE, // 1: Balance
         Tile.STATE_ACTIVE,   // 2: Performance
         Tile.STATE_INACTIVE, // 3: Unused
-        Tile.STATE_INACTIVE, // 4: Unknown
-        Tile.STATE_ACTIVE    // 5: Auto
+        Tile.STATE_INACTIVE  // 4: Unknown
     };
 
     private static final int[] TILE_ICONS = {
@@ -44,8 +43,7 @@ public class PowerProfileTileService extends TileService {
         R.drawable.ic_thermal_balance,       // 1: Balance
         R.drawable.ic_thermal_performance,   // 2: Performance
         R.drawable.ic_thermal_balance,       // 3: Unused
-        R.drawable.ic_thermal_balance,       // 4: Unknown
-        R.drawable.ic_thermal_balance        // 5: Auto
+        R.drawable.ic_thermal_balance        // 4: Unknown
     };
 
     @Override
@@ -64,8 +62,8 @@ public class PowerProfileTileService extends TileService {
 
     @Override
     public void onClick() {
-        if (mManager == null || mManager.isAutoModeEnabled()) {
-            return; // Lock out manual QS toggling when Auto Thermal is active
+        if (mManager == null) {
+            return;
         }
 
         // Immediately grey out the tile to block rapid re-clicks
@@ -92,16 +90,7 @@ public class PowerProfileTileService extends TileService {
         Tile tile = getQsTile();
         if (tile == null) return;
 
-        // When auto thermal is active, grey out the tile completely
-        // so the user knows manual toggling is locked out
-        if (mManager.isAutoModeEnabled()) {
-            tile.setState(Tile.STATE_UNAVAILABLE);
-            tile.setIcon(Icon.createWithResource(this, R.drawable.ic_thermal_balance));
-            tile.setLabel(getString(R.string.powerprofile_tile_label));
-            tile.setSubtitle("Auto (locked)");
-            tile.updateTile();
-            return;
-        }
+
 
         int mode = mManager.getManagedMode();
         

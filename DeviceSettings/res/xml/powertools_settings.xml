@@ -8,32 +8,7 @@
         android:selectable="false"
         android:layout="@layout/powertools_mode_card" />
 
-    <PreferenceCategory
-        android:key="auto_thermal_category"
-        android:title="@string/auto_thermal_category_title">
 
-        <SwitchPreferenceCompat
-            android:key="auto_thermal_enable"
-            app:iconSpaceReserved="true"
-            android:icon="@drawable/ic_thermal_balance"
-            android:title="@string/auto_thermal_enable_title"
-            android:summary="@string/auto_thermal_enable_summary"
-            android:defaultValue="false" />
-
-        <Preference
-            android:key="auto_thermal_status"
-            app:iconSpaceReserved="false"
-            app:isPreferenceVisible="false"
-            android:selectable="false" />
-
-        <Preference
-            android:key="auto_thermal_footer"
-            app:iconSpaceReserved="false"
-            app:isPreferenceVisible="false"
-            android:summary="@string/auto_thermal_footer"
-            android:selectable="false" />
-
-    </PreferenceCategory>
 
     <PreferenceCategory
         android:key="power_profile_category"

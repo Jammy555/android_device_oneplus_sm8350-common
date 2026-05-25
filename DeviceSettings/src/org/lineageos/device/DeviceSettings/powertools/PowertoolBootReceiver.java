@@ -20,7 +20,6 @@ public final class PowertoolBootReceiver extends BroadcastReceiver {
 
     private static final String TAG = "PowertoolBootReceiver";
 
-    private static final String PREF_AUTO_THERMAL   = "auto_thermal_enable";
     private static final String PREF_POWER_PROFILE  = "power_profile_mode";
     private static final String PREF_CPU_ENABLE     = "cpu_enable";
     private static final String PREF_GPU_ENABLE     = "gpu_enable";
@@ -35,12 +34,6 @@ public final class PowertoolBootReceiver extends BroadcastReceiver {
         }
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean autoThermal = prefs.getBoolean(PREF_AUTO_THERMAL, false);
-
-        if (autoThermal) {
-            Intent svcIntent = new Intent(context, ThermalMonitorService.class);
-            context.startForegroundService(svcIntent);
-        }
 
         final PendingResult pendingResult = goAsync();
         sExecutor.execute(() -> {

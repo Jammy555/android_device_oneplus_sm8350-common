@@ -45,7 +45,7 @@ public class SystemMonitorWidget extends AppWidgetProvider {
     private static final String GPU_CUR_FREQ    = "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq";
     private static final String GPU_MAX_FREQ_PATH = "/sys/class/kgsl/kgsl-3d0/devfreq/max_freq";
 
-    private static final String[] MODE_LABELS = {"PowerSave", "Normal", "Performance", "", "", "Auto"};
+    private static final String[] MODE_LABELS = {"PowerSave", "Normal", "Performance"};
 
     private static long sLastCpuTotal = 0;
     private static long sLastCpuIdle  = 0;
@@ -360,9 +360,6 @@ public class SystemMonitorWidget extends AppWidgetProvider {
 
     private String getModeLabel(Context ctx) {
         try {
-            android.content.SharedPreferences prefs =
-                    androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx);
-            if (prefs.getBoolean("auto_thermal_enable", false)) return "Auto";
             int mode = SystemProperties.getInt("sys.perf_mode_active", 1);
             if (mode >= 0 && mode < MODE_LABELS.length) return MODE_LABELS[mode];
         } catch (Exception ignored) {}
@@ -373,7 +370,6 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         switch (label) {
             case "PowerSave":   return 0xFF29B6F6;
             case "Performance": return 0xFF43E97B;
-            case "Auto":        return 0xFFFFB74D;
             default:            return 0xFF6C63FF;
         }
     }
