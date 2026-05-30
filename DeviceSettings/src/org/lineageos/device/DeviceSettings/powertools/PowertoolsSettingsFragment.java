@@ -287,9 +287,9 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         if (!enabled) {
             resetHardwareCategoryToDefaults(key, mode);
             pushHardwareSettingsCategory(key);
-            showToast("Restored default parameters");
+            showToast("Restored default settings");
         } else {
-            showToast("Freestyle tweaking unlocked");
+            showToast("Manual control enabled");
         }
         
         mMainHandler.postDelayed(this::refreshUI, 150);
@@ -519,12 +519,67 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private void syncListPrefToData(ListPreference pref, SharedPreferences prefs, String key) {
         if (pref == null) return;
-        String val = prefs.getString(key, "");
-        if (!val.isEmpty()) {
-            pref.setValue(val);
-            CharSequence entry = pref.getEntry();
-            pref.setSummary(entry != null ? entry : val);
+        String savedVal = prefs.getString(key, "");
+        
+        // If it's a governor/scheduler, verify the saved value is valid, or fallback to the true system state
+        if (isGovernorOrSchedulerKey(key)) {
+            String trueVal = getTrueActiveValue(key);
+            if (trueVal != null) {
+                boolean isValid = false;
+                CharSequence[] values = pref.getEntryValues();
+                if (values != null) {
+                    for (CharSequence v : values) {
+                        if (v.toString().equals(savedVal)) {
+                            isValid = true;
+                            break;
+                        }
+                    }
+                }
+                if (!isValid) {
+                    savedVal = trueVal;
+                    prefs.edit().putString(key, savedVal).apply();
+                }
+            }
         }
+
+        if (!savedVal.isEmpty()) {
+            pref.setValue(savedVal);
+            CharSequence entry = pref.getEntry();
+            pref.setSummary(entry != null ? entry : savedVal);
+        }
+    }
+
+    private boolean isGovernorOrSchedulerKey(String key) {
+        return KEY_CPU_LITTLE_GOVERNOR.equals(key) || KEY_CPU_BIG_GOVERNOR.equals(key) ||
+               KEY_CPU_PRIME_GOVERNOR.equals(key) || KEY_GPU_GOVERNOR.equals(key) ||
+               KEY_IO_SCHEDULER.equals(key);
+    }
+
+    private String getTrueActiveValue(String key) {
+        String path = null;
+        boolean isIo = false;
+        switch (key) {
+            case KEY_CPU_LITTLE_GOVERNOR: path = "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"; break;
+            case KEY_CPU_BIG_GOVERNOR: path = "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"; break;
+            case KEY_CPU_PRIME_GOVERNOR: path = "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"; break;
+            case KEY_GPU_GOVERNOR: path = "/sys/class/kgsl/kgsl-3d0/devfreq/governor"; break;
+            case KEY_IO_SCHEDULER: 
+                path = "/sys/block/sda/queue/scheduler"; 
+                isIo = true;
+                break;
+        }
+        if (path == null) return null;
+        String raw = SysfsUtils.readLine(path);
+        if (raw == null || raw.isEmpty()) return null;
+        if (isIo) {
+            int start = raw.indexOf('[');
+            int end = raw.indexOf(']');
+            if (start != -1 && end != -1 && start < end) {
+                return raw.substring(start + 1, end);
+            }
+            return null;
+        }
+        return raw;
     }
 
     private void updateListPreferenceSafely(Preference preference, String newValue) {
@@ -571,6 +626,11 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         List<String> filtered = new ArrayList<>();
         for (String s : items) {
             if (!s.isEmpty() && !"none".equals(s)) filtered.add(s);
+        }
+        if (filtered.isEmpty()) {
+            pref.setEntries(fallbackEntries);
+            pref.setEntryValues(fallbackValues);
+            return;
         }
         String[] values = filtered.toArray(new String[0]);
         String[] entries = new String[values.length];
