@@ -1,0 +1,46 @@
+diff --git a/res/drawable/edge_light_preview_shell_bg.xml b/res/drawable/edge_light_preview_shell_bg.xml
+new file mode 100644
+index 0000000..adeb2cf
+--- /dev/null
++++ b/res/drawable/edge_light_preview_shell_bg.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="rectangle">
++    <corners android:radius="@dimen/edge_light_preview_shell_corner_radius" />
++    <stroke android:width="3dp" android:color="@color/edge_light_preview_shell_stroke" />
++    <solid android:color="@android:color/transparent" />
++</shape>
+diff --git a/res/layout/edge_light_preview.xml b/res/layout/edge_light_preview.xml
+index 4f229b6..45c064d 100644
+--- a/res/layout/edge_light_preview.xml
++++ b/res/layout/edge_light_preview.xml
+@@ -19,15 +19,14 @@
+         android:clipChildren="false"
+         android:layoutDirection="ltr">
+ 
+-        <com.google.android.material.card.MaterialCardView
++        <FrameLayout
+             android:layout_width="@dimen/phone_preview_screen_width"
+             android:layout_height="@dimen/phone_preview_screen_height"
+             android:layout_gravity="start|center"
+             android:padding="@dimen/edge_light_preview_shell_content_inset"
+-            app:cardCornerRadius="@dimen/edge_light_preview_shell_corner_radius"
+-            app:cardElevation="2dp"
+-            app:strokeColor="@color/edge_light_preview_shell_stroke"
+-            app:strokeWidth="3dp">
++            android:background="@drawable/edge_light_preview_shell_bg"
++            android:elevation="2dp"
++            android:clipToOutline="true">
+ 
+             <FrameLayout
+                 android:layout_width="match_parent"
+@@ -50,7 +49,7 @@
+ 
+             </FrameLayout>
+ 
+-        </com.google.android.material.card.MaterialCardView>
++        </FrameLayout>
+ 
+         <include
+             layout="@layout/phone_preview_right_hardware_strip"

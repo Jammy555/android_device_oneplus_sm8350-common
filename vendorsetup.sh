@@ -80,3 +80,54 @@ if [ -d "$FRAMEWORKS_BASE_DIR" ]; then
     
     cd ../../
 fi
+
+# Apply SystemUI Biometric indicator fix
+if [ -d "$FRAMEWORKS_BASE_DIR" ]; then
+    echo "Checking SystemUI biometric patches..."
+    cd $FRAMEWORKS_BASE_DIR
+    
+    # Check if the patch is already applied
+    git diff --quiet packages/SystemUI/res/layout/biometric_prompt_one_pane_layout.xml
+    
+    if [ $? -eq 0 ]; then
+        echo "Applying SystemUI Biometric indicator patch..."
+        git apply ../../$PATCH_DIR/systemui_biometric_indicator.patch >/dev/null 2>&1
+        
+        if [ $? -eq 0 ]; then
+             git add packages/SystemUI/res/layout/biometric_prompt_one_pane_layout.xml
+             git commit -m "SystemUI: Move UDFPS biometric indicator above icon to prevent clipping"
+        else
+             echo "Warning: Could not apply SystemUI patch. Maybe already applied."
+        fi
+    else
+        echo "SystemUI biometric indicator patch already active."
+    fi
+    
+    cd ../../
+fi
+
+# Apply Singularity Edge Light fix
+SINGULARITY_DIR="packages/apps/Singularity"
+if [ -d "$SINGULARITY_DIR" ]; then
+    echo "Checking Singularity patches..."
+    cd $SINGULARITY_DIR
+    
+    # Check if the patch is already applied
+    git diff --quiet res/layout/edge_light_preview.xml
+    
+    if [ $? -eq 0 ]; then
+        echo "Applying Singularity Edge Light fix patch..."
+        git apply ../../../$PATCH_DIR/singularity_edgelight.patch >/dev/null 2>&1
+        
+        if [ $? -eq 0 ]; then
+             git add res/layout/edge_light_preview.xml res/drawable/edge_light_preview_shell_bg.xml
+             git commit -m "Singularity: Fix Edge Light settings crash by replacing MaterialCardView"
+        else
+             echo "Warning: Could not apply Singularity patch. Maybe already applied."
+        fi
+    else
+        echo "Singularity Edge Light fix patch already active."
+    fi
+    
+    cd ../../../
+fi
