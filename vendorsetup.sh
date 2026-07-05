@@ -78,5 +78,15 @@ if [ -d "$FRAMEWORKS_BASE_DIR" ]; then
         echo "AOD and Doze brightness/voltage patches already active."
     fi
     
+    # Check if Oplus fwb stubs patch is already applied
+    git log --oneline -n 100 | grep -q "Add some fwb stubs from Oplus"
+    
+    if [ $? -ne 0 ]; then
+        echo "Applying Oplus fwb stubs patch..."
+        git am ../../$PATCH_DIR/frameworks_base_a0fed77.patch >/dev/null 2>&1 || git am --abort
+    else
+        echo "Oplus fwb stubs patch already active."
+    fi
+    
     cd ../../
 fi
