@@ -1,32 +1,24 @@
 #!/bin/bash
 
-# Define paths
 PATCH_DIR="device/oneplus/sm8350-common/patches"
-GAMESPACE_DIR="packages/apps/GameSpace"
 
-# Apply GameSpace live overlay sync patch if not already applied
-if [ -d "$GAMESPACE_DIR" ]; then
-    echo "Checking GameSpace patches..."
-    cd $GAMESPACE_DIR
-    
-    # Check if the patch is already applied
-    git diff --quiet app/src/main/java/io/chaldeaprjkt/gamespace/utils/GameModeUtils.kt
-    
-    # If the file hasn't been modified yet, try to patch it
-    if [ $? -eq 0 ]; then
-        echo "Applying GameSpace sync patch..."
-        git apply ../../../$PATCH_DIR/gamespace_sync.patch >/dev/null 2>&1
-        
-        # Commit the patch so we know it's applied
-        if [ $? -eq 0 ]; then
-             git add app/src/main/java/io/chaldeaprjkt/gamespace/utils/GameModeUtils.kt
-             git commit -m "gamespace-sync: Broadcast mid-game overlay changes to PowerTools"
+apply_patch() {
+    local target_dir=$1
+    local patch_file=$2
+    local name=$3
+
+    if [ -d "$target_dir" ]; then
+        pushd "$target_dir" >/dev/null
+        if git apply --reverse --check "$patch_file" >/dev/null 2>&1; then
+            echo "${target_dir}: Already applied ($name)"
+        elif git apply "$patch_file" >/dev/null 2>&1; then
+            echo "${target_dir}: Successfully applied ($name)"
         else
-             echo "Warning: Could not apply GameSpace patch. Maybe already applied."
+            echo "${target_dir}: Failed to apply ($name)"
         fi
-    else
-        echo "GameSpace sync patch already active."
+        popd >/dev/null
     fi
-    
-    cd ../../../
-fi
+}
+
+apply_patch "packages/apps/GameSpace" "../../../$PATCH_DIR/gamespace_sync.patch" "GameSpace Sync"
+apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_a0fed77.patch" "Oplus Framework Stubs"
