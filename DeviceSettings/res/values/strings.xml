@@ -100,4 +100,27 @@
 
     <string name="widget_name">System Monitor</string>
     <string name="widget_description">Live CPU, GPU, Memory, Battery \ Storage stats</string>
+
+    <!-- Selective Band Lock -->
+    <string name="network_category_title">Network</string>
+    <string name="network_bands_title">Selective Band Lock</string>
+    <string name="network_bands_summary">Lock modem to specific 2G/3G/LTE/5G bands per SIM</string>
+    <string name="network_bands_apply">Apply Band Lock</string>
+    <string name="network_bands_nothing_selected">No bands selected.</string>
+    <string name="network_bands_reset_success">Bands reset to automatic.</string>
+    <string name="network_bands_scan">Scan Active Bands</string>
+    <string name="network_bands_scan_success">Found and selected %1$d active band(s).</string>
+    <string name="network_bands_scan_fail">No active bands detected during scan.</string>
+    <string name="network_bands_dialog_title">Apply Band Lock?</string>
+    <!-- %1$d = number of bands selected -->
+    <string name="network_bands_dialog_message">Lock modem to %d selected band(s). If those bands have no coverage, you will lose signal until you reset.</string>
+    <string name="network_bands_applied_success">Band lock applied. Watching for modem confirmation\u2026</string>
+    <string name="network_bands_applied_fail">Failed to apply. Try toggling airplane mode and retrying.</string>
+    <string name="network_bands_reset">Reset to Automatic</string>
+    <string name="network_bands_no_signal">No signal on selected bands. Reset to automatic?</string>
+    <!-- %1$d = number of bands modem is currently camped on -->
+    <string name="network_bands_status_active">Modem active on %d band(s) \u2014 shown below. Uncheck to block.</string>
+    <string name="network_bands_status_no_signal">No active band detected. Select bands to force lock.</string>
+    <string name="network_bands_status_error">Could not read band state from modem.</string>
+
 </resources>

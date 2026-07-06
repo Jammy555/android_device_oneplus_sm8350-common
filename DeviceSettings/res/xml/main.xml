@@ -91,5 +91,23 @@
 
     </PreferenceCategory>
 
+    <!-- Network: Selective Band Lock -->
+    <PreferenceCategory
+        android:key="network_category"
+        android:title="@string/network_category_title">
+
+        <Preference
+            android:key="network_bands_entry"
+            android:icon="@drawable/ic_settings_device"
+            android:title="@string/network_bands_title"
+            android:summary="@string/network_bands_summary">
+            <intent
+                android:action="android.intent.action.MAIN"
+                android:targetPackage="org.lineageos.device.DeviceSettings"
+                android:targetClass="org.lineageos.device.DeviceSettings.network.NetworkBandsActivity" />
+        </Preference>
+
+    </PreferenceCategory>
+
 </PreferenceScreen>
 

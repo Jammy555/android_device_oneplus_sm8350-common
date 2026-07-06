@@ -33,6 +33,11 @@
     <uses-permission android:name="android.permission.MANAGE_GAME_MODE" />
     <uses-permission android:name="android.permission.GET_TASKS" />
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+    <uses-permission android:name="android.permission.MODIFY_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PRECISE_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <protected-broadcast android:name="org.lineageos.device.DeviceSettings.WIDGET_TICK" />
 
     <application
@@ -104,6 +109,14 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
         </activity>
+
+        <!-- Selective Band Lock sub-screen -->
+        <activity
+            android:name=".network.NetworkBandsActivity"
+            android:label="@string/network_bands_title"
+            android:theme="@style/Theme.DeviceSettings"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false" />
 
         <!-- Power Profile Quick Settings Tile -->
         <service
