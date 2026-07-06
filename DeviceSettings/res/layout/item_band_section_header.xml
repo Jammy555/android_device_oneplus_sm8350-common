@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Section header row in the band list (e.g. "5G NR — FR1", "LTE — 4G") -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/band_section_title"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="6dp"
+    android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+    android:textColor="?android:attr/colorAccent"
+    android:textAllCaps="false" />
