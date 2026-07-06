@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- SIM selector (only shown for dual-SIM devices) -->
+    <Spinner
+        android:id="@+id/sim_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone" />
+
+    <!-- Status text -->
+    <TextView
+        android:id="@+id/band_status_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="6dp"
+        android:textSize="13sp"
+        android:textColor="?android:attr/colorAccent"
+        android:text="@string/network_bands_status_no_signal" />
+
+
+
+    <!-- Scrollable band list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/bands_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp" />
+
+    <!-- Bottom action bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:elevation="8dp"
+        android:background="?android:attr/colorBackground">
+
+        <Button
+            android:id="@+id/btn_reset_bands"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/btn_secondary_m3"
+            android:textColor="?android:attr/textColorPrimary"
+            android:text="@string/network_bands_reset" />
+
+        <Button
+            android:id="@+id/btn_apply_bands"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/btn_primary_m3"
+            android:textColor="@android:color/white"
+            android:text="@string/network_bands_apply" />
+
+    </LinearLayout>
+
+</LinearLayout>
