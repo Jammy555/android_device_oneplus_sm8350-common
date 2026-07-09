@@ -1,0 +1,39 @@
+diff --git a/config/common_mobile.mk b/config/common_mobile.mk
+index f54283ed..2f626893 100644
+--- a/config/common_mobile.mk
++++ b/config/common_mobile.mk
+@@ -13,10 +13,8 @@ PRODUCT_PACKAGES += \
+     AvatarPicker \
+     LatinIME
+ 
+-ifneq ($(WITH_GMS), true)
+ PRODUCT_PACKAGES += \
+     Glimpse
+-endif
+ 
+ ifeq ($(PRODUCT_TYPE), go)
+ PRODUCT_PACKAGES += \
+diff --git a/config/common_mobile_full.mk b/config/common_mobile_full.mk
+index 8ef6514f..26968110 100644
+--- a/config/common_mobile_full.mk
++++ b/config/common_mobile_full.mk
+@@ -3,17 +3,11 @@ $(call inherit-product, vendor/lineage/config/common_mobile.mk)
+ 
+ PRODUCT_SIZE := full
+ 
+-PRODUCT_PACKAGES += \
+-    Profiles
+-
+ ifneq ($(WITH_GMS), true)  
+ # Apps
+ PRODUCT_PACKAGES += \
+-    Camelot \
+-    Etar \
+-    Recorder \
+-    Seedvault \
+-    Twelve
++    Dialer \
++    Messaging
+ endif
+ 
+ ifneq ($(PRODUCT_NO_CAMERA),true)
