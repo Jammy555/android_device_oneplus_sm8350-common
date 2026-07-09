@@ -183,7 +183,7 @@ public class NetworkBandsFragment extends Fragment {
         });
     }
 
-    /* Load State from SharedPreferences */
+    /** Load State from SharedPreferences */
     private void loadCurrentBands() {
         // Reset all entries first
         for (BandEntry e : mBandEntries) {
