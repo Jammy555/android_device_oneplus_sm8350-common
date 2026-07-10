@@ -75,7 +75,7 @@ public class NetworkBandsFragment extends Fragment {
 
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
-    /* Lifecycle */
+    /** Lifecycle */
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -131,7 +131,7 @@ public class NetworkBandsFragment extends Fragment {
         mHandler.removeCallbacksAndMessages(null);
     }
 
-    /* SIM Selector */
+    /** SIM Selector */
 
     private void setupSimTabs() {
         try {
@@ -215,7 +215,7 @@ public class NetworkBandsFragment extends Fragment {
         if (mAdapter != null) mAdapter.notifyDataSetChanged();
     }
 
-    /* SharedPreferences Helpers */
+    /** SharedPreferences Helpers */
 
     private SharedPreferences getPrefs() {
         return requireContext().getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
@@ -239,7 +239,7 @@ public class NetworkBandsFragment extends Fragment {
         Log.d(TAG, "clearBandKeys: cleared SharedPreferences for key=" + prefKey());
     }
 
-    /* Live Band Monitor */
+    /** Live Band Monitor */
     private void registerBandMonitor() {
         if (mBandMonitorCallback != null) return;
         try {
@@ -264,7 +264,38 @@ public class NetworkBandsFragment extends Fragment {
         }
     }
 
+    private TelephonyManager getTelephonyManager() {
+        if (mCurrentSubId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+            return mTelephonyManager;
+        }
+        return mTelephonyManager.createForSubscriptionId(mCurrentSubId);
+    }
 
+    private void toast(String msg) {
+        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+    }
+
+    private void setStatus(String status) {
+        if (mStatusText != null) mStatusText.setText(status);
+    }
+
+    private int countChecked() {
+        int c = 0;
+        for (BandEntry e : mBandEntries) {
+            if (e.checked && e.bandNum != BandCatalog.SECTION_HEADER) c++;
+        }
+        return c;
+    }
+
+    private static String intArrayToString(int[] arr) {
+        if (arr == null) return "null";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < arr.length; i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(arr[i]);
+        }
+        return sb.append("]").toString();
+    }
 
     /**
      * Maps TelephonyManager.NETWORK_TYPE_* → AccessNetworkConstants.AccessNetworkType.*
@@ -349,7 +380,7 @@ public class NetworkBandsFragment extends Fragment {
         }
     }
 
-    /* Active Band Auto-Update */
+    /** Active Band Auto-Update */
 
     @android.annotation.SuppressLint("MissingPermission")
     private void updateActiveBandsFromServiceState() {
@@ -477,7 +508,7 @@ public class NetworkBandsFragment extends Fragment {
         }
     }
 
-    /* Reset to Automatic */
+    /** Reset to Automatic */
 
     private void showResetDialog() {
         new AlertDialog.Builder(requireContext())
@@ -539,7 +570,7 @@ public class NetworkBandsFragment extends Fragment {
         }).start();
     }
 
-    /* Helpers */
+    /** Helpers */
 
     private List<RadioAccessSpecifier> buildSpecifiers() {
         List<Integer> nrBands    = new ArrayList<>();
@@ -573,46 +604,13 @@ public class NetworkBandsFragment extends Fragment {
         return specifiers;
     }
 
-    private TelephonyManager getTelephonyManager() {
-        if (mCurrentSubId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
-            return mTelephonyManager;
-        }
-        return mTelephonyManager.createForSubscriptionId(mCurrentSubId);
-    }
-
-    private int countChecked() {
-        int c = 0;
-        for (BandEntry e : mBandEntries) {
-            if (e.checked && e.bandNum != BandCatalog.SECTION_HEADER) c++;
-        }
-        return c;
-    }
-
-    private void setStatus(String msg) {
-        if (mStatusText != null) mStatusText.setText(msg);
-    }
-
-    private void toast(String msg) {
-        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
-    }
-
     private static int[] toIntArray(List<Integer> list) {
         int[] arr = new int[list.size()];
         for (int i = 0; i < list.size(); i++) arr[i] = list.get(i);
         return arr;
     }
 
-    private static String intArrayToString(int[] arr) {
-        if (arr == null) return "null";
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < arr.length; i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(arr[i]);
-        }
-        return sb.append("]").toString();
-    }
-
-    /* RecyclerView Adapter */
+    /** RecyclerView Adapter */
 
     private static class BandAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
