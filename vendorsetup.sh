@@ -21,7 +21,4 @@ apply_patch() {
 }
 
 apply_patch "packages/apps/GameSpace" "../../../$PATCH_DIR/gamespace_sync.patch" "GameSpace Sync"
-apply_patch "vendor/lineage" "../../$PATCH_DIR/vendor_lineage_config.patch" "Lineage Dialer/Messaging Overrides"
 apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_a0fed77.patch" "Oplus Framework Stubs"
-apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_smart_pixels_hun.patch" "Smart Pixels HUN"
-apply_patch "packages/apps/Singularity" "../../../$PATCH_DIR/singularity_smart_pixels_hun.patch" "Smart Pixels HUN Settings"
