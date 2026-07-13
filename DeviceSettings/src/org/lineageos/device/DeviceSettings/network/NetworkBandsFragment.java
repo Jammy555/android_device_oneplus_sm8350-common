@@ -453,7 +453,7 @@ public class NetworkBandsFragment extends Fragment {
     }
 
     private void applyBands() {
-        List<RadioAccessSpecifier> specifiers = buildSpecifiers();
+        List<RadioAccessSpecifier> specifiers = buildSpecifiers(true);
         Log.d(TAG, "applyBands: sending " + specifiers.size() + " RAT specifier(s) to modem via setSystemSelectionChannels");
         for (RadioAccessSpecifier s : specifiers) {
             Log.d(TAG, "  specifier: rat=" + s.getRadioAccessNetwork()
@@ -520,7 +520,7 @@ public class NetworkBandsFragment extends Fragment {
     }
 
     private void resetToAutomatic() {
-        Log.d(TAG, "resetToAutomatic: sending empty list to clear lock and restarting radio");
+        Log.d(TAG, "resetToAutomatic: sending all bands list to clear lock and restarting radio");
 
         // Clear saved state immediately
         clearBandKeys();
@@ -534,8 +534,9 @@ public class NetworkBandsFragment extends Fragment {
         setStatus(getString(R.string.network_bands_status_no_signal));
 
         try {
+            List<RadioAccessSpecifier> allBands = buildSpecifiers(false);
             getTelephonyManager().setSystemSelectionChannels(
-                    new ArrayList<>(), // Send official empty list to clear lock
+                    allBands, // Send all bands instead of empty list to force modem out of unsupported lock
                     mMainExecutor,
                     success -> {
                         Log.d(TAG, "resetToAutomatic CALLBACK: success=" + success);
@@ -572,14 +573,15 @@ public class NetworkBandsFragment extends Fragment {
 
     /** Helpers */
 
-    private List<RadioAccessSpecifier> buildSpecifiers() {
+    private List<RadioAccessSpecifier> buildSpecifiers(boolean onlyChecked) {
         List<Integer> nrBands    = new ArrayList<>();
         List<Integer> lteBands   = new ArrayList<>();
         List<Integer> wcdmaBands = new ArrayList<>();
         List<Integer> gsmBands   = new ArrayList<>();
 
         for (BandEntry e : mBandEntries) {
-            if (!e.checked || e.bandNum == BandCatalog.SECTION_HEADER) continue;
+            if (e.bandNum == BandCatalog.SECTION_HEADER) continue;
+            if (onlyChecked && !e.checked) continue;
             switch (e.rat) {
                 case AccessNetworkConstants.AccessNetworkType.NGRAN:  nrBands.add(e.bandNum);    break;
                 case AccessNetworkConstants.AccessNetworkType.EUTRAN: lteBands.add(e.bandNum);   break;
