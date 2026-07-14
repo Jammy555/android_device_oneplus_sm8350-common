@@ -66,6 +66,10 @@ public class NetworkBandsFragment extends Fragment {
     private static final int OPLUS_NR_MODE_SA_PRE = 3;
 
     private SeekBar mNrModeSeekBar;
+    private View mNrModeActiveLayout;
+    private View mNrModeActiveDot;
+    private TextView mNrModeActiveText;
+    private long mLastNrModeUserInteractionTime = 0;
 
     private TelephonyManager mTelephonyManager;
     private SubscriptionManager mSubscriptionManager;
@@ -74,6 +78,7 @@ public class NetworkBandsFragment extends Fragment {
 
     private BandMonitorCallback mBandMonitorCallback;
     private Executor mMainExecutor;
+    private List<PhysicalChannelConfig> mLastPhysicalChannelConfigs = new ArrayList<>();
 
     private List<BandEntry> mBandEntries;
     private BandAdapter mAdapter;
@@ -108,10 +113,39 @@ public class NetworkBandsFragment extends Fragment {
         mStatusText  = root.findViewById(R.id.band_status_text);
 
         mNrModeSeekBar = root.findViewById(R.id.nr_mode_seekbar);
+        mNrModeActiveLayout = root.findViewById(R.id.nr_mode_active_layout);
+        mNrModeActiveDot = root.findViewById(R.id.nr_mode_active_dot);
+        mNrModeActiveText = root.findViewById(R.id.nr_mode_active_text);
+
         mNrModeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
+                    mLastNrModeUserInteractionTime = android.os.SystemClock.elapsedRealtime();
+                    if (mNrModeActiveLayout != null) {
+                        mNrModeActiveLayout.animate().cancel();
+                        mNrModeActiveLayout.setAlpha(1.0f);
+                        mNrModeActiveLayout.animate()
+                            .alpha(0.0f)
+                            .setDuration(300)
+                            .withEndAction(() -> {
+                                if (mNrModeActiveText != null) {
+                                    mNrModeActiveText.setText("Applying mode change...");
+                                    if (mNrModeActiveDot != null) {
+                                        mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_gray);
+                                    }
+                                }
+                                mNrModeActiveLayout.animate()
+                                    .alpha(1.0f)
+                                    .setDuration(1700)
+                                    .setStartDelay(300)
+                                    .withEndAction(() -> {
+                                        updateActiveNrModeDisplay();
+                                    })
+                                    .start();
+                            })
+                            .start();
+                    }
                     updateNrMode(progress);
                 }
             }
@@ -375,7 +409,8 @@ public class NetworkBandsFragment extends Fragment {
     }
 
     private class BandMonitorCallback extends TelephonyCallback
-            implements TelephonyCallback.PhysicalChannelConfigListener {
+            implements TelephonyCallback.PhysicalChannelConfigListener,
+                       TelephonyCallback.CellInfoListener {
 
         @Override
         public void onPhysicalChannelConfigChanged(@NonNull List<PhysicalChannelConfig> configs) {
@@ -387,14 +422,31 @@ public class NetworkBandsFragment extends Fragment {
                         + " connectionStatus=" + config.getConnectionStatus()
                         + " dlBandwidthKhz=" + config.getCellBandwidthDownlinkKhz());
             }
+            mLastPhysicalChannelConfigs = configs;
+            updateActiveBands();
+        }
 
-            // Clear active status on all entries first
-            for (BandEntry e : mBandEntries) {
-                e.isActive = false;
-            }
+        @Override
+        public void onCellInfoChanged(@NonNull List<android.telephony.CellInfo> cellInfo) {
+            Log.d(TAG, "onCellInfoChanged: received " + cellInfo.size() + " cell(s)");
+            updateActiveBands();
+        }
+    }
 
-            int activeCount = 0;
-            for (PhysicalChannelConfig config : configs) {
+    /** Active Band Auto-Update */
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private void updateActiveBands() {
+        // Clear active status on all entries first
+        for (BandEntry e : mBandEntries) {
+            e.isActive = false;
+        }
+
+        int activeCount = 0;
+
+        // 1. Process cached PhysicalChannelConfigs (including secondary carrier aggregation channels)
+        if (mLastPhysicalChannelConfigs != null) {
+            for (PhysicalChannelConfig config : mLastPhysicalChannelConfigs) {
                 int rat = networkTypeToAccessNetworkType(config.getNetworkType());
                 if (rat == AccessNetworkConstants.AccessNetworkType.UNKNOWN) {
                     continue;
@@ -409,9 +461,11 @@ public class NetworkBandsFragment extends Fragment {
                     if (band > 0) {
                         for (BandEntry e : mBandEntries) {
                             if (e.rat == rat && e.bandNum == band) {
-                                e.isActive = true;
-                                activeCount++;
-                                Log.d(TAG, "  Marked ACTIVE (LTE) from PhysicalChannelConfig: " + e.label);
+                                if (!e.isActive) {
+                                    e.isActive = true;
+                                    activeCount++;
+                                    Log.d(TAG, "Marked ACTIVE (LTE config) from PhysicalChannelConfig: " + e.label);
+                                }
                             }
                         }
                     }
@@ -425,9 +479,11 @@ public class NetworkBandsFragment extends Fragment {
                     for (int b : bands) {
                         for (BandEntry e : mBandEntries) {
                             if (e.rat == rat && e.bandNum == b) {
-                                e.isActive = true;
-                                activeCount++;
-                                Log.d(TAG, "  Marked ACTIVE (NR) from PhysicalChannelConfig: " + e.label);
+                                if (!e.isActive) {
+                                    e.isActive = true;
+                                    activeCount++;
+                                    Log.d(TAG, "Marked ACTIVE (NR config) from PhysicalChannelConfig: " + e.label);
+                                }
                             }
                         }
                     }
@@ -435,75 +491,162 @@ public class NetworkBandsFragment extends Fragment {
                     if (band > 0) {
                         for (BandEntry e : mBandEntries) {
                             if (e.rat == rat && e.bandNum == band) {
-                                e.isActive = true;
-                                activeCount++;
+                                if (!e.isActive) {
+                                    e.isActive = true;
+                                    activeCount++;
+                                }
                             }
                         }
                     }
                 }
             }
-
-            // Also merge active bands from ServiceState to ensure primary/registered cells are captured
-            updateActiveBandsFromServiceState(false);
-
-            mHandler.post(() -> {
-                if (!isAdded()) return;
-                if (mAdapter != null) mAdapter.notifyDataSetChanged();
-            });
         }
-    }
 
-    /** Active Band Auto-Update */
+        // 2. Check all visible CellInfo for primary/secondary serving cells
+        try {
+            List<android.telephony.CellInfo> cellInfos = getTelephonyManager().getAllCellInfo();
+            if (cellInfos != null) {
+                for (android.telephony.CellInfo cell : cellInfos) {
+                    int connStatus = cell.getCellConnectionStatus();
+                    if (connStatus == android.telephony.CellInfo.CONNECTION_PRIMARY_SERVING ||
+                        connStatus == android.telephony.CellInfo.CONNECTION_SECONDARY_SERVING) {
+                        
+                        android.telephony.CellIdentity id = cell.getCellIdentity();
+                        if (id == null) continue;
 
-    @android.annotation.SuppressLint("MissingPermission")
-    private void updateActiveBandsFromServiceState(boolean clearFirst) {
+                        int rat = AccessNetworkConstants.AccessNetworkType.UNKNOWN;
+                        int[] bandsArray = null;
+
+                        if (id instanceof android.telephony.CellIdentityLte) {
+                            rat = AccessNetworkConstants.AccessNetworkType.EUTRAN;
+                            bandsArray = ((android.telephony.CellIdentityLte) id).getBands();
+                        } else if (id instanceof android.telephony.CellIdentityNr) {
+                            rat = AccessNetworkConstants.AccessNetworkType.NGRAN;
+                            bandsArray = ((android.telephony.CellIdentityNr) id).getBands();
+                        }
+
+                        if (bandsArray != null) {
+                            for (int band : bandsArray) {
+                                for (BandEntry e : mBandEntries) {
+                                    if (e.rat == rat && e.bandNum == band) {
+                                        if (!e.isActive) {
+                                            e.isActive = true;
+                                            activeCount++;
+                                            Log.d(TAG, "Marked ACTIVE (CellInfo) from serving cell: " + e.label);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get bands from CellInfo", e);
+        }
+
+        // 3. Merge active bands from ServiceState to ensure primary/registered cells are captured
         try {
             ServiceState ss = getTelephonyManager().getServiceState();
-            if (ss == null) return;
+            if (ss != null) {
+                List<android.telephony.NetworkRegistrationInfo> nris = ss.getNetworkRegistrationInfoList();
+                if (nris != null) {
+                    for (android.telephony.NetworkRegistrationInfo nri : nris) {
+                        if (!nri.isRegistered()) continue;
+                        android.telephony.CellIdentity id = nri.getCellIdentity();
+                        if (id == null) continue;
 
-            List<android.telephony.NetworkRegistrationInfo> nris = ss.getNetworkRegistrationInfoList();
-            if (nris == null || nris.isEmpty()) return;
+                        int rat = AccessNetworkConstants.AccessNetworkType.UNKNOWN;
+                        int[] bandsArray = null;
 
-            if (clearFirst) {
-                for (BandEntry e : mBandEntries) {
-                    e.isActive = false;
-                }
-            }
+                        if (id instanceof android.telephony.CellIdentityLte) {
+                            rat = AccessNetworkConstants.AccessNetworkType.EUTRAN;
+                            bandsArray = ((android.telephony.CellIdentityLte) id).getBands();
+                        } else if (id instanceof android.telephony.CellIdentityNr) {
+                            rat = AccessNetworkConstants.AccessNetworkType.NGRAN;
+                            bandsArray = ((android.telephony.CellIdentityNr) id).getBands();
+                        }
 
-            int activeCount = 0;
-            for (android.telephony.NetworkRegistrationInfo nri : nris) {
-                if (!nri.isRegistered()) continue;
-                android.telephony.CellIdentity id = nri.getCellIdentity();
-                if (id == null) continue;
-
-                int rat = AccessNetworkConstants.AccessNetworkType.UNKNOWN;
-                int[] bandsArray = null;
-
-                if (id instanceof android.telephony.CellIdentityLte) {
-                    rat = AccessNetworkConstants.AccessNetworkType.EUTRAN;
-                    bandsArray = ((android.telephony.CellIdentityLte) id).getBands();
-                } else if (id instanceof android.telephony.CellIdentityNr) {
-                    rat = AccessNetworkConstants.AccessNetworkType.NGRAN;
-                    bandsArray = ((android.telephony.CellIdentityNr) id).getBands();
-                }
-
-                if (bandsArray != null) {
-                    for (int band : bandsArray) {
-                        for (BandEntry e : mBandEntries) {
-                            if (e.rat == rat && e.bandNum == band) {
-                                e.isActive = true;
-                                activeCount++;
+                        if (bandsArray != null) {
+                            for (int band : bandsArray) {
+                                for (BandEntry e : mBandEntries) {
+                                    if (e.rat == rat && e.bandNum == band) {
+                                        if (!e.isActive) {
+                                            e.isActive = true;
+                                            activeCount++;
+                                            Log.d(TAG, "Marked ACTIVE (ServiceState) from registered cell: " + e.label);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-
-            Log.d(TAG, "updateActiveBandsFromServiceState auto: " + activeCount + " active band(s)");
-
         } catch (Exception e) {
-            Log.e(TAG, "updateActiveBandsFromServiceState failed", e);
+            Log.w(TAG, "Failed to get bands from ServiceState", e);
         }
+
+        Log.d(TAG, "updateActiveBands completed: " + activeCount + " total active band(s)");
+
+        mHandler.post(() -> {
+            if (!isAdded()) return;
+            if (mAdapter != null) mAdapter.notifyDataSetChanged();
+            updateActiveNrModeDisplay();
+        });
+    }
+
+    private void updateActiveNrModeDisplay() {
+        if (mNrModeActiveText == null || mNrModeActiveDot == null || !isAdded()) return;
+
+        // Guard: if user recently changed the slider, let the fade animation play out
+        if (android.os.SystemClock.elapsedRealtime() - mLastNrModeUserInteractionTime < 2500) {
+            return;
+        }
+
+        boolean hasNr = false;
+        boolean hasLte = false;
+
+        if (mBandEntries != null) {
+            for (BandEntry e : mBandEntries) {
+                if (e.isActive) {
+                    if (e.rat == AccessNetworkConstants.AccessNetworkType.NGRAN) {
+                        hasNr = true;
+                    } else if (e.rat == AccessNetworkConstants.AccessNetworkType.EUTRAN) {
+                        hasLte = true;
+                    }
+                }
+            }
+        }
+
+        try {
+            int dataNetType = getTelephonyManager().getDataNetworkType();
+            if (dataNetType == TelephonyManager.NETWORK_TYPE_NR) {
+                hasNr = true;
+            }
+        } catch (Exception ignored) {}
+
+        final boolean nr = hasNr;
+        final boolean lte = hasLte;
+
+        mHandler.post(() -> {
+            if (!isAdded()) return;
+            if (android.os.SystemClock.elapsedRealtime() - mLastNrModeUserInteractionTime < 2500) {
+                return;
+            }
+            if (nr) {
+                if (lte) {
+                    mNrModeActiveText.setText("Active: NSA (5G Non-Standalone)");
+                    mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_green);
+                } else {
+                    mNrModeActiveText.setText("Active: SA (5G Standalone)");
+                    mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_green);
+                }
+            } else {
+                mNrModeActiveText.setText("Active: LTE / No 5G");
+                mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_gray);
+            }
+        });
     }
 
     private void showApplyDialog() {
@@ -803,6 +946,8 @@ public class NetworkBandsFragment extends Fragment {
         } else {
             oplusMode = OPLUS_NR_MODE_SA_PRE; // Auto
         }
+
+        Log.d(TAG, "updateNrMode: User changed NR mode slider to position=" + position + " -> oplusMode=" + oplusMode);
 
         // Save to Prefs
         getPrefs().edit().putInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, position).apply();
