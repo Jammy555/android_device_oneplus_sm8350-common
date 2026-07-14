@@ -50,7 +50,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:max="2"
-            android:splitTrack="false" />
+            android:minHeight="24dp"
+            android:maxHeight="6dp"
+            android:splitTrack="false"
+            android:thumbTint="?android:attr/colorAccent"
+            android:progressTint="?android:attr/colorAccent"
+            android:progressBackgroundTint="?android:attr/textColorTertiary" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -83,6 +88,32 @@
                 android:textColor="?android:attr/textColorSecondary" />
 
         </RelativeLayout>
+
+        <LinearLayout
+            android:id="@+id/nr_mode_active_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical">
+
+            <View
+                android:id="@+id/nr_mode_active_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/active_dot_gray"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/nr_mode_active_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Active: Checking..."
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorSecondary" />
+        </LinearLayout>
 
     </LinearLayout>
 
