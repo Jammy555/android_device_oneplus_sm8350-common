@@ -28,23 +28,23 @@ public final class BandCatalog {
 
         // 5G NR
         list.add(section("5G NR"));
-        list.add(nr(AccessNetworkConstants.NgranBands.BAND_41,  "n41",  "2500 MHz TDD"));
-        list.add(nr(AccessNetworkConstants.NgranBands.BAND_78,  "n78",  "3500 MHz TDD"));
-        list.add(nr(AccessNetworkConstants.NgranBands.BAND_28,  "n28",  "700 MHz FDD"));
-        list.add(nr(AccessNetworkConstants.NgranBands.BAND_77,  "n77",  "3700 MHz TDD"));
-        list.add(nr(AccessNetworkConstants.NgranBands.BAND_40,  "n40",  "2300 MHz TDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_1,   "n1",   "2100 MHz FDD"));
+        list.add(nr(AccessNetworkConstants.NgranBands.BAND_2,   "n2",   "1900 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_3,   "n3",   "1800 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_5,   "n5",   "850 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_7,   "n7",   "2600 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_8,   "n8",   "900 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_20,  "n20",  "800 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_25,  "n25",  "1900 MHz FDD"));
+        list.add(nr(AccessNetworkConstants.NgranBands.BAND_28,  "n28",  "700 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_38,  "n38",  "2600 MHz TDD"));
+        list.add(nr(AccessNetworkConstants.NgranBands.BAND_40,  "n40",  "2300 MHz TDD"));
+        list.add(nr(AccessNetworkConstants.NgranBands.BAND_41,  "n41",  "2500 MHz TDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_48,  "n48",  "3550 MHz TDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_66,  "n66",  "1700 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_71,  "n71",  "600 MHz FDD"));
-        list.add(nr(AccessNetworkConstants.NgranBands.BAND_2,   "n2",   "1900 MHz FDD"));
+        list.add(nr(AccessNetworkConstants.NgranBands.BAND_77,  "n77",  "3700 MHz TDD"));
+        list.add(nr(AccessNetworkConstants.NgranBands.BAND_78,  "n78",  "3500 MHz TDD"));
 
         // LTE 4G
         list.add(section("LTE — 4G"));
@@ -87,10 +87,10 @@ public final class BandCatalog {
 
         // GSM 2G
         list.add(section("GSM — 2G"));
+        list.add(gsm(AccessNetworkConstants.GeranBand.BAND_PCS1900,"B2 / 1900", "1900 MHz"));
+        list.add(gsm(AccessNetworkConstants.GeranBand.BAND_DCS1800,"B3 / 1800", "1800 MHz"));
         list.add(gsm(AccessNetworkConstants.GeranBand.BAND_850,    "B5 / 850",  "850 MHz"));
         list.add(gsm(AccessNetworkConstants.GeranBand.BAND_E900,   "B8 / 900",  "900 MHz"));
-        list.add(gsm(AccessNetworkConstants.GeranBand.BAND_DCS1800,"B3 / 1800", "1800 MHz"));
-        list.add(gsm(AccessNetworkConstants.GeranBand.BAND_PCS1900,"B2 / 1900", "1900 MHz"));
 
         return list;
     }

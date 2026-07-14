@@ -332,49 +332,71 @@ public class NetworkBandsFragment extends Fragment {
             for (PhysicalChannelConfig config : configs) {
                 Log.d(TAG, "  PhysicalChannelConfig: networkType=" + config.getNetworkType()
                         + " band=" + config.getBand()
+                        + " channel=" + config.getDownlinkChannelNumber()
                         + " connectionStatus=" + config.getConnectionStatus()
                         + " dlBandwidthKhz=" + config.getCellBandwidthDownlinkKhz());
             }
 
-            // On SM8350, QCRIL often returns band=0 for PhysicalChannelConfig.
-            // If we see band=0, we'll fall back to checking ServiceState.
-            boolean hasValidBand = false;
-            for (PhysicalChannelConfig config : configs) {
-                if (config.getBand() > 0) {
-                    hasValidBand = true;
-                    break;
-                }
-            }
-
-            if (!hasValidBand) {
-                Log.d(TAG, "onPhysicalChannelConfigChanged: band=0, falling back to ServiceState for auto-update");
-                updateActiveBandsFromServiceState();
-                return;
-            }
-
-            // Standard PhysicalChannelConfig parsing (if HAL actually supports it properly)
+            // Clear active status on all entries first
             for (BandEntry e : mBandEntries) {
                 e.isActive = false;
             }
+
             int activeCount = 0;
             for (PhysicalChannelConfig config : configs) {
                 int rat = networkTypeToAccessNetworkType(config.getNetworkType());
-                int band = config.getBand();
-                if (rat == AccessNetworkConstants.AccessNetworkType.UNKNOWN || band <= 0) {
+                if (rat == AccessNetworkConstants.AccessNetworkType.UNKNOWN) {
                     continue;
                 }
-                for (BandEntry e : mBandEntries) {
-                    if (e.rat == rat && e.bandNum == band) {
-                        e.isActive = true;
-                        activeCount++;
-                        Log.d(TAG, "  Marked ACTIVE auto: " + e.label);
+                int band = config.getBand();
+                int channel = config.getDownlinkChannelNumber();
+
+                if (rat == AccessNetworkConstants.AccessNetworkType.EUTRAN) {
+                    if (band <= 0 && channel > 0 && channel != PhysicalChannelConfig.CHANNEL_NUMBER_UNKNOWN) {
+                        band = earfcnToLteBand(channel);
+                    }
+                    if (band > 0) {
+                        for (BandEntry e : mBandEntries) {
+                            if (e.rat == rat && e.bandNum == band) {
+                                e.isActive = true;
+                                activeCount++;
+                                Log.d(TAG, "  Marked ACTIVE (LTE) from PhysicalChannelConfig: " + e.label);
+                            }
+                        }
+                    }
+                } else if (rat == AccessNetworkConstants.AccessNetworkType.NGRAN) {
+                    List<Integer> bands = new ArrayList<>();
+                    if (band > 0) {
+                        bands.add(band);
+                    } else if (channel > 0 && channel != PhysicalChannelConfig.CHANNEL_NUMBER_UNKNOWN) {
+                        bands = nrarfcnToNrBands(channel);
+                    }
+                    for (int b : bands) {
+                        for (BandEntry e : mBandEntries) {
+                            if (e.rat == rat && e.bandNum == b) {
+                                e.isActive = true;
+                                activeCount++;
+                                Log.d(TAG, "  Marked ACTIVE (NR) from PhysicalChannelConfig: " + e.label);
+                            }
+                        }
+                    }
+                } else {
+                    if (band > 0) {
+                        for (BandEntry e : mBandEntries) {
+                            if (e.rat == rat && e.bandNum == band) {
+                                e.isActive = true;
+                                activeCount++;
+                            }
+                        }
                     }
                 }
             }
-            final int count = activeCount;
+
+            // Also merge active bands from ServiceState to ensure primary/registered cells are captured
+            updateActiveBandsFromServiceState(false);
+
             mHandler.post(() -> {
                 if (!isAdded()) return;
-                Log.d(TAG, "onPhysicalChannelConfigChanged UI update: " + count + " active band(s)");
                 if (mAdapter != null) mAdapter.notifyDataSetChanged();
             });
         }
@@ -383,7 +405,7 @@ public class NetworkBandsFragment extends Fragment {
     /** Active Band Auto-Update */
 
     @android.annotation.SuppressLint("MissingPermission")
-    private void updateActiveBandsFromServiceState() {
+    private void updateActiveBandsFromServiceState(boolean clearFirst) {
         try {
             ServiceState ss = getTelephonyManager().getServiceState();
             if (ss == null) return;
@@ -391,12 +413,13 @@ public class NetworkBandsFragment extends Fragment {
             List<android.telephony.NetworkRegistrationInfo> nris = ss.getNetworkRegistrationInfoList();
             if (nris == null || nris.isEmpty()) return;
 
-            int activeCount = 0;
-            
-            for (BandEntry e : mBandEntries) {
-                e.isActive = false; // Always clear active badges for a fresh scan
+            if (clearFirst) {
+                for (BandEntry e : mBandEntries) {
+                    e.isActive = false;
+                }
             }
 
+            int activeCount = 0;
             for (android.telephony.NetworkRegistrationInfo nri : nris) {
                 if (!nri.isRegistered()) continue;
                 android.telephony.CellIdentity id = nri.getCellIdentity();
@@ -417,7 +440,7 @@ public class NetworkBandsFragment extends Fragment {
                     for (int band : bandsArray) {
                         for (BandEntry e : mBandEntries) {
                             if (e.rat == rat && e.bandNum == band) {
-                                e.isActive = true; // Show the ACTIVE badge
+                                e.isActive = true;
                                 activeCount++;
                             }
                         }
@@ -425,13 +448,8 @@ public class NetworkBandsFragment extends Fragment {
                 }
             }
 
-            Log.d(TAG, "updateActiveBandsFromServiceState auto UI update: " + activeCount + " active band(s)");
+            Log.d(TAG, "updateActiveBandsFromServiceState auto: " + activeCount + " active band(s)");
 
-            mHandler.post(() -> {
-                if (!isAdded()) return;
-                if (mAdapter != null) mAdapter.notifyDataSetChanged();
-            });
-            
         } catch (Exception e) {
             Log.e(TAG, "updateActiveBandsFromServiceState failed", e);
         }
@@ -463,7 +481,6 @@ public class NetworkBandsFragment extends Fragment {
         TelephonyManager tm = getTelephonyManager();
 
         // Don't wait for modem callback — persist user intent now.
-        // If the modem command fails, the user can still see what they tried.
         Set<String> keysToSave = new HashSet<>();
         for (BandEntry e : mBandEntries) {
             if (e.checked && e.bandNum != BandCatalog.SECTION_HEADER) {
@@ -483,13 +500,13 @@ public class NetworkBandsFragment extends Fragment {
                             toast(getString(R.string.network_bands_applied_success));
                             mHandler.postDelayed(this::checkServiceState, SERVICE_CHECK_DELAY_MS);
                         } else {
-                            Log.w(TAG, "setSystemSelectionChannels returned success=false — modem rejected command");
+                            Log.w(TAG, "setSystemSelectionChannels returned success=false");
                             toast(getString(R.string.network_bands_applied_fail));
                         }
                     });
-            Log.d(TAG, "applyBands: setSystemSelectionChannels call dispatched (waiting for callback)");
+            Log.d(TAG, "applyBands: setSystemSelectionChannels call dispatched");
         } catch (Exception e) {
-            Log.e(TAG, "applyBands: setSystemSelectionChannels threw exception", e);
+            Log.e(TAG, "applyBands: exception", e);
             toast(getString(R.string.network_bands_applied_fail));
         }
     }
@@ -513,14 +530,14 @@ public class NetworkBandsFragment extends Fragment {
     private void showResetDialog() {
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.network_bands_reset)
-                .setMessage("Are you sure you want to reset the modem to automatic mode? This will re-enable all factory default bands.")
+                .setMessage("Resetting network bands to automatic mode requires a device reboot. Would you like to reboot now?")
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.network_bands_reset, (d, w) -> resetToAutomatic())
+                .setPositiveButton("Reboot", (d, w) -> resetToAutomatic())
                 .show();
     }
 
     private void resetToAutomatic() {
-        Log.d(TAG, "resetToAutomatic: sending all bands list to clear lock and restarting radio");
+        Log.d(TAG, "resetToAutomatic: clearing preferences and rebooting device");
 
         // Clear saved state immediately
         clearBandKeys();
@@ -533,45 +550,74 @@ public class NetworkBandsFragment extends Fragment {
         if (mAdapter != null) mAdapter.notifyDataSetChanged();
         setStatus(getString(R.string.network_bands_status_no_signal));
 
+        // Reboot the device cleanly
         try {
-            List<RadioAccessSpecifier> allBands = buildSpecifiers(false);
-            getTelephonyManager().setSystemSelectionChannels(
-                    allBands, // Send all bands instead of empty list to force modem out of unsupported lock
-                    mMainExecutor,
-                    success -> {
-                        Log.d(TAG, "resetToAutomatic CALLBACK: success=" + success);
-                        if (success) {
-                            toast(getString(R.string.network_bands_reset_success));
-                            // Force a programmatic radio restart to snap QCRIL out of the dead lock
-                            forceRadioRestart();
-                        } else {
-                            Log.w(TAG, "resetToAutomatic: modem returned success=false");
-                            toast(getString(R.string.network_bands_applied_fail));
-                        }
-                    });
-            Log.d(TAG, "resetToAutomatic: setSystemSelectionChannels(empty) dispatched");
+            android.os.PowerManager pm = (android.os.PowerManager) requireContext().getSystemService(android.content.Context.POWER_SERVICE);
+            if (pm != null) {
+                pm.reboot(null);
+            } else {
+                Log.e(TAG, "resetToAutomatic: PowerManager is null");
+                toast("Error: PowerManager not available");
+            }
         } catch (Exception e) {
-            Log.e(TAG, "resetToAutomatic: exception", e);
-            toast(getString(R.string.network_bands_applied_fail));
+            Log.e(TAG, "resetToAutomatic: reboot failed", e);
+            toast("Reboot permission denied or failed");
         }
     }
 
-    private void forceRadioRestart() {
-        Log.d(TAG, "forceRadioRestart: toggling setRadioPower to restore signal");
-        new Thread(() -> {
-            try {
-                android.telephony.TelephonyManager tm = getTelephonyManager();
-                tm.setRadioPower(false);
-                Thread.sleep(2000);
-                tm.setRadioPower(true);
-                mHandler.post(() -> toast("Radio restarted to restore signal."));
-            } catch (Exception e) {
-                Log.e(TAG, "forceRadioRestart failed", e);
-            }
-        }).start();
+    /** Helpers */
+
+    private static int earfcnToLteBand(int earfcn) {
+        if (earfcn >= 0 && earfcn <= 599) return 1;
+        if (earfcn >= 600 && earfcn <= 1199) return 2;
+        if (earfcn >= 1200 && earfcn <= 1949) return 3;
+        if (earfcn >= 1950 && earfcn <= 2399) return 4;
+        if (earfcn >= 2400 && earfcn <= 2649) return 5;
+        if (earfcn >= 2750 && earfcn <= 3449) return 7;
+        if (earfcn >= 3450 && earfcn <= 3799) return 8;
+        if (earfcn >= 5010 && earfcn <= 5179) return 12;
+        if (earfcn >= 5180 && earfcn <= 5279) return 13;
+        if (earfcn >= 5730 && earfcn <= 5849) return 17;
+        if (earfcn >= 5850 && earfcn <= 5999) return 18;
+        if (earfcn >= 6000 && earfcn <= 6149) return 19;
+        if (earfcn >= 6150 && earfcn <= 6449) return 20;
+        if (earfcn >= 8040 && earfcn <= 8689) return 25;
+        if (earfcn >= 8690 && earfcn <= 9039) return 26;
+        if (earfcn >= 9210 && earfcn <= 9659) return 28;
+        if (earfcn >= 9770 && earfcn <= 9869) return 30;
+        if (earfcn >= 36200 && earfcn <= 36349) return 34;
+        if (earfcn >= 37750 && earfcn <= 38249) return 38;
+        if (earfcn >= 38250 && earfcn <= 38649) return 39;
+        if (earfcn >= 38650 && earfcn <= 39649) return 40;
+        if (earfcn >= 39650 && earfcn <= 41589) return 41;
+        if (earfcn >= 46790 && earfcn <= 54539) return 46;
+        if (earfcn >= 55240 && earfcn <= 56739) return 48;
+        if (earfcn >= 66436 && earfcn <= 67335) return 66;
+        if (earfcn >= 68586 && earfcn <= 68935) return 71;
+        return 0;
     }
 
-    /** Helpers */
+    private static List<Integer> nrarfcnToNrBands(int arfcn) {
+        List<Integer> bands = new ArrayList<>();
+        if (arfcn >= 422000 && arfcn <= 434000) bands.add(1);
+        if (arfcn >= 386000 && arfcn <= 398000) bands.add(2);
+        if (arfcn >= 361000 && arfcn <= 376000) bands.add(3);
+        if (arfcn >= 173800 && arfcn <= 178800) bands.add(5);
+        if (arfcn >= 524000 && arfcn <= 538000) bands.add(7);
+        if (arfcn >= 185000 && arfcn <= 192000) bands.add(8);
+        if (arfcn >= 158200 && arfcn <= 164200) bands.add(20);
+        if (arfcn >= 386000 && arfcn <= 399000) bands.add(25);
+        if (arfcn >= 151600 && arfcn <= 160600) bands.add(28);
+        if (arfcn >= 514000 && arfcn <= 524000) bands.add(38);
+        if (arfcn >= 460000 && arfcn <= 480000) bands.add(40);
+        if (arfcn >= 499200 && arfcn <= 537999) bands.add(41);
+        if (arfcn >= 636667 && arfcn <= 646666) bands.add(48);
+        if (arfcn >= 422000 && arfcn <= 440000) bands.add(66);
+        if (arfcn >= 123400 && arfcn <= 130400) bands.add(71);
+        if (arfcn >= 620000 && arfcn <= 680000) bands.add(77);
+        if (arfcn >= 620000 && arfcn <= 653333) bands.add(78);
+        return bands;
+    }
 
     private List<RadioAccessSpecifier> buildSpecifiers(boolean onlyChecked) {
         List<Integer> nrBands    = new ArrayList<>();

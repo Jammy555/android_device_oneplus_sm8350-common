@@ -38,6 +38,7 @@
     <uses-permission android:name="android.permission.READ_PRECISE_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.REBOOT" />
     <protected-broadcast android:name="org.lineageos.device.DeviceSettings.WIDGET_TICK" />
 
     <application
