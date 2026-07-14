@@ -241,8 +241,28 @@ public class NetworkBandsFragment extends Fragment {
 
         // Load 5G NR mode position
         if (mNrModeSeekBar != null) {
-            int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1); // default to Auto (1)
-            mNrModeSeekBar.setProgress(savedNrMode);
+            if (isJioCarrier()) {
+                mNrModeSeekBar.setProgress(2); // Force SA Only
+                mNrModeSeekBar.setEnabled(false);
+                int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
+                if (SubscriptionManager.isValidSlotIndex(slotId)) {
+                    setOplusNrModeStatic(slotId, OPLUS_NR_MODE_SA_ONLY);
+                }
+            } else {
+                mNrModeSeekBar.setEnabled(true);
+                int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1); // default to Auto (1)
+                mNrModeSeekBar.setProgress(savedNrMode);
+                int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
+                if (SubscriptionManager.isValidSlotIndex(slotId)) {
+                    int oplusMode = OPLUS_NR_MODE_SA_PRE;
+                    if (savedNrMode == 0) {
+                        oplusMode = OPLUS_NR_MODE_NSA_ONLY;
+                    } else if (savedNrMode == 2) {
+                        oplusMode = OPLUS_NR_MODE_SA_ONLY;
+                    }
+                    setOplusNrModeStatic(slotId, oplusMode);
+                }
+            }
         }
     }
 
@@ -806,14 +826,28 @@ public class NetworkBandsFragment extends Fragment {
                 int subId = info.getSubscriptionId();
                 int slotId = info.getSimSlotIndex();
                 if (SubscriptionManager.isValidSlotIndex(slotId)) {
-                    int savedNrMode = prefs.getInt(PREF_KEY_NR_MODE_PREFIX + subId, 1); // default to Auto
+                    boolean isJio = false;
+                    CharSequence displayName = info.getDisplayName();
+                    if (displayName != null && displayName.toString().toLowerCase().contains("jio")) {
+                        isJio = true;
+                    }
+                    CharSequence carrierName = info.getCarrierName();
+                    if (carrierName != null && carrierName.toString().toLowerCase().contains("jio")) {
+                        isJio = true;
+                    }
+
                     int oplusMode;
-                    if (savedNrMode == 0) {
-                        oplusMode = OPLUS_NR_MODE_NSA_ONLY;
-                    } else if (savedNrMode == 2) {
+                    if (isJio) {
                         oplusMode = OPLUS_NR_MODE_SA_ONLY;
                     } else {
-                        oplusMode = OPLUS_NR_MODE_SA_PRE; // Auto
+                        int savedNrMode = prefs.getInt(PREF_KEY_NR_MODE_PREFIX + subId, 1); // default to Auto
+                        if (savedNrMode == 0) {
+                            oplusMode = OPLUS_NR_MODE_NSA_ONLY;
+                        } else if (savedNrMode == 2) {
+                            oplusMode = OPLUS_NR_MODE_SA_ONLY;
+                        } else {
+                            oplusMode = OPLUS_NR_MODE_SA_PRE; // Auto
+                        }
                     }
                     setOplusNrModeStatic(slotId, oplusMode);
                 }
@@ -842,5 +876,22 @@ public class NetworkBandsFragment extends Fragment {
         } catch (Exception e) {
             Log.e(TAG, "setOplusNrModeStatic failed", e);
         }
+    }
+
+    private boolean isJioCarrier() {
+        if (mActiveSubscriptions == null) return false;
+        for (SubscriptionInfo info : mActiveSubscriptions) {
+            if (info.getSubscriptionId() == mCurrentSubId) {
+                CharSequence displayName = info.getDisplayName();
+                if (displayName != null && displayName.toString().toLowerCase().contains("jio")) {
+                    return true;
+                }
+                CharSequence carrierName = info.getCarrierName();
+                if (carrierName != null && carrierName.toString().toLowerCase().contains("jio")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
