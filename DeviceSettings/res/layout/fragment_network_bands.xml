@@ -25,6 +25,67 @@
         android:textColor="?android:attr/colorAccent"
         android:text="@string/network_bands_status_no_signal" />
 
+    <!-- 5G Mode Card -->
+    <LinearLayout
+        android:id="@+id/nr_mode_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginVertical="8dp"
+        android:padding="16dp"
+        android:background="@drawable/card_bg_accent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="5G Network Mode"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary" />
+
+        <SeekBar
+            android:id="@+id/nr_mode_seekbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:max="2"
+            android:splitTrack="false" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:paddingHorizontal="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:text="NSA Only"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:text="Auto (SA+NSA)"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:text="SA Only"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary" />
+
+        </RelativeLayout>
+
+    </LinearLayout>
+
 
 
     <!-- Scrollable band list -->

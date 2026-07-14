@@ -29,6 +29,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -57,6 +58,14 @@ public class NetworkBandsFragment extends Fragment {
     private static final int SERVICE_CHECK_DELAY_MS = 15_000;
     private static final String PREFS_NAME = "band_lock_prefs";
     private static final String PREF_KEY_PREFIX = "selected_bands_"; // + subId
+    private static final String PREF_KEY_NR_MODE_PREFIX = "nr_mode_sub_"; // + subId
+
+    private static final int OPLUS_NR_MODE_NSA_PRE = 0;
+    private static final int OPLUS_NR_MODE_NSA_ONLY = 1;
+    private static final int OPLUS_NR_MODE_SA_ONLY = 2;
+    private static final int OPLUS_NR_MODE_SA_PRE = 3;
+
+    private SeekBar mNrModeSeekBar;
 
     private TelephonyManager mTelephonyManager;
     private SubscriptionManager mSubscriptionManager;
@@ -97,6 +106,22 @@ public class NetworkBandsFragment extends Fragment {
         mApplyButton = root.findViewById(R.id.btn_apply_bands);
         mResetButton = root.findViewById(R.id.btn_reset_bands);
         mStatusText  = root.findViewById(R.id.band_status_text);
+
+        mNrModeSeekBar = root.findViewById(R.id.nr_mode_seekbar);
+        mNrModeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    updateNrMode(progress);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
 
         RecyclerView recyclerView = root.findViewById(R.id.bands_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -213,6 +238,12 @@ public class NetworkBandsFragment extends Fragment {
         }
 
         if (mAdapter != null) mAdapter.notifyDataSetChanged();
+
+        // Load 5G NR mode position
+        if (mNrModeSeekBar != null) {
+            int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1); // default to Auto (1)
+            mNrModeSeekBar.setProgress(savedNrMode);
+        }
     }
 
     /** SharedPreferences Helpers */
@@ -541,6 +572,7 @@ public class NetworkBandsFragment extends Fragment {
 
         // Clear saved state immediately
         clearBandKeys();
+        getPrefs().edit().remove(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId).apply();
 
         // Reset UI
         for (BandEntry e : mBandEntries) {
@@ -548,6 +580,9 @@ public class NetworkBandsFragment extends Fragment {
             e.isActive = false;
         }
         if (mAdapter != null) mAdapter.notifyDataSetChanged();
+        if (mNrModeSeekBar != null) {
+            mNrModeSeekBar.setProgress(1); // Auto
+        }
         setStatus(getString(R.string.network_bands_status_no_signal));
 
         // Reboot the device cleanly
@@ -736,6 +771,76 @@ public class NetworkBandsFragment extends Fragment {
                 freqText    = v.findViewById(R.id.band_freq_text);
                 activeBadge = v.findViewById(R.id.band_active_badge);
             }
+        }
+    }
+
+    private void updateNrMode(int position) {
+        int oplusMode;
+        if (position == 0) {
+            oplusMode = OPLUS_NR_MODE_NSA_ONLY;
+        } else if (position == 2) {
+            oplusMode = OPLUS_NR_MODE_SA_ONLY;
+        } else {
+            oplusMode = OPLUS_NR_MODE_SA_PRE; // Auto
+        }
+
+        // Save to Prefs
+        getPrefs().edit().putInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, position).apply();
+
+        // Send to service
+        int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
+        if (SubscriptionManager.isValidSlotIndex(slotId)) {
+            setOplusNrModeStatic(slotId, oplusMode);
+        }
+    }
+
+    public static void restoreNrModeSettings(android.content.Context context) {
+        try {
+            SubscriptionManager sm = context.getSystemService(SubscriptionManager.class);
+            if (sm == null) return;
+            List<SubscriptionInfo> activeSubs = sm.getActiveSubscriptionInfoList();
+            if (activeSubs == null) return;
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+
+            for (SubscriptionInfo info : activeSubs) {
+                int subId = info.getSubscriptionId();
+                int slotId = info.getSimSlotIndex();
+                if (SubscriptionManager.isValidSlotIndex(slotId)) {
+                    int savedNrMode = prefs.getInt(PREF_KEY_NR_MODE_PREFIX + subId, 1); // default to Auto
+                    int oplusMode;
+                    if (savedNrMode == 0) {
+                        oplusMode = OPLUS_NR_MODE_NSA_ONLY;
+                    } else if (savedNrMode == 2) {
+                        oplusMode = OPLUS_NR_MODE_SA_ONLY;
+                    } else {
+                        oplusMode = OPLUS_NR_MODE_SA_PRE; // Auto
+                    }
+                    setOplusNrModeStatic(slotId, oplusMode);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "restoreNrModeSettings failed", e);
+        }
+    }
+
+    private static void setOplusNrModeStatic(int slotId, int mode) {
+        String serviceName = "vendor.oplus.hardware.radio.IRadioStable/OplusRadio" + slotId;
+        try {
+            android.os.IBinder binder = android.os.ServiceManager.getService(serviceName);
+            if (binder != null) {
+                vendor.oplus.hardware.radio.IOplusRadio oplusRadio =
+                        vendor.oplus.hardware.radio.IOplusRadio.Stub.asInterface(binder);
+                if (oplusRadio != null) {
+                    oplusRadio.setNrMode(1001, mode);
+                    Log.d(TAG, "setOplusNrModeStatic: set mode=" + mode + " for slotId=" + slotId);
+                } else {
+                    Log.w(TAG, "setOplusNrModeStatic: IOplusRadio cast returned null");
+                }
+            } else {
+                Log.w(TAG, "setOplusNrModeStatic: service not found: " + serviceName);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "setOplusNrModeStatic failed", e);
         }
     }
 }
