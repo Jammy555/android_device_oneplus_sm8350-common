@@ -1,0 +1,37 @@
+diff --git a/generic/vendor/common/property.te b/generic/vendor/common/property.te
+index 22c9b8a4..f440c8ae 100644
+--- a/generic/vendor/common/property.te
++++ b/generic/vendor/common/property.te
+@@ -73,6 +73,9 @@ vendor_internal_prop(vendor_time_service_prop);
+ # Audio props
+ vendor_restricted_prop(vendor_audio_prop);
+ 
++# kernel modprobe prop
++vendor_restricted_prop(vendor_modprobe_prop);
++
+ # shsusrd props
+ vendor_restricted_prop(vendor_data_shsusr_prop);
+ 
+diff --git a/generic/vendor/common/property_contexts b/generic/vendor/common/property_contexts
+index 75a6d8b6..85d2321f 100644
+--- a/generic/vendor/common/property_contexts
++++ b/generic/vendor/common/property_contexts
+@@ -98,6 +98,9 @@ ro.vendor.radio            u:object_r:vendor_radio_prop:s0
+ 
+ persist.vendor.sys.        u:object_r:vendor_system_prop:s0
+ 
++# kernel modprobe
++vendor.all.modules.ready   u:object_r:vendor_modprobe_prop:s0
++
+ #ss-restart
+ persist.vendor.ssr.    u:object_r:vendor_ssr_prop:s0
+ 
+diff --git a/generic/vendor/common/vendor_modprobe.te b/generic/vendor/common/vendor_modprobe.te
+index 2763c364..af070012 100644
+--- a/generic/vendor/common/vendor_modprobe.te
++++ b/generic/vendor/common/vendor_modprobe.te
+@@ -31,3 +31,4 @@ allow vendor_modprobe vendor_toolbox_exec:file rx_file_perms;
+ allow vendor_modprobe proc_version:file r_file_perms;
+ # Allow the below search permission for modprobe only in user builds too.
+ allow vendor_modprobe { debugfs_tracing_instances }:dir search;
++set_prop(vendor_modprobe, vendor_modprobe_prop)

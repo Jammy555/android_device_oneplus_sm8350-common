@@ -22,3 +22,4 @@ apply_patch() {
 
 apply_patch "packages/apps/GameSpace" "../../../$PATCH_DIR/gamespace_sync.patch" "GameSpace Sync"
 apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_a0fed77.patch" "Oplus Framework Stubs"
+apply_patch "device/qcom/sepolicy_vndr/legacy-um" "../../../../$PATCH_DIR/sepolicy_vndr_vendor_modprobe.patch" "Vendor Modprobe Sepolicy"
