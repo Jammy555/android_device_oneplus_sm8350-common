@@ -653,6 +653,15 @@
         android:elevation="12dp">
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="• Note: Not all frequency bands are broadcast in every local area even if supported by your operator and country, as allocation depends on local cell tower infrastructure."
+            android:textSize="10sp"
+            android:textColor="#A0A0B0"
+            android:lineSpacingExtra="2dp" />
+
+        <TextView
             android:id="@+id/band_status_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

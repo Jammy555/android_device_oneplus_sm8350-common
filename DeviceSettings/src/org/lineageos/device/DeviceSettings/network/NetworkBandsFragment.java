@@ -85,6 +85,7 @@ public class NetworkBandsFragment extends Fragment {
     private static final int OPLUS_NR_MODE_SA_ONLY = 2;
     private static final int OPLUS_NR_MODE_SA_PRE = 3;
 
+    private View mNrModeCard;
     private SeekBar mNrModeSeekBar;
     private View mNrModeActiveLayout;
     private View mNrModeActiveDot;
@@ -210,6 +211,7 @@ public class NetworkBandsFragment extends Fragment {
 
         mSimSpinner = view.findViewById(R.id.sim_spinner);
         mStatusText = view.findViewById(R.id.band_status_text);
+        mNrModeCard = view.findViewById(R.id.nr_mode_card);
         mNrModeSeekBar = view.findViewById(R.id.nr_mode_seekbar);
         mNrModeActiveLayout = view.findViewById(R.id.nr_mode_active_layout);
         mNrModeActiveDot = view.findViewById(R.id.nr_mode_active_dot);
@@ -272,12 +274,32 @@ public class NetworkBandsFragment extends Fragment {
         }
         if (mResetButton != null) {
             mResetButton.setOnClickListener(v -> {
-                new AlertDialog.Builder(requireContext())
+                AlertDialog dialog = new AlertDialog.Builder(requireContext())
                         .setTitle("Reset Band Locking")
-                        .setMessage("Reset all band lock filters to modem default?")
-                        .setPositiveButton("Reset", (d, w) -> resetBandsClean())
+                        .setMessage("Reset all band lock filters to modem default?\n\nNote: If you still experience network issues after resetting, a device reboot will effectively restore default bands configuration.")
+                        .setPositiveButton("Reset (3s)", (d, w) -> resetBandsClean())
                         .setNegativeButton(android.R.string.cancel, null)
-                        .show();
+                        .create();
+
+                dialog.show();
+
+                Button posBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                if (posBtn != null) {
+                    posBtn.setEnabled(false);
+                    new CountDownTimer(3000, 1000) {
+                        @Override
+                        public void onTick(long millisUntilFinished) {
+                            long sec = (millisUntilFinished / 1000) + 1;
+                            posBtn.setText("Reset (" + sec + "s)");
+                        }
+
+                        @Override
+                        public void onFinish() {
+                            posBtn.setText("Reset");
+                            posBtn.setEnabled(true);
+                        }
+                    }.start();
+                }
             });
         }
 
@@ -339,6 +361,7 @@ public class NetworkBandsFragment extends Fragment {
     private void setupRatSlotsAndSpinner() {
         View.OnClickListener listener = v -> {
             applyRatFromSlots();
+            updateNrModeSeekbarForCarrier();
             checkApplyButtonState();
         };
         if (mChk2G != null) mChk2G.setOnClickListener(listener);
@@ -581,10 +604,12 @@ public class NetworkBandsFragment extends Fragment {
             }
         }
 
-        // Float selected (checked) or active (PCell/SCell) bands to top of list
+        Set<String> savedKeys = getSavedBandKeys();
         Collections.sort(filtered, (a, b) -> {
-            boolean aTop = a.checked || a.isPCell || a.isSCell || a.isActive;
-            boolean bTop = b.checked || b.isPCell || b.isSCell || b.isActive;
+            boolean aSaved = savedKeys.contains(a.rat + ":" + a.bandNum);
+            boolean bSaved = savedKeys.contains(b.rat + ":" + b.bandNum);
+            boolean aTop = aSaved || a.isPCell || a.isSCell;
+            boolean bTop = bSaved || b.isPCell || b.isSCell;
             if (aTop != bTop) {
                 return aTop ? -1 : 1;
             }
@@ -715,9 +740,20 @@ public class NetworkBandsFragment extends Fragment {
 
     private void updateNrModeSeekbarForCarrier() {
         if (mNrModeSeekBar == null) return;
-        if (isJioCarrier()) {
+        boolean is5gChecked = (mChk5G != null && mChk5G.isChecked());
+        if (!is5gChecked) {
+            mNrModeSeekBar.setEnabled(false);
+            if (mNrModeCard != null) mNrModeCard.setAlpha(0.4f);
+            if (mNrModeActiveText != null) {
+                mNrModeActiveText.setText("5G Disabled in RAT Preference");
+            }
+            if (mNrModeActiveDot != null) {
+                mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_gray);
+            }
+        } else if (isJioCarrier()) {
             mNrModeSeekBar.setProgress(2);
             mNrModeSeekBar.setEnabled(false);
+            if (mNrModeCard != null) mNrModeCard.setAlpha(1.0f);
             if (mNrModeActiveText != null) {
                 mNrModeActiveText.setText("5G Mode: SA Only (Jio SA Exclusive)");
             }
@@ -727,6 +763,7 @@ public class NetworkBandsFragment extends Fragment {
             }
         } else {
             mNrModeSeekBar.setEnabled(true);
+            if (mNrModeCard != null) mNrModeCard.setAlpha(1.0f);
             int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
             mNrModeSeekBar.setProgress(savedNrMode);
         }
@@ -894,9 +931,13 @@ public class NetworkBandsFragment extends Fragment {
             default: oplusMode = OPLUS_NR_MODE_SA_PRE;   break;
         }
 
-        int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
-        if (SubscriptionManager.isValidSlotIndex(slotId)) {
-            setOplusNrModeStatic(slotId, oplusMode);
+        // Battery & Wakelock Optimization: Only invoke modem HAL if 5G is enabled in RAT Preference
+        boolean is5gChecked = (mChk5G != null && mChk5G.isChecked());
+        if (is5gChecked) {
+            int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
+            if (SubscriptionManager.isValidSlotIndex(slotId)) {
+                setOplusNrModeStatic(slotId, oplusMode);
+            }
         }
         updateActiveNrModeDisplay();
     }
@@ -1323,7 +1364,14 @@ public class NetworkBandsFragment extends Fragment {
         } catch (Exception e) {
             is5gHardwareSupported = true;
         }
-        String hardware5gDisplay = is5gHardwareSupported ? "Supported (Sub-6GHz FR1 / SA+NSA)" : "Unsupported";
+        String rfVer = SystemProperties.get("ro.boot.rf_version", "0");
+        boolean isMmWaveSupported = "12".equals(rfVer) || "22".equals(rfVer);
+        String hardware5gDisplay;
+        if (is5gHardwareSupported) {
+            hardware5gDisplay = isMmWaveSupported ? "Supported (Sub-6GHz FR1 + mmWave FR2 / SA+NSA)" : "Supported (Sub-6GHz FR1 / SA+NSA)";
+        } else {
+            hardware5gDisplay = "Unsupported";
+        }
 
         boolean isVonrForced = getPrefs().getBoolean("force_vo5g", false);
         boolean isVonrSupportedInCarrier = false;
@@ -1507,8 +1555,12 @@ public class NetworkBandsFragment extends Fragment {
                             for (BandEntry e : mBandEntries) {
                                 if (e.rat == rat && e.bandNum == band) {
                                     e.isActive = true;
-                                    if (isP) e.isPCell = true;
-                                    else e.isSCell = true;
+                                    if (isP) {
+                                        e.isPCell = true;
+                                        e.isSCell = false;
+                                    } else if (!e.isPCell) {
+                                        e.isSCell = true;
+                                    }
                                 }
                             }
 
@@ -1533,8 +1585,12 @@ public class NetworkBandsFragment extends Fragment {
                             for (BandEntry e : mBandEntries) {
                                 if (e.rat == rat && e.bandNum == b) {
                                     e.isActive = true;
-                                    if (isP) e.isPCell = true;
-                                    else e.isSCell = true;
+                                    if (isP) {
+                                        e.isPCell = true;
+                                        e.isSCell = false;
+                                    } else if (!e.isPCell) {
+                                        e.isSCell = true;
+                                    }
                                 }
                             }
 
@@ -1567,8 +1623,12 @@ public class NetworkBandsFragment extends Fragment {
                                     for (BandEntry e : mBandEntries) {
                                         if (e.rat == AccessNetworkConstants.AccessNetworkType.EUTRAN && e.bandNum == band) {
                                             e.isActive = true;
-                                            if (isP) e.isPCell = true;
-                                            else e.isSCell = true;
+                                            if (isP) {
+                                                e.isPCell = true;
+                                                e.isSCell = false;
+                                            } else if (!e.isPCell) {
+                                                e.isSCell = true;
+                                            }
                                         }
                                     }
                                     activeCount++;
@@ -1585,8 +1645,12 @@ public class NetworkBandsFragment extends Fragment {
                                     for (BandEntry e : mBandEntries) {
                                         if (e.rat == AccessNetworkConstants.AccessNetworkType.NGRAN && e.bandNum == b) {
                                             e.isActive = true;
-                                            if (isP) e.isPCell = true;
-                                            else e.isSCell = true;
+                                            if (isP) {
+                                                e.isPCell = true;
+                                                e.isSCell = false;
+                                            } else if (!e.isPCell) {
+                                                e.isSCell = true;
+                                            }
                                         }
                                     }
                                     activeCount++;
@@ -1598,20 +1662,22 @@ public class NetworkBandsFragment extends Fragment {
                             }
                         }
 
-                        // Second pass: candidate SCell neighbor cells reported by modem
-                        for (CellInfo info : allCellInfo) {
-                            if (info.isRegistered()) continue;
-                            if (info instanceof CellInfoLte) {
-                                int earfcn = ((CellInfoLte) info).getCellIdentity().getEarfcn();
-                                int band = earfcnToLteBand(earfcn);
-                                if (band > 0 && band != 5) { // Show candidate SCells like B3/B40
-                                    for (BandEntry e : mBandEntries) {
-                                        if (e.rat == AccessNetworkConstants.AccessNetworkType.EUTRAN && e.bandNum == band && !e.isActive) {
-                                            e.isActive = true;
-                                            e.isSCell = true;
-                                            activeCount++;
-                                            if (activeChips.length() > 0) activeChips.append("\n");
-                                            activeChips.append("B").append(band).append(" [SCell Candidate]");
+                        // Second pass: candidate SCell neighbor cells reported by modem (only if PCell is registered)
+                        if (foundPrimary) {
+                            for (CellInfo info : allCellInfo) {
+                                if (info.isRegistered()) continue;
+                                if (info instanceof CellInfoLte) {
+                                    int earfcn = ((CellInfoLte) info).getCellIdentity().getEarfcn();
+                                    int band = earfcnToLteBand(earfcn);
+                                    if (band > 0) {
+                                        for (BandEntry e : mBandEntries) {
+                                            if (e.rat == AccessNetworkConstants.AccessNetworkType.EUTRAN && e.bandNum == band && !e.isActive) {
+                                                e.isActive = true;
+                                                e.isSCell = true;
+                                                activeCount++;
+                                                if (activeChips.length() > 0) activeChips.append("\n");
+                                                activeChips.append("B").append(band).append(" [SCell Candidate]");
+                                            }
                                         }
                                     }
                                 }
@@ -1683,11 +1749,15 @@ public class NetworkBandsFragment extends Fragment {
 
         boolean hasNr = false;
         boolean hasLte = false;
+        int activeNrBand = 0;
 
         if (mBandEntries != null) {
             for (BandEntry e : mBandEntries) {
                 if (e.isActive) {
-                    if (e.rat == AccessNetworkConstants.AccessNetworkType.NGRAN) hasNr = true;
+                    if (e.rat == AccessNetworkConstants.AccessNetworkType.NGRAN) {
+                        hasNr = true;
+                        activeNrBand = e.bandNum;
+                    }
                     if (e.rat == AccessNetworkConstants.AccessNetworkType.EUTRAN) hasLte = true;
                 }
             }
@@ -1695,6 +1765,7 @@ public class NetworkBandsFragment extends Fragment {
 
         final boolean nr = hasNr;
         final boolean lte = hasLte;
+        final int nrBand = activeNrBand;
 
         mHandler.post(() -> {
             if (!isAdded()) return;
@@ -1702,11 +1773,12 @@ public class NetworkBandsFragment extends Fragment {
                 mNrModeActiveText.setText("5G Mode: SA Only (Jio SA Exclusive)");
                 mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_green);
             } else if (nr) {
+                String nrStr = nrBand > 0 ? ("NR n" + nrBand) : "NR";
                 if (lte) {
-                    mNrModeActiveText.setText("EN-DC Active: 5G NSA (LTE Anchor + NR n78)");
+                    mNrModeActiveText.setText("EN-DC Active: 5G NSA (LTE Anchor + " + nrStr + ")");
                     mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_green);
                 } else {
-                    mNrModeActiveText.setText("Active: 5G SA (Standalone)");
+                    mNrModeActiveText.setText("Active: 5G SA (" + nrStr + " Standalone)");
                     mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_green);
                 }
             } else {
@@ -1766,6 +1838,7 @@ public class NetworkBandsFragment extends Fragment {
                 }
             }, 1200);
 
+            filterBandsByGeneration();
             checkApplyButtonState();
 
         } catch (Exception e) {
@@ -1798,6 +1871,8 @@ public class NetworkBandsFragment extends Fragment {
         if (mChk3G != null) mChk3G.setChecked(true);
         if (mChk4G != null) mChk4G.setChecked(true);
         if (mChk5G != null) mChk5G.setChecked(true);
+
+        updateNrModeSeekbarForCarrier();
 
         if (!isJioCarrier() && mNrModeSeekBar != null) {
             mNrModeSeekBar.setProgress(1); // Auto (SA+NSA)
@@ -1879,12 +1954,29 @@ public class NetworkBandsFragment extends Fragment {
     private List<RadioAccessSpecifier> buildAllBandsSpecifiers() {
         List<RadioAccessSpecifier> list = new ArrayList<>();
 
-        // Core 5G NR bands (Jio/Airtel/Vi/Global)
-        int[] nrBands = new int[] { 1, 3, 5, 8, 28, 78 };
-        list.add(new RadioAccessSpecifier(AccessNetworkConstants.AccessNetworkType.NGRAN, nrBands, null));
+        String simOperator = getTelephonyManager() != null ? getTelephonyManager().getSimOperator() : "";
+        String rfVer = SystemProperties.get("ro.boot.rf_version", "0");
 
-        // Core 4G LTE bands (Jio/Airtel/Vi/Global)
-        int[] lteBands = new int[] { 1, 3, 5, 8, 40, 41 };
+        int[] nrBands;
+        int[] lteBands;
+
+        if ((simOperator != null && (simOperator.startsWith("310") || simOperator.startsWith("311") || simOperator.startsWith("312")))
+                || "12".equals(rfVer) || "22".equals(rfVer)) {
+            // US / North America Region (Sub-6GHz + mmWave FR2: n258, n260, n261)
+            nrBands = new int[] { 2, 5, 12, 25, 41, 66, 71, 77, 78, 258, 260, 261 };
+            lteBands = new int[] { 2, 4, 5, 12, 13, 25, 26, 41, 66, 71 };
+        } else if ((simOperator != null && (simOperator.startsWith("204") || simOperator.startsWith("208") || simOperator.startsWith("222") || simOperator.startsWith("234") || simOperator.startsWith("262")))
+                || "21".equals(rfVer)) {
+            // EU / Europe Region (Vodafone, Deutsche Telekom, EE, O2)
+            nrBands = new int[] { 1, 3, 7, 8, 20, 28, 77, 78 };
+            lteBands = new int[] { 1, 3, 7, 8, 20, 28, 38, 40 };
+        } else {
+            // India (IN) & Global Fallback (Jio, Airtel, Vi, BSNL, etc.)
+            nrBands = new int[] { 1, 3, 5, 8, 28, 78 };
+            lteBands = new int[] { 1, 3, 5, 8, 40, 41 };
+        }
+
+        list.add(new RadioAccessSpecifier(AccessNetworkConstants.AccessNetworkType.NGRAN, nrBands, null));
         list.add(new RadioAccessSpecifier(AccessNetworkConstants.AccessNetworkType.EUTRAN, lteBands, null));
 
         return list;
@@ -2074,7 +2166,6 @@ public class NetworkBandsFragment extends Fragment {
             bvh.checkbox.setOnCheckedChangeListener((btn, isChecked) -> {
                 entry.checked = isChecked;
                 if (mClickListener != null) mClickListener.onPresetClicked();
-                filterBandsByGeneration();
                 checkApplyButtonState();
             });
 
@@ -2102,7 +2193,6 @@ public class NetworkBandsFragment extends Fragment {
                 bvh.checkbox.setOnCheckedChangeListener(null);
                 bvh.checkbox.setChecked(entry.checked);
                 if (mClickListener != null) mClickListener.onPresetClicked();
-                filterBandsByGeneration();
                 checkApplyButtonState();
             });
         }
