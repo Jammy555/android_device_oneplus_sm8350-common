@@ -16,8 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * RF band catalog for OnePlus 9 (SM8350 / X60 modem) with EU modem.
- * Labels: just band ID. FreqHint: just frequency.
+ * RF band catalog for OnePlus 9 (SM8350 / X60 modem).
  */
 public final class BandCatalog {
 
@@ -27,7 +26,7 @@ public final class BandCatalog {
         List<BandEntry> list = new ArrayList<>();
 
         // 5G NR
-        list.add(section("5G NR"));
+        list.add(section("▼ 5G NR Bands"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_1,   "n1",   "2100 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_2,   "n2",   "1900 MHz FDD"));
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_3,   "n3",   "1800 MHz FDD"));
@@ -47,7 +46,7 @@ public final class BandCatalog {
         list.add(nr(AccessNetworkConstants.NgranBands.BAND_78,  "n78",  "3500 MHz TDD"));
 
         // LTE 4G
-        list.add(section("LTE — 4G"));
+        list.add(section("▼ 4G LTE Bands"));
         list.add(lte(AccessNetworkConstants.EutranBand.BAND_1,  "B1",  "2100 MHz FDD"));
         list.add(lte(AccessNetworkConstants.EutranBand.BAND_2,  "B2",  "1900 MHz FDD"));
         list.add(lte(AccessNetworkConstants.EutranBand.BAND_3,  "B3",  "1800 MHz FDD"));
@@ -76,7 +75,7 @@ public final class BandCatalog {
         list.add(lte(AccessNetworkConstants.EutranBand.BAND_71, "B71", "600 MHz FDD"));
 
         // WCDMA 3G
-        list.add(section("WCDMA — 3G"));
+        list.add(section("▼ 3G WCDMA Bands"));
         list.add(wcdma(AccessNetworkConstants.UtranBand.BAND_1,  "B1",  "2100 MHz"));
         list.add(wcdma(AccessNetworkConstants.UtranBand.BAND_2,  "B2",  "1900 MHz"));
         list.add(wcdma(AccessNetworkConstants.UtranBand.BAND_4,  "B4",  "1700 MHz"));
@@ -86,7 +85,7 @@ public final class BandCatalog {
         list.add(wcdma(AccessNetworkConstants.UtranBand.BAND_19, "B19", "850 MHz"));
 
         // GSM 2G
-        list.add(section("GSM — 2G"));
+        list.add(section("▼ 2G GSM Bands"));
         list.add(gsm(AccessNetworkConstants.GeranBand.BAND_PCS1900,"B2 / 1900", "1900 MHz"));
         list.add(gsm(AccessNetworkConstants.GeranBand.BAND_DCS1800,"B3 / 1800", "1800 MHz"));
         list.add(gsm(AccessNetworkConstants.GeranBand.BAND_850,    "B5 / 850",  "850 MHz"));
@@ -96,7 +95,7 @@ public final class BandCatalog {
     }
 
     private static BandEntry section(String title) {
-        return new BandEntry(SECTION_HEADER, SECTION_HEADER, title, "");
+        return new BandEntry(SECTION_HEADER, SECTION_HEADER, title, "", true);
     }
     private static BandEntry nr(int band, String label, String freq) {
         return new BandEntry(AccessNetworkConstants.AccessNetworkType.NGRAN, band, "5G " + label, freq);

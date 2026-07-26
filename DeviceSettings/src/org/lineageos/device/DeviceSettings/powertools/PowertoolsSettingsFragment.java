@@ -5,12 +5,10 @@
 
 package org.lineageos.device.DeviceSettings.powertools;
 
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemProperties;
 import android.widget.Toast;
 
 import androidx.preference.ListPreference;
@@ -23,9 +21,6 @@ import org.lineageos.device.DeviceSettings.R;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         implements Preference.OnPreferenceChangeListener {
@@ -35,15 +30,11 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private static final String KEY_STORAGE_ENABLE = "storage_enable";
     private static final String KEY_IO_SCHEDULER = PowerProfileUtil.KEY_IO_SCHEDULER;
-    private static final String IO_DEFAULT_SCHED = "bfq";
 
     private static final String KEY_GPU_ENABLE = "gpu_enable";
     private static final String KEY_GPU_MIN_FREQ = PowerProfileUtil.KEY_GPU_MIN_FREQ;
     private static final String KEY_GPU_MAX_FREQ = PowerProfileUtil.KEY_GPU_MAX_FREQ;
     private static final String KEY_GPU_GOVERNOR = PowerProfileUtil.KEY_GPU_GOVERNOR;
-    private static final String GPU_DEFAULT_MIN = "315000000";
-    private static final String GPU_DEFAULT_MAX = "840000000";
-    private static final String GPU_DEFAULT_GOV = "msm-adreno-tz";
 
     private static final String KEY_CPU_ENABLE = "cpu_enable";
     private static final String KEY_CPU_LITTLE_MIN_FREQ = PowerProfileUtil.KEY_CPU_LITTLE_MIN_FREQ;
@@ -55,16 +46,6 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private static final String KEY_CPU_PRIME_MIN_FREQ = PowerProfileUtil.KEY_CPU_PRIME_MIN_FREQ;
     private static final String KEY_CPU_PRIME_MAX_FREQ = PowerProfileUtil.KEY_CPU_PRIME_MAX_FREQ;
     private static final String KEY_CPU_PRIME_GOVERNOR = PowerProfileUtil.KEY_CPU_PRIME_GOVERNOR;
-
-    private static final String CPU_LITTLE_DEFAULT_MIN = "300000";
-    private static final String CPU_LITTLE_DEFAULT_MAX = "1804800";
-    private static final String CPU_LITTLE_DEFAULT_GOV = "schedutil";
-    private static final String CPU_BIG_DEFAULT_MIN = "710400";
-    private static final String CPU_BIG_DEFAULT_MAX = "2419200";
-    private static final String CPU_BIG_DEFAULT_GOV = "schedutil";
-    private static final String CPU_PRIME_DEFAULT_MIN = "844800";
-    private static final String CPU_PRIME_DEFAULT_MAX = "2841600";
-    private static final String CPU_PRIME_DEFAULT_GOV = "schedutil";
 
     private SwitchPreferenceCompat mStorageEnablePref, mGpuEnablePref, mCpuEnablePref;
     private Preference mModeStatusPref;
@@ -180,6 +161,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private void refreshModeState() {
         SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+        updateDynamicDropdowns();
         syncAllListPrefsToData(prefs);
         configurePresetModeUI();
     }
@@ -202,8 +184,6 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         safeSetEnabled(mCpuEnablePref, true);
         safeSetEnabled(mGpuEnablePref, true);
         safeSetEnabled(mStorageEnablePref, true);
-
-        updateGovernorDropdowns(mode);
 
         safeSetEnabled(mCpuLittleMinFreqPref, cpuEnabled);
         safeSetEnabled(mCpuLittleMaxFreqPref, cpuEnabled);
@@ -258,7 +238,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private void handleProfileModeChange(String newValue) {
         if (mApplying) return;
-        lockForApply("Applying...");
+        lockForApply(getString(R.string.powertools_toast_applying));
         int mode = Integer.parseInt(newValue);
 
         if (mCpuEnablePref != null) mCpuEnablePref.setChecked(false);
@@ -277,7 +257,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         mMainHandler.postDelayed(() -> {
             refreshModeState();
             String label = mPowerProfilePref != null ? mPowerProfilePref.getEntry().toString() : "Mode";
-            unlockAfterApply(label + " applied");
+            unlockAfterApply(getString(R.string.powertools_toast_mode_applied, label));
         }, 1500);
     }
 
@@ -287,9 +267,9 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         if (!enabled) {
             resetHardwareCategoryToDefaults(key, mode);
             pushHardwareSettingsCategory(key);
-            showToast("Restored default settings");
+            showToast(getString(R.string.powertools_toast_defaults_restored));
         } else {
-            showToast("Manual control enabled");
+            showToast(getString(R.string.powertools_toast_manual_enabled));
         }
         
         mMainHandler.postDelayed(this::refreshUI, 150);
@@ -321,21 +301,21 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
             GPUUtils.setGPUGovernor(newValue);
         } else if (isCpuLittlePref(preference)) {
             CPUUtils.setCPULittleFreq(
-                resolveVal(key, KEY_CPU_LITTLE_MIN_FREQ, newValue, mCpuLittleMinFreqPref, CPU_LITTLE_DEFAULT_MIN),
-                resolveVal(key, KEY_CPU_LITTLE_MAX_FREQ, newValue, mCpuLittleMaxFreqPref, CPU_LITTLE_DEFAULT_MAX),
-                resolveVal(key, KEY_CPU_LITTLE_GOVERNOR, newValue, mCpuLittleGovernorPref, CPU_LITTLE_DEFAULT_GOV)
+                resolveVal(key, KEY_CPU_LITTLE_MIN_FREQ, newValue, mCpuLittleMinFreqPref, getDefaultValue(KEY_CPU_LITTLE_MIN_FREQ)),
+                resolveVal(key, KEY_CPU_LITTLE_MAX_FREQ, newValue, mCpuLittleMaxFreqPref, getDefaultValue(KEY_CPU_LITTLE_MAX_FREQ)),
+                resolveVal(key, KEY_CPU_LITTLE_GOVERNOR, newValue, mCpuLittleGovernorPref, getDefaultValue(KEY_CPU_LITTLE_GOVERNOR))
             );
         } else if (isCpuBigPref(preference)) {
             CPUUtils.setCPUBigFreq(
-                resolveVal(key, KEY_CPU_BIG_MIN_FREQ, newValue, mCpuBigMinFreqPref, CPU_BIG_DEFAULT_MIN),
-                resolveVal(key, KEY_CPU_BIG_MAX_FREQ, newValue, mCpuBigMaxFreqPref, CPU_BIG_DEFAULT_MAX),
-                resolveVal(key, KEY_CPU_BIG_GOVERNOR, newValue, mCpuBigGovernorPref, CPU_BIG_DEFAULT_GOV)
+                resolveVal(key, KEY_CPU_BIG_MIN_FREQ, newValue, mCpuBigMinFreqPref, getDefaultValue(KEY_CPU_BIG_MIN_FREQ)),
+                resolveVal(key, KEY_CPU_BIG_MAX_FREQ, newValue, mCpuBigMaxFreqPref, getDefaultValue(KEY_CPU_BIG_MAX_FREQ)),
+                resolveVal(key, KEY_CPU_BIG_GOVERNOR, newValue, mCpuBigGovernorPref, getDefaultValue(KEY_CPU_BIG_GOVERNOR))
             );
         } else if (isCpuPrimePref(preference)) {
             CPUUtils.setCPUPrimeFreq(
-                resolveVal(key, KEY_CPU_PRIME_MIN_FREQ, newValue, mCpuPrimeMinFreqPref, CPU_PRIME_DEFAULT_MIN),
-                resolveVal(key, KEY_CPU_PRIME_MAX_FREQ, newValue, mCpuPrimeMaxFreqPref, CPU_PRIME_DEFAULT_MAX),
-                resolveVal(key, KEY_CPU_PRIME_GOVERNOR, newValue, mCpuPrimeGovernorPref, CPU_PRIME_DEFAULT_GOV)
+                resolveVal(key, KEY_CPU_PRIME_MIN_FREQ, newValue, mCpuPrimeMinFreqPref, getDefaultValue(KEY_CPU_PRIME_MIN_FREQ)),
+                resolveVal(key, KEY_CPU_PRIME_MAX_FREQ, newValue, mCpuPrimeMaxFreqPref, getDefaultValue(KEY_CPU_PRIME_MAX_FREQ)),
+                resolveVal(key, KEY_CPU_PRIME_GOVERNOR, newValue, mCpuPrimeGovernorPref, getDefaultValue(KEY_CPU_PRIME_GOVERNOR))
             );
         }
     }
@@ -345,28 +325,28 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         
         switch (categoryKey) {
             case KEY_STORAGE_ENABLE:
-                StorageUtils.setIoScheduler(prefs.getString(KEY_IO_SCHEDULER, IO_DEFAULT_SCHED));
+                StorageUtils.setIoScheduler(prefs.getString(KEY_IO_SCHEDULER, getDefaultValue(KEY_IO_SCHEDULER)));
                 break;
             case KEY_GPU_ENABLE:
-                GPUUtils.setGPUMinFrequency(prefs.getString(KEY_GPU_MIN_FREQ, GPU_DEFAULT_MIN));
-                GPUUtils.setGPUMaxFrequency(prefs.getString(KEY_GPU_MAX_FREQ, GPU_DEFAULT_MAX));
-                GPUUtils.setGPUGovernor(prefs.getString(KEY_GPU_GOVERNOR, GPU_DEFAULT_GOV));
+                GPUUtils.setGPUMinFrequency(prefs.getString(KEY_GPU_MIN_FREQ, getDefaultValue(KEY_GPU_MIN_FREQ)));
+                GPUUtils.setGPUMaxFrequency(prefs.getString(KEY_GPU_MAX_FREQ, getDefaultValue(KEY_GPU_MAX_FREQ)));
+                GPUUtils.setGPUGovernor(prefs.getString(KEY_GPU_GOVERNOR, getDefaultValue(KEY_GPU_GOVERNOR)));
                 break;
             case KEY_CPU_ENABLE:
                 CPUUtils.setCPULittleFreq(
-                    prefs.getString(KEY_CPU_LITTLE_MIN_FREQ, CPU_LITTLE_DEFAULT_MIN),
-                    prefs.getString(KEY_CPU_LITTLE_MAX_FREQ, CPU_LITTLE_DEFAULT_MAX),
-                    prefs.getString(KEY_CPU_LITTLE_GOVERNOR, CPU_LITTLE_DEFAULT_GOV)
+                    prefs.getString(KEY_CPU_LITTLE_MIN_FREQ, getDefaultValue(KEY_CPU_LITTLE_MIN_FREQ)),
+                    prefs.getString(KEY_CPU_LITTLE_MAX_FREQ, getDefaultValue(KEY_CPU_LITTLE_MAX_FREQ)),
+                    prefs.getString(KEY_CPU_LITTLE_GOVERNOR, getDefaultValue(KEY_CPU_LITTLE_GOVERNOR))
                 );
                 CPUUtils.setCPUBigFreq(
-                    prefs.getString(KEY_CPU_BIG_MIN_FREQ, CPU_BIG_DEFAULT_MIN),
-                    prefs.getString(KEY_CPU_BIG_MAX_FREQ, CPU_BIG_DEFAULT_MAX),
-                    prefs.getString(KEY_CPU_BIG_GOVERNOR, CPU_BIG_DEFAULT_GOV)
+                    prefs.getString(KEY_CPU_BIG_MIN_FREQ, getDefaultValue(KEY_CPU_BIG_MIN_FREQ)),
+                    prefs.getString(KEY_CPU_BIG_MAX_FREQ, getDefaultValue(KEY_CPU_BIG_MAX_FREQ)),
+                    prefs.getString(KEY_CPU_BIG_GOVERNOR, getDefaultValue(KEY_CPU_BIG_GOVERNOR))
                 );
                 CPUUtils.setCPUPrimeFreq(
-                    prefs.getString(KEY_CPU_PRIME_MIN_FREQ, CPU_PRIME_DEFAULT_MIN),
-                    prefs.getString(KEY_CPU_PRIME_MAX_FREQ, CPU_PRIME_DEFAULT_MAX),
-                    prefs.getString(KEY_CPU_PRIME_GOVERNOR, CPU_PRIME_DEFAULT_GOV)
+                    prefs.getString(KEY_CPU_PRIME_MIN_FREQ, getDefaultValue(KEY_CPU_PRIME_MIN_FREQ)),
+                    prefs.getString(KEY_CPU_PRIME_MAX_FREQ, getDefaultValue(KEY_CPU_PRIME_MAX_FREQ)),
+                    prefs.getString(KEY_CPU_PRIME_GOVERNOR, getDefaultValue(KEY_CPU_PRIME_GOVERNOR))
                 );
                 break;
         }
@@ -393,7 +373,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         }
 
         for (String baseKey : keysToReset) {
-            String defaultVal = mPowerProfileUtil.getStockValueForMode(targetMode, baseKey);
+            String defaultVal = mPowerProfileUtil.getValidatedStockValueForMode(targetMode, baseKey);
             editor.putString(baseKey, defaultVal);
 
             Preference p = findPreference(baseKey);
@@ -425,6 +405,10 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         return (pref != null && pref.getValue() != null) ? pref.getValue() : fallback;
     }
 
+    private String getDefaultValue(String key) {
+        return mPowerProfileUtil.getValidatedStockValueForMode(getCurrentProfileMode(), key);
+    }
+
     private void updateModeDisplays(int mode) {
         if (mModeStatusPref != null) {
             mModeStatusPref.setSummary(getString(getStatusSummaryForMode(mode)));
@@ -446,18 +430,18 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
         switch (mode) {
             case PowerProfileUtil.MODE_PERFORMANCE:
-                card.setTitle("Performance");
-                card.setSummary("Max CPU/GPU \u2022 Kyber I/O \u2022 Game mode on");
+                card.setTitle(R.string.powertools_mode_card_performance_title);
+                card.setSummary(R.string.powertools_mode_card_performance_summary);
                 card.setIcon(R.drawable.ic_thermal_performance);
                 break;
             case PowerProfileUtil.MODE_BATTERY_SAVER:
-                card.setTitle("Powersave");
-                card.setSummary("Conservative scaling \u2022 BFQ I/O \u2022 Thermal throttle active");
+                card.setTitle(R.string.powertools_mode_card_powersave_title);
+                card.setSummary(R.string.powertools_mode_card_powersave_summary);
                 card.setIcon(R.drawable.ic_thermal_battery_saver);
                 break;
             default:
-                card.setTitle("Normal");
-                card.setSummary("Balanced mode \u2022 Dynamic CPU scaling \u2022 Thermal throttle enabled");
+                card.setTitle(R.string.powertools_mode_card_balanced_title);
+                card.setSummary(R.string.powertools_mode_card_balanced_summary);
                 card.setIcon(R.drawable.ic_thermal_balance);
                 break;
         }
@@ -469,36 +453,67 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         boolean isGpuGov = (preference == mGpuGovernorPref);
         boolean isIoSched = (preference == mIoSchedulerPref);
 
-        if (preference instanceof ListPreference && preference.getKey() != null && preference.getKey().contains("_freq")) {
+        if (preference instanceof ListPreference && preference.getKey() != null
+                && preference.getKey().endsWith("_frequency")) {
             try {
                 long freqVal = Long.parseLong(value);
-                if (mode == PowerProfileUtil.MODE_BATTERY_SAVER && preference.getKey().contains("max_freq")) {
-                    long defaultMax = Long.parseLong(mPowerProfileUtil.getStockValueForMode(mode, preference.getKey()));
-                    if (freqVal > defaultMax) return "Mode restriction: Cannot exceed Powersave max frequency";
-                } else if (mode == PowerProfileUtil.MODE_PERFORMANCE && preference.getKey().contains("min_freq")) {
-                    long defaultMin = Long.parseLong(mPowerProfileUtil.getStockValueForMode(mode, preference.getKey()));
-                    if (freqVal < defaultMin) return "Mode restriction: Cannot go below Performance minimum";
+                if (mode == PowerProfileUtil.MODE_BATTERY_SAVER
+                        && preference.getKey().contains("_max_frequency")) {
+                    String defaultValue = mPowerProfileUtil.getValidatedStockValueForMode(mode, preference.getKey());
+                    long defaultMax = Long.parseLong(defaultValue);
+                    if (freqVal > defaultMax) {
+                        return getString(R.string.powertools_restricted_powersave_max,
+                                KernelOptionUtils.formatFrequency(defaultValue));
+                    }
+                } else if (mode == PowerProfileUtil.MODE_PERFORMANCE
+                        && preference.getKey().contains("_min_frequency")) {
+                    String defaultValue = mPowerProfileUtil.getValidatedStockValueForMode(mode, preference.getKey());
+                    long defaultMin = Long.parseLong(defaultValue);
+                    if (freqVal < defaultMin) {
+                        return getString(R.string.powertools_restricted_performance_min,
+                                KernelOptionUtils.formatFrequency(defaultValue));
+                    }
                 }
             } catch (NumberFormatException ignored) {}
         }
 
         if (mode == PowerProfileUtil.MODE_BATTERY_SAVER) {
-            if (isCpuGov && "performance".equals(value)) return getString(R.string.governor_restricted_powersave, "Performance");
-            if (isGpuGov && ("performance".equals(value) || "msm-adreno-tz".equals(value))) {
-                return getString(R.string.governor_restricted_powersave, "msm-adreno-tz".equals(value) ? "MSM Adreno TZ" : "Performance");
+            if (isCpuGov && "performance".equals(value)) {
+                return getString(R.string.governor_restricted_powersave, getDisplayValue(preference, value));
             }
-            if (isIoSched && "kyber".equals(value)) return getString(R.string.governor_restricted_powersave, "Kyber");
+            if (isGpuGov && ("performance".equals(value) || "msm-adreno-tz".equals(value))) {
+                return getString(R.string.governor_restricted_powersave, getDisplayValue(preference, value));
+            }
+            if (isIoSched && "kyber".equals(value)) {
+                return getString(R.string.governor_restricted_powersave, getDisplayValue(preference, value));
+            }
             
         } else if (mode == PowerProfileUtil.MODE_PERFORMANCE) {
             if (isCpuGov && ("conservative".equals(value) || "powersave".equals(value))) {
-                return getString(R.string.governor_restricted_performance, "conservative".equals(value) ? "Conservative" : "Powersave");
+                return getString(R.string.governor_restricted_performance, getDisplayValue(preference, value));
             }
             if (isGpuGov && ("userspace".equals(value) || "powersave".equals(value))) {
-                return getString(R.string.governor_restricted_performance, "userspace".equals(value) ? "Userspace" : "Powersave");
+                return getString(R.string.governor_restricted_performance, getDisplayValue(preference, value));
             }
-            if (isIoSched && "bfq".equals(value)) return getString(R.string.governor_restricted_performance, "BFQ");
+            if (isIoSched && "bfq".equals(value)) {
+                return getString(R.string.governor_restricted_performance, getDisplayValue(preference, value));
+            }
         }
         return null;
+    }
+
+    private String getDisplayValue(Preference preference, String value) {
+        if (preference instanceof ListPreference) {
+            ListPreference listPreference = (ListPreference) preference;
+            CharSequence[] entries = listPreference.getEntries();
+            CharSequence[] values = listPreference.getEntryValues();
+            if (entries != null && values != null) {
+                for (int i = 0; i < values.length && i < entries.length; i++) {
+                    if (value.equals(values[i].toString())) return entries[i].toString();
+                }
+            }
+        }
+        return KernelOptionUtils.displayValue(value);
     }
 
     private void syncAllListPrefsToData(SharedPreferences prefs) {
@@ -521,24 +536,11 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         if (pref == null) return;
         String savedVal = prefs.getString(key, "");
         
-        // If it's a governor/scheduler, verify the saved value is valid, or fallback to the true system state
-        if (isGovernorOrSchedulerKey(key)) {
+        if (isKernelOptionKey(key)) {
             String trueVal = getTrueActiveValue(key);
-            if (trueVal != null) {
-                boolean isValid = false;
-                CharSequence[] values = pref.getEntryValues();
-                if (values != null) {
-                    for (CharSequence v : values) {
-                        if (v.toString().equals(savedVal)) {
-                            isValid = true;
-                            break;
-                        }
-                    }
-                }
-                if (!isValid) {
-                    savedVal = trueVal;
-                    prefs.edit().putString(key, savedVal).apply();
-                }
+            if (!hasEntryValue(pref, savedVal)) {
+                savedVal = trueVal != null && hasEntryValue(pref, trueVal) ? trueVal : getDefaultValue(key);
+                prefs.edit().putString(key, savedVal).apply();
             }
         }
 
@@ -549,9 +551,23 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         }
     }
 
-    private boolean isGovernorOrSchedulerKey(String key) {
-        return KEY_CPU_LITTLE_GOVERNOR.equals(key) || KEY_CPU_BIG_GOVERNOR.equals(key) ||
-               KEY_CPU_PRIME_GOVERNOR.equals(key) || KEY_GPU_GOVERNOR.equals(key) ||
+    private boolean hasEntryValue(ListPreference pref, String value) {
+        if (value == null || value.isEmpty()) return false;
+        CharSequence[] values = pref.getEntryValues();
+        if (values == null) return false;
+        for (CharSequence item : values) {
+            if (value.equals(item.toString())) return true;
+        }
+        return false;
+    }
+
+    private boolean isKernelOptionKey(String key) {
+        return KEY_CPU_LITTLE_MIN_FREQ.equals(key) || KEY_CPU_LITTLE_MAX_FREQ.equals(key) ||
+               KEY_CPU_LITTLE_GOVERNOR.equals(key) || KEY_CPU_BIG_MIN_FREQ.equals(key) ||
+               KEY_CPU_BIG_MAX_FREQ.equals(key) || KEY_CPU_BIG_GOVERNOR.equals(key) ||
+               KEY_CPU_PRIME_MIN_FREQ.equals(key) || KEY_CPU_PRIME_MAX_FREQ.equals(key) ||
+               KEY_CPU_PRIME_GOVERNOR.equals(key) || KEY_GPU_MIN_FREQ.equals(key) ||
+               KEY_GPU_MAX_FREQ.equals(key) || KEY_GPU_GOVERNOR.equals(key) ||
                KEY_IO_SCHEDULER.equals(key);
     }
 
@@ -559,26 +575,27 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         String path = null;
         boolean isIo = false;
         switch (key) {
-            case KEY_CPU_LITTLE_GOVERNOR: path = "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"; break;
-            case KEY_CPU_BIG_GOVERNOR: path = "/sys/devices/system/cpu/cpufreq/policy4/scaling_governor"; break;
-            case KEY_CPU_PRIME_GOVERNOR: path = "/sys/devices/system/cpu/cpufreq/policy7/scaling_governor"; break;
-            case KEY_GPU_GOVERNOR: path = "/sys/class/kgsl/kgsl-3d0/devfreq/governor"; break;
+            case KEY_CPU_LITTLE_MIN_FREQ: path = KernelOptionUtils.CPU_LITTLE_MIN_FREQ; break;
+            case KEY_CPU_LITTLE_MAX_FREQ: path = KernelOptionUtils.CPU_LITTLE_MAX_FREQ; break;
+            case KEY_CPU_LITTLE_GOVERNOR: path = KernelOptionUtils.CPU_LITTLE_GOVERNOR; break;
+            case KEY_CPU_BIG_MIN_FREQ: path = KernelOptionUtils.CPU_BIG_MIN_FREQ; break;
+            case KEY_CPU_BIG_MAX_FREQ: path = KernelOptionUtils.CPU_BIG_MAX_FREQ; break;
+            case KEY_CPU_BIG_GOVERNOR: path = KernelOptionUtils.CPU_BIG_GOVERNOR; break;
+            case KEY_CPU_PRIME_MIN_FREQ: path = KernelOptionUtils.CPU_PRIME_MIN_FREQ; break;
+            case KEY_CPU_PRIME_MAX_FREQ: path = KernelOptionUtils.CPU_PRIME_MAX_FREQ; break;
+            case KEY_CPU_PRIME_GOVERNOR: path = KernelOptionUtils.CPU_PRIME_GOVERNOR; break;
+            case KEY_GPU_MIN_FREQ: path = KernelOptionUtils.GPU_MIN_FREQ; break;
+            case KEY_GPU_MAX_FREQ: path = KernelOptionUtils.GPU_MAX_FREQ; break;
+            case KEY_GPU_GOVERNOR: path = KernelOptionUtils.GPU_GOVERNOR; break;
             case KEY_IO_SCHEDULER: 
-                path = "/sys/block/sda/queue/scheduler"; 
+                path = KernelOptionUtils.IO_SCHEDULER;
                 isIo = true;
                 break;
         }
         if (path == null) return null;
+        if (isIo) return KernelOptionUtils.readBracketedValue(path);
         String raw = SysfsUtils.readLine(path);
         if (raw == null || raw.isEmpty()) return null;
-        if (isIo) {
-            int start = raw.indexOf('[');
-            int end = raw.indexOf(']');
-            if (start != -1 && end != -1 && start < end) {
-                return raw.substring(start + 1, end);
-            }
-            return null;
-        }
         return raw;
     }
 
@@ -589,77 +606,103 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
             CharSequence entry = lp.getEntry();
             String displayText = (entry != null) ? entry.toString() : newValue;
             lp.setSummary(displayText);
-            showToast(displayText + " applied");
+            showToast(getString(R.string.powertools_toast_value_applied, displayText));
         }
     }
 
-    private void updateGovernorDropdowns(int mode) {
-        populateFromSysfs(mCpuLittleGovernorPref,
-                "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors",
+    private void updateDynamicDropdowns() {
+        populateFrequencyFromSysfs(mCpuLittleMinFreqPref,
+                KernelOptionUtils.CPU_LITTLE_AVAILABLE_FREQUENCIES,
+                R.array.cpu_little_freq_entries, R.array.cpu_little_freq_values);
+        populateFrequencyFromSysfs(mCpuLittleMaxFreqPref,
+                KernelOptionUtils.CPU_LITTLE_AVAILABLE_FREQUENCIES,
+                R.array.cpu_little_freq_entries, R.array.cpu_little_freq_values);
+        populateNameFromSysfs(mCpuLittleGovernorPref,
+                KernelOptionUtils.CPU_LITTLE_AVAILABLE_GOVERNORS,
                 R.array.cpu_governor_entries, R.array.cpu_governor_values);
-        populateFromSysfs(mCpuBigGovernorPref,
-                "/sys/devices/system/cpu/cpufreq/policy4/scaling_available_governors",
+
+        populateFrequencyFromSysfs(mCpuBigMinFreqPref,
+                KernelOptionUtils.CPU_BIG_AVAILABLE_FREQUENCIES,
+                R.array.cpu_big_freq_entries, R.array.cpu_big_freq_values);
+        populateFrequencyFromSysfs(mCpuBigMaxFreqPref,
+                KernelOptionUtils.CPU_BIG_AVAILABLE_FREQUENCIES,
+                R.array.cpu_big_freq_entries, R.array.cpu_big_freq_values);
+        populateNameFromSysfs(mCpuBigGovernorPref,
+                KernelOptionUtils.CPU_BIG_AVAILABLE_GOVERNORS,
                 R.array.cpu_governor_entries, R.array.cpu_governor_values);
-        populateFromSysfs(mCpuPrimeGovernorPref,
-                "/sys/devices/system/cpu/cpufreq/policy7/scaling_available_governors",
+
+        populateFrequencyFromSysfs(mCpuPrimeMinFreqPref,
+                KernelOptionUtils.CPU_PRIME_AVAILABLE_FREQUENCIES,
+                R.array.cpu_prime_freq_entries, R.array.cpu_prime_freq_values);
+        populateFrequencyFromSysfs(mCpuPrimeMaxFreqPref,
+                KernelOptionUtils.CPU_PRIME_AVAILABLE_FREQUENCIES,
+                R.array.cpu_prime_freq_entries, R.array.cpu_prime_freq_values);
+        populateNameFromSysfs(mCpuPrimeGovernorPref,
+                KernelOptionUtils.CPU_PRIME_AVAILABLE_GOVERNORS,
                 R.array.cpu_governor_entries, R.array.cpu_governor_values);
-        populateFromSysfs(mGpuGovernorPref,
-                "/sys/class/kgsl/kgsl-3d0/devfreq/available_governors",
+
+        populateFrequencyFromSysfs(mGpuMinFreqPref,
+                KernelOptionUtils.GPU_AVAILABLE_FREQUENCY_PATHS,
+                R.array.gpu_frequency_entries, R.array.gpu_frequency_values);
+        populateFrequencyFromSysfs(mGpuMaxFreqPref,
+                KernelOptionUtils.GPU_AVAILABLE_FREQUENCY_PATHS,
+                R.array.gpu_frequency_entries, R.array.gpu_frequency_values);
+        populateNameFromSysfs(mGpuGovernorPref,
+                KernelOptionUtils.GPU_AVAILABLE_GOVERNORS,
                 R.array.gpu_governor_entries, R.array.gpu_governor_values);
-        populateFromSysfs(mIoSchedulerPref,
-                "/sys/block/sda/queue/scheduler",
+        populateNameFromSysfs(mIoSchedulerPref,
+                KernelOptionUtils.IO_SCHEDULER,
                 R.array.io_scheduler_entries, R.array.io_scheduler_values);
     }
 
-    private void populateFromSysfs(ListPreference pref, String sysfsPath, int fallbackEntries, int fallbackValues) {
+    private void populateFrequencyFromSysfs(ListPreference pref, String sysfsPath,
+            int fallbackEntries, int fallbackValues) {
+        populateFrequencyFromSysfs(pref, new String[] { sysfsPath }, fallbackEntries, fallbackValues);
+    }
+
+    private void populateFrequencyFromSysfs(ListPreference pref, String[] sysfsPaths,
+            int fallbackEntries, int fallbackValues) {
         if (pref == null) return;
-        String raw = SysfsUtils.readLine(sysfsPath);
-        if (raw == null || raw.isEmpty()) {
+        String[] values = KernelOptionUtils.readAvailableValues(sysfsPaths, false);
+        if (values.length == 0) {
             pref.setEntries(fallbackEntries);
             pref.setEntryValues(fallbackValues);
             return;
         }
-        // IO scheduler format: "none [bfq] kyber mq-deadline" — strip brackets
-        raw = raw.replace("[", "").replace("]", "");
-        String[] items = raw.trim().split("\\s+");
-        // Filter out "none" for schedulers
-        List<String> filtered = new ArrayList<>();
-        for (String s : items) {
-            if (!s.isEmpty() && !"none".equals(s)) filtered.add(s);
-        }
-        if (filtered.isEmpty()) {
-            pref.setEntries(fallbackEntries);
-            pref.setEntryValues(fallbackValues);
-            return;
-        }
-        String[] values = filtered.toArray(new String[0]);
+
+        java.util.Arrays.sort(values, (a, b) -> {
+            try {
+                return Long.compare(Long.parseLong(a), Long.parseLong(b));
+            } catch (NumberFormatException e) {
+                return a.compareTo(b);
+            }
+        });
+
         String[] entries = new String[values.length];
         for (int i = 0; i < values.length; i++) {
-            entries[i] = prettifyName(values[i]);
+            entries[i] = KernelOptionUtils.formatFrequency(values[i]);
         }
         pref.setEntries(entries);
         pref.setEntryValues(values);
     }
 
-    private String prettifyName(String raw) {
-        if (raw.equals("msm-adreno-tz")) return "MSM Adreno TZ";
-        if (raw.equals("simple_ondemand")) return "Simple Ondemand";
-        if (raw.equals("mq-deadline")) return "MQ-Deadline";
-        if (raw.equals("schedutil")) return "Schedutil";
-        if (raw.length() <= 4) return raw.toUpperCase();
-        return raw.substring(0, 1).toUpperCase() + raw.substring(1);
-    }
+    private void populateNameFromSysfs(ListPreference pref, String sysfsPath,
+            int fallbackEntries, int fallbackValues) {
+        if (pref == null) return;
+        boolean dropNone = pref == mIoSchedulerPref;
+        String[] values = KernelOptionUtils.readAvailableValues(sysfsPath, dropNone);
+        if (values.length == 0) {
+            pref.setEntries(fallbackEntries);
+            pref.setEntryValues(fallbackValues);
+            return;
+        }
 
-    private void updateCpuSubPrefsEnabled(boolean enabled) {
-        safeSetEnabled(mCpuLittleMinFreqPref, enabled);
-        safeSetEnabled(mCpuLittleMaxFreqPref, enabled);
-        safeSetEnabled(mCpuLittleGovernorPref, enabled);
-        safeSetEnabled(mCpuBigMinFreqPref, enabled);
-        safeSetEnabled(mCpuBigMaxFreqPref, enabled);
-        safeSetEnabled(mCpuBigGovernorPref, enabled);
-        safeSetEnabled(mCpuPrimeMinFreqPref, enabled);
-        safeSetEnabled(mCpuPrimeMaxFreqPref, enabled);
-        safeSetEnabled(mCpuPrimeGovernorPref, enabled);
+        String[] entries = new String[values.length];
+        for (int i = 0; i < values.length; i++) {
+            entries[i] = KernelOptionUtils.prettifyName(values[i]);
+        }
+        pref.setEntries(entries);
+        pref.setEntryValues(values);
     }
 
     private void setControlsEnabled(List<Preference> prefs, boolean enabled) {
@@ -681,10 +724,6 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         } catch (NumberFormatException ignored) {
             return PowerProfileUtil.MODE_BALANCE;
         }
-    }
-
-    private boolean isManualActive() {
-        return isChecked(mCpuEnablePref) || isChecked(mGpuEnablePref) || isChecked(mStorageEnablePref);
     }
 
     private boolean isCpuGovernorPref(Preference p) {

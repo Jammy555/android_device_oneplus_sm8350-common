@@ -6,26 +6,12 @@
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 package org.lineageos.device.DeviceSettings.network;
 
 /**
- * Represents a single RF band entry shown in the band picker UI.
- *
- * rat       — AccessNetworkConstants.AccessNetworkType value (GERAN/UTRAN/EUTRAN/NGRAN)
- * bandNum   — band number as defined in AccessNetworkConstants.*Band constants
- * label     — short display name, e.g. "n78" or "B40"
- * freqHint  — human-readable frequency hint, e.g. "3500 MHz (TDD)"
- * checked   — whether this band is selected by the user (will be in the lock set)
- * isActive  — true if the modem is currently camped on this band RIGHT NOW
- *              (read from PhysicalChannelConfig, updated live via TelephonyCallback)
+ * Represents a single RF band entry or collapsible section header shown in the band picker UI.
  */
 public final class BandEntry {
     public final int rat;
@@ -34,13 +20,25 @@ public final class BandEntry {
     public final String freqHint;
     public boolean checked;
     public boolean isActive; // true = modem currently using this band
+    public boolean isPCell;  // true = Primary Serving Cell
+    public boolean isSCell;  // true = Secondary Serving Cell
+    public boolean isHeader; // true = section header entry (e.g. 5G NR)
+    public boolean isExpanded; // true = section expanded
 
     public BandEntry(int rat, int bandNum, String label, String freqHint) {
+        this(rat, bandNum, label, freqHint, false);
+    }
+
+    public BandEntry(int rat, int bandNum, String label, String freqHint, boolean isHeader) {
         this.rat = rat;
         this.bandNum = bandNum;
         this.label = label;
         this.freqHint = freqHint;
-        this.checked = false; // start unchecked — loadCurrentBands() will tick real active bands
+        this.checked = false;
         this.isActive = false;
+        this.isPCell = false;
+        this.isSCell = false;
+        this.isHeader = isHeader;
+        this.isExpanded = true;
     }
 }

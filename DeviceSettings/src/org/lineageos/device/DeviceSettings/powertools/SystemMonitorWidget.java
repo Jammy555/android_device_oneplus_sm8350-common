@@ -45,8 +45,6 @@ public class SystemMonitorWidget extends AppWidgetProvider {
     private static final String GPU_CUR_FREQ    = "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq";
     private static final String GPU_MAX_FREQ_PATH = "/sys/class/kgsl/kgsl-3d0/devfreq/max_freq";
 
-    private static final String[] MODE_LABELS = {"PowerSave", "Normal", "Performance"};
-
     private static long sLastCpuTotal = 0;
     private static long sLastCpuIdle  = 0;
     private static final ExecutorService sBackgroundExecutor = Executors.newSingleThreadExecutor();
@@ -191,7 +189,7 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         if (ids == null || ids.length == 0) return;
 
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_system_monitor);
-        v.setTextViewText(R.id.widget_mode, "Waking...");
+        v.setTextViewText(R.id.widget_mode, ctx.getString(R.string.powertools_widget_waking));
         v.setTextColor(R.id.widget_mode, 0xFFFFCC00);
         mgr.updateAppWidget(ids, v);
     }
@@ -225,8 +223,9 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         int[] swap  = getSwapInfo();
         int bat     = getBatteryLevel(ctx);
         String[] stor = getStorageInfo();
-        String modeLabel = getModeLabel(ctx);
-        int modeColor    = getModeColor(modeLabel);
+        int mode = getMode();
+        String modeLabel = getModeLabel(ctx, mode);
+        int modeColor    = getModeColor(mode);
         int storPct = Integer.parseInt(stor[2]);
 
         float batTemp = readTempC(BATTERY_TEMP, 10f);
@@ -358,19 +357,34 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         } catch (Exception e) { return new String[]{"?", "?", "0"}; }
     }
 
-    private String getModeLabel(Context ctx) {
+    private int getMode() {
         try {
-            int mode = SystemProperties.getInt("sys.perf_mode_active", 1);
-            if (mode >= 0 && mode < MODE_LABELS.length) return MODE_LABELS[mode];
+            return SystemProperties.getInt("sys.perf_mode_active", PowerProfileUtil.MODE_BALANCE);
         } catch (Exception ignored) {}
-        return "Normal";
+        return PowerProfileUtil.MODE_BALANCE;
     }
 
-    private int getModeColor(String label) {
-        switch (label) {
-            case "PowerSave":   return 0xFF29B6F6;
-            case "Performance": return 0xFF43E97B;
-            default:            return 0xFF6C63FF;
+    private String getModeLabel(Context ctx, int mode) {
+        switch (mode) {
+            case PowerProfileUtil.MODE_BATTERY_SAVER:
+                return ctx.getString(R.string.powerprofile_mode_battery_saver);
+            case PowerProfileUtil.MODE_PERFORMANCE:
+                return ctx.getString(R.string.powerprofile_mode_performance);
+            case PowerProfileUtil.MODE_BALANCE:
+                return ctx.getString(R.string.powerprofile_mode_balance);
+            default:
+                return ctx.getString(R.string.powerprofile_mode_unknown);
+        }
+    }
+
+    private int getModeColor(int mode) {
+        switch (mode) {
+            case PowerProfileUtil.MODE_BATTERY_SAVER:
+                return 0xFF29B6F6;
+            case PowerProfileUtil.MODE_PERFORMANCE:
+                return 0xFF43E97B;
+            default:
+                return 0xFF6C63FF;
         }
     }
 
