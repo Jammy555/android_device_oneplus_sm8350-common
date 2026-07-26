@@ -70,7 +70,7 @@ public class PowerProfileTileService extends TileService {
         Tile tile = getQsTile();
         if (tile != null) {
             tile.setState(Tile.STATE_UNAVAILABLE);
-            tile.setSubtitle("Applying...");
+            tile.setSubtitle(getString(R.string.powertools_toast_applying));
             tile.updateTile();
         }
 

@@ -46,8 +46,8 @@
     <string name="edge_touch_summary">Improve your multi-touch experience in games</string>
     <string name="edge_touch_warning">May increase the possibility of accidental touch</string>
 
-     <!-- Powertools -->
-<string name="Powertools_title">Power Tools</string>
+    <!-- Powertools -->
+    <string name="Powertools_title">Power Tools</string>
     <string name="Powertools_summary">Advanced CPU, GPU, and Storage I/O tuning</string>
 
     <string name="powerprofile_tile_label">Power Profile</string>
@@ -59,25 +59,53 @@
     <string name="powerprofile_mode_unknown">Unknown</string>
     <string name="power_profile_footer_summary">Select a predefined profile to optimize hardware behavior. Enable CPU, GPU, or Storage controls to tweak within the allowed range of the active profile.</string>
 
-    <string name="mode_status_balanced">Schedutil • A55 max 1.8 GHz • A78 max 2.22 GHz • X1 max 2.59 GHz • GPU max 840 MHz • BFQ I/O</string>
-    <string name="mode_status_performance">Performance gov (Little) • A55 max 1.8 GHz • A78 max 2.41 GHz • X1 max 2.84 GHz • GPU max 840 MHz • Kyber I/O</string>
-    <string name="mode_status_battery_saver">Schedutil + capped clocks • A78 max 2.21 GHz • X1 max 2.59 GHz • GPU max 579 MHz • BFQ I/O</string>
+    <string name="mode_status_balanced">Kernel defaults • Dynamic CPU/GPU options • Standard scheduler tuning</string>
+    <string name="mode_status_performance">Validated boost profile • Dynamic clocks • Low-latency scheduler tuning</string>
+    <string name="mode_status_battery_saver">Validated capped profile • Dynamic clocks • Power-saving scheduler tuning</string>
 
+    <string name="powertools_mode_card_performance_title">Performance</string>
+    <string name="powertools_mode_card_performance_summary">Boost profile • Dynamic CPU/GPU limits • Game mode on</string>
+    <string name="powertools_mode_card_powersave_title">Power Save</string>
+    <string name="powertools_mode_card_powersave_summary">Capped profile • Dynamic kernel values • Power-saving tuning</string>
+    <string name="powertools_mode_card_balanced_title">Balanced</string>
+    <string name="powertools_mode_card_balanced_summary">Kernel defaults • Dynamic CPU/GPU scaling • Standard thermal policy</string>
 
+    <string name="powertools_toast_applying">Applying…</string>
+    <string name="powertools_toast_mode_applied">%s applied</string>
+    <string name="powertools_toast_value_applied">%s applied</string>
+    <string name="powertools_toast_defaults_restored">Restored profile defaults</string>
+    <string name="powertools_toast_manual_enabled">Manual control enabled</string>
+    <string name="powertools_fallback_message">%1$s not available for %2$s, using %3$s</string>
+    <string name="powertools_restricted_powersave_max">Mode restriction: Cannot exceed %s in Power Save mode</string>
+    <string name="powertools_restricted_performance_min">Mode restriction: Cannot go below %s in Performance mode</string>
 
-    <string name="powertools_gpu_category_title">GPU Tuning (Adreno 660)</string>
-    <string name="powertools_gpu_enable_title">GPU Tweaking</string>
-    <string name="powertools_gpu_enable_summary">Adjust GPU frequency and governor within profile limits</string>
+    <string name="powertools_label_io_scheduler">I/O scheduler</string>
+    <string name="powertools_label_gpu_min_frequency">GPU minimum frequency</string>
+    <string name="powertools_label_gpu_max_frequency">GPU maximum frequency</string>
+    <string name="powertools_label_gpu_governor">GPU governor</string>
+    <string name="powertools_label_cpu_little_min_frequency">little CPU minimum frequency</string>
+    <string name="powertools_label_cpu_little_max_frequency">little CPU maximum frequency</string>
+    <string name="powertools_label_cpu_little_governor">little CPU governor</string>
+    <string name="powertools_label_cpu_big_min_frequency">big CPU minimum frequency</string>
+    <string name="powertools_label_cpu_big_max_frequency">big CPU maximum frequency</string>
+    <string name="powertools_label_cpu_big_governor">big CPU governor</string>
+    <string name="powertools_label_cpu_prime_min_frequency">prime CPU minimum frequency</string>
+    <string name="powertools_label_cpu_prime_max_frequency">prime CPU maximum frequency</string>
+    <string name="powertools_label_cpu_prime_governor">prime CPU governor</string>
+
+    <string name="powertools_gpu_category_title">GPU Controls</string>
+    <string name="powertools_gpu_enable_title">GPU Manual Control</string>
+    <string name="powertools_gpu_enable_summary">Adjust available GPU frequencies and governors within profile limits</string>
     <string name="gpu_min_frequency">Minimum Frequency</string>
     <string name="gpu_max_frequency">Maximum Frequency</string>
     <string name="gpu_governor">Governor</string>
     <string name="gpu_governor_summary">Select GPU frequency scaling algorithm</string>
 
-    <string name="powertools_cpu_enable_title">CPU Tweaking</string>
-    <string name="powertools_cpu_enable_summary">Adjust CPU cluster limits and governors within profile bounds</string>
-    <string name="powertools_cpu_little_category">Little Cluster (Cortex-A55, Cores 0–3)</string>
-    <string name="powertools_cpu_big_category">Big Cluster (Cortex-A78, Cores 4–6)</string>
-    <string name="powertools_cpu_prime_category">Prime Cluster (Cortex-X1, Core 7)</string>
+    <string name="powertools_cpu_enable_title">CPU Manual Control</string>
+    <string name="powertools_cpu_enable_summary">Adjust available CPU cluster limits and governors within profile bounds</string>
+    <string name="powertools_cpu_little_category">Little Cluster (policy0)</string>
+    <string name="powertools_cpu_big_category">Big Cluster (policy4)</string>
+    <string name="powertools_cpu_prime_category">Prime Cluster (policy7)</string>
     <string name="powertools_min_freq">Minimum Frequency</string>
     <string name="powertools_max_freq">Maximum Frequency</string>
     <string name="powertools_governor">Governor</string>
@@ -89,8 +117,8 @@
     <string name="reset_on_boot_summary">Re-apply the active profile defaults to hardware on every boot</string>
 
     <string name="storage_category_title">Storage I/O</string>
-    <string name="storage_enable_title">Storage I/O Tweaking</string>
-    <string name="storage_enable_summary">Override the default I/O scheduler for the active power profile</string>
+    <string name="storage_enable_title">Storage I/O Manual Control</string>
+    <string name="storage_enable_summary">Override the active profile with an available kernel I/O scheduler</string>
 
     <string name="io_scheduler_title">I/O Scheduler</string>
     <string name="io_scheduler_dialog_title">Select I/O Scheduler</string>
@@ -100,27 +128,37 @@
 
     <string name="widget_name">System Monitor</string>
     <string name="widget_description">Live CPU, GPU, Memory, Battery \ Storage stats</string>
+    <string name="powertools_widget_waking">Waking…</string>
 
-    <!-- Selective Band Lock -->
+    <!-- Selective Band Lock & Network Enhancements -->
     <string name="network_category_title">Network</string>
-    <string name="network_bands_title">Selective Band Lock</string>
-    <string name="network_bands_summary">Lock modem to specific 2G/3G/LTE/5G bands per SIM</string>
+    <string name="network_bands_title">Network Band Locking</string>
+    <string name="network_bands_summary">Custom band locking, RAT combo and 5G modes</string>
     <string name="network_bands_apply">Apply Band Lock</string>
     <string name="network_bands_nothing_selected">No bands selected.</string>
-    <string name="network_bands_reset_success">Bands reset to automatic.</string>
+    <string name="network_bands_reset_success">Bands and network settings cleanly reset to automatic.</string>
     <string name="network_bands_scan">Scan Active Bands</string>
     <string name="network_bands_scan_success">Found and selected %1$d active band(s).</string>
     <string name="network_bands_scan_fail">No active bands detected during scan.</string>
     <string name="network_bands_dialog_title">Apply Band Lock?</string>
     <!-- %1$d = number of bands selected -->
     <string name="network_bands_dialog_message">Lock modem to %d selected band(s). If those bands have no coverage, you will lose signal until you reset.</string>
-    <string name="network_bands_applied_success">Band lock applied. Watching for modem confirmation\u2026</string>
+    <string name="network_bands_applied_success">Band lock applied. Modem channels updated.</string>
     <string name="network_bands_applied_fail">Failed to apply. Try toggling airplane mode and retrying.</string>
     <string name="network_bands_reset">Reset to Automatic</string>
     <string name="network_bands_no_signal">No signal on selected bands. Reset to automatic?</string>
     <!-- %1$d = number of bands modem is currently camped on -->
-    <string name="network_bands_status_active">Modem active on %d band(s) \u2014 shown below. Uncheck to block.</string>
+    <string name="network_bands_status_active">Modem active on %d band(s) \u2014 shown below.</string>
     <string name="network_bands_status_no_signal">No active band detected. Select bands to force lock.</string>
     <string name="network_bands_status_error">Could not read band state from modem.</string>
 
+    <string name="preset_active_warning">Carrier Speed Preset is active. Select \"Manual / Custom\" to edit individual bands.</string>
+    <string name="rat_mode_title">Preferred Network Type</string>
+    <string name="rat_mode_gsm_lte_combo">2G + 4G (GSM + LTE - Power Saver)</string>
+    <string name="carrier_preset_title">Carrier Speed Preset</string>
+    <string name="carrier_preset_custom">Manual / Custom Band Selection</string>
+    <string name="carrier_preset_jio">Jio 3CA + 5G SA Pack (LTE B3, B5, B40 + NR n28, n78)</string>
+    <string name="carrier_preset_airtel">Airtel 4CA + 5G NSA/SA Pack (LTE B1, B3, B8, B40 + NR n1, n3, n28, n40, n78)</string>
+    <string name="carrier_preset_vi">Vi 3CA + 5G Pack (LTE B1, B3, B8, B40 + NR n78)</string>
+    <string name="carrier_preset_bsnl">BSNL 4G/5G Pack (LTE B1, B3, B5, B28 + NR n28, n78)</string>
 </resources>

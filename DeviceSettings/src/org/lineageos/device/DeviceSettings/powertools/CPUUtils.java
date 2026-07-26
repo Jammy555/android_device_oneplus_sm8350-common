@@ -11,14 +11,12 @@ import android.util.Log;
 public final class CPUUtils {
 
     private static final String TAG = "CPUUtils";
-    private static final String SAFE_DUMMY_GOV = "schedutil";
 
     public static void setCPULittleFreq(String minFreq, String maxFreq, String governor) {
         new Thread(() -> {
             try {
-                if (governor.equals(SystemProperties.get("persist.sys.parts.cpu.little.governor"))) {
-                    SystemProperties.set("persist.sys.parts.cpu.little.governor", SAFE_DUMMY_GOV);
-                }
+                bounceGovernorIfNeeded("persist.sys.parts.cpu.little.governor", governor,
+                        KernelOptionUtils.CPU_LITTLE_AVAILABLE_GOVERNORS);
                 SystemProperties.set("persist.sys.parts.cpu.little.min_frequency", minFreq);
                 SystemProperties.set("persist.sys.parts.cpu.little.max_frequency", maxFreq);
                 SystemProperties.set("persist.sys.parts.cpu.little.governor", governor);
@@ -31,9 +29,8 @@ public final class CPUUtils {
     public static void setCPUBigFreq(String minFreq, String maxFreq, String governor) {
         new Thread(() -> {
             try {
-                if (governor.equals(SystemProperties.get("persist.sys.parts.cpu.big.governor"))) {
-                    SystemProperties.set("persist.sys.parts.cpu.big.governor", SAFE_DUMMY_GOV);
-                }
+                bounceGovernorIfNeeded("persist.sys.parts.cpu.big.governor", governor,
+                        KernelOptionUtils.CPU_BIG_AVAILABLE_GOVERNORS);
                 SystemProperties.set("persist.sys.parts.cpu.big.min_frequency", minFreq);
                 SystemProperties.set("persist.sys.parts.cpu.big.max_frequency", maxFreq);
                 SystemProperties.set("persist.sys.parts.cpu.big.governor", governor);
@@ -46,9 +43,8 @@ public final class CPUUtils {
     public static void setCPUPrimeFreq(String minFreq, String maxFreq, String governor) {
         new Thread(() -> {
             try {
-                if (governor.equals(SystemProperties.get("persist.sys.parts.cpu.prime.governor"))) {
-                    SystemProperties.set("persist.sys.parts.cpu.prime.governor", SAFE_DUMMY_GOV);
-                }
+                bounceGovernorIfNeeded("persist.sys.parts.cpu.prime.governor", governor,
+                        KernelOptionUtils.CPU_PRIME_AVAILABLE_GOVERNORS);
                 SystemProperties.set("persist.sys.parts.cpu.prime.min_frequency", minFreq);
                 SystemProperties.set("persist.sys.parts.cpu.prime.max_frequency", maxFreq);
                 SystemProperties.set("persist.sys.parts.cpu.prime.governor", governor);
@@ -56,5 +52,14 @@ public final class CPUUtils {
                 Log.e(TAG, "Failed to set CPU Prime Freq", e);
             }
         }).start();
+    }
+
+    private static void bounceGovernorIfNeeded(String property, String governor, String availablePath) {
+        if (!governor.equals(SystemProperties.get(property))) return;
+
+        String alternate = KernelOptionUtils.findAlternateValue(availablePath, governor, false);
+        if (alternate != null) {
+            SystemProperties.set(property, alternate);
+        }
     }
 }

@@ -2,161 +2,691 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="#0D0D0F">
 
-    <!-- SIM selector (only shown for dual-SIM devices) -->
-    <Spinner
-        android:id="@+id/sim_spinner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="10dp"
-        android:visibility="gone" />
-
-    <!-- Status text -->
-    <TextView
-        android:id="@+id/band_status_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="6dp"
-        android:textSize="13sp"
-        android:textColor="?android:attr/colorAccent"
-        android:text="@string/network_bands_status_no_signal" />
-
-    <!-- 5G Mode Card -->
-    <LinearLayout
-        android:id="@+id/nr_mode_card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginVertical="8dp"
-        android:padding="16dp"
-        android:background="@drawable/card_bg_accent">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="5G Network Mode"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textColor="?android:attr/textColorPrimary" />
-
-        <SeekBar
-            android:id="@+id/nr_mode_seekbar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:max="2"
-            android:minHeight="24dp"
-            android:maxHeight="6dp"
-            android:splitTrack="false"
-            android:thumbTint="?android:attr/colorAccent"
-            android:progressTint="?android:attr/colorAccent"
-            android:progressBackgroundTint="?android:attr/textColorTertiary" />
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:paddingHorizontal="12dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:text="NSA Only"
-                android:textSize="12sp"
-                android:textColor="?android:attr/textColorSecondary" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                android:text="Auto (SA+NSA)"
-                android:textSize="12sp"
-                android:textColor="?android:attr/textColorSecondary" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:text="SA Only"
-                android:textSize="12sp"
-                android:textColor="?android:attr/textColorSecondary" />
-
-        </RelativeLayout>
-
-        <LinearLayout
-            android:id="@+id/nr_mode_active_layout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="12dp"
-            android:gravity="center_vertical">
-
-            <View
-                android:id="@+id/nr_mode_active_dot"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:background="@drawable/active_dot_gray"
-                android:layout_marginEnd="6dp" />
-
-            <TextView
-                android:id="@+id/nr_mode_active_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Active: Checking..."
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="?android:attr/textColorSecondary" />
-        </LinearLayout>
-
-    </LinearLayout>
-
-
-
-    <!-- Scrollable band list -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/bands_recycler_view"
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingBottom="8dp" />
+        android:paddingBottom="16dp">
 
-    <!-- Bottom action bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp">
+
+            <!-- SIM selector (only shown for dual-SIM devices) -->
+            <Spinner
+                android:id="@+id/sim_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="8dp"
+                android:visibility="gone" />
+
+            <!-- PROFILE SELECTION -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp"
+                android:padding="16dp"
+                android:background="@drawable/card_bg_dark">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:background="@drawable/chip_active_band"
+                        android:gravity="center"
+                        android:text="1"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="#A0A0B0" />
+
+                    <TextView
+                        android:id="@+id/profile_section_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Profile Selection"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="#E0E0E0" />
+                </LinearLayout>
+
+                <Spinner
+                    android:id="@+id/carrier_preset_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <!-- CARRIER SUMMARY CARD -->
+            <LinearLayout
+                android:id="@+id/carrier_summary_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp"
+                android:padding="14dp"
+                android:background="@drawable/card_bg_dark">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Carrier Summary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#E5A376" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Operator" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/summary_operator_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Jio" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Technology" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/summary_tech_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5G SA" android:textSize="11sp" android:textStyle="bold" android:textColor="#4ADE80" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Profile" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/summary_profile_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Speed" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Band Lock" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/summary_band_lock_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Enabled" android:textSize="11sp" android:textStyle="bold" android:textColor="#E5A376" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- QUICK STATUS & DIAGNOSTICS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp"
+                android:padding="16dp"
+                android:background="@drawable/card_bg_dark">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:background="@drawable/chip_active_band"
+                        android:gravity="center"
+                        android:text="2"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="#A0A0B0" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="Quick Status"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="#E0E0E0" />
+                </LinearLayout>
+
+                <!-- Status Grid Top Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+
+                    <!-- Technology Card -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:background="@drawable/chip_active_band">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Technology"
+                            android:textSize="10sp"
+                            android:textColor="#808090" />
+
+                        <TextView
+                            android:id="@+id/status_tech_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="4G LTE"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF" />
+
+                        <TextView
+                            android:id="@+id/status_connected_pill"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="2dp"
+                            android:background="@drawable/pill_connected_green"
+                            android:text="Connected"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:textColor="#4ADE80" />
+                    </LinearLayout>
+
+                    <!-- Carrier Aggregation Card -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:background="@drawable/chip_active_band">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Carrier Aggregation"
+                            android:textSize="10sp"
+                            android:textColor="#808090" />
+
+                        <TextView
+                            android:id="@+id/status_ca_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="1CC"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Active Bands Chips -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Active Bands"
+                    android:textSize="10sp"
+                    android:textColor="#808090" />
+
+                <TextView
+                    android:id="@+id/status_active_bands_chips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="No Active Band"
+                    android:textSize="13sp"
+                    android:fontFamily="monospace"
+                    android:textStyle="bold"
+                    android:textColor="#E5A376" />
+
+                <!-- Core Metrics 4-Column Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp"
+                    android:padding="10dp"
+                    android:background="@drawable/chip_active_band">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Signal" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/diag_signal_quality" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="-- " android:textSize="11sp" android:textStyle="bold" android:textColor="#4ADE80" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RSRP" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/diag_rsrp_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="-- dBm" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SINR" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/diag_sinr_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="-- dB" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CQI" android:textSize="9sp" android:textColor="#808090" />
+                        <TextView android:id="@+id/diag_cqi_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="--" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Expandable Advanced Diagnostics Header Card -->
+                <LinearLayout
+                    android:id="@+id/advanced_diag_toggle_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp"
+                    android:background="@drawable/card_bg_dark"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Advanced Telephony Diagnostics"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#E5A376" />
+
+                    <TextView
+                        android:id="@+id/advanced_diag_chevron"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="▼ Tap to Expand"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:textColor="#808090" />
+                </LinearLayout>
+
+                <!-- Expandable Advanced Diagnostics Body -->
+                <LinearLayout
+                    android:id="@+id/advanced_diag_body_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp"
+                    android:padding="10dp"
+                    android:background="@drawable/chip_active_band"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/diag_metrics_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp"
+                        android:fontFamily="monospace"
+                        android:textColor="#C0C0D0"
+                        android:text="EARFCN: -- | PCI: -- | ARFCN: --\nActive MBN: Commercial APAC\nIMS Status: VoLTE, VoWiFi\nMode: LTE / 5G SA\nENDC: N/A | DCNR: N/A" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 5G NETWORK MODE SEEKBAR CARD -->
+            <LinearLayout
+                android:id="@+id/nr_mode_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp"
+                android:padding="16dp"
+                android:background="@drawable/card_bg_dark">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5G Network Mode"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#E0E0E0" />
+
+                <SeekBar
+                    android:id="@+id/nr_mode_seekbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:max="2"
+                    android:thumbTint="#E5A376"
+                    android:progressTint="#E5A376" />
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:text="NSA Only"
+                        android:textSize="10sp"
+                        android:textColor="#808090" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerHorizontal="true"
+                        android:text="Auto (SA+NSA)"
+                        android:textSize="10sp"
+                        android:textColor="#808090" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:text="SA Only"
+                        android:textSize="10sp"
+                        android:textColor="#808090" />
+                </RelativeLayout>
+
+                <LinearLayout
+                    android:id="@+id/nr_mode_active_layout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <View
+                        android:id="@+id/nr_mode_active_dot"
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        android:background="@drawable/active_dot_gray"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginEnd="4dp" />
+
+                    <TextView
+                        android:id="@+id/nr_mode_active_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Active: Checking..."
+                        android:textSize="10sp"
+                        android:textColor="#808090" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- MANUAL BAND LOCK & RAT PREFERENCE -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp"
+                android:padding="16dp"
+                android:background="@drawable/card_bg_dark">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Manual Band Lock"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF" />
+
+                <!-- RAT Preference Filter Slots -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="RAT Preference"
+                    android:textSize="11sp"
+                    android:textColor="#808090" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+
+                    <CheckBox
+                        android:id="@+id/rat_chk_2g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="2G"
+                        android:textColor="#C0C0D0"
+                        android:textSize="11sp" />
+
+                    <CheckBox
+                        android:id="@+id/rat_chk_3g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="3G"
+                        android:textColor="#C0C0D0"
+                        android:textSize="11sp" />
+
+                    <CheckBox
+                        android:id="@+id/rat_chk_4g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="4G"
+                        android:textColor="#C0C0D0"
+                        android:textSize="11sp" />
+
+                    <CheckBox
+                        android:id="@+id/rat_chk_5g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="5G"
+                        android:textColor="#C0C0D0"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <Spinner
+                    android:id="@+id/rat_mode_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" />
+
+                <!-- On-Screen Clickable Network Generation Filter Tabs -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:id="@+id/tab_5g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="8dp"
+                        android:text="5G Bands"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#E5A376" />
+
+                    <TextView
+                        android:id="@+id/tab_4g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="8dp"
+                        android:text="4G Bands"
+                        android:textSize="12sp"
+                        android:textColor="#808090" />
+
+                    <TextView
+                        android:id="@+id/tab_3g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="8dp"
+                        android:text="3G Bands"
+                        android:textSize="12sp"
+                        android:textColor="#808090" />
+
+                    <TextView
+                        android:id="@+id/tab_2g"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="8dp"
+                        android:text="2G Bands"
+                        android:textSize="12sp"
+                        android:textColor="#808090" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#2A2A32"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Band Items RecyclerView -->
+
+                <!-- Band Items RecyclerView -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/bands_recycler_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:layout_marginTop="6dp" />
+
+                <!-- Selected Bands Counter & Clear Bar -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:padding="8dp"
+                    android:background="@drawable/card_bg_dark">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_centerVertical="true">
+
+                        <TextView
+                            android:id="@+id/selected_gen_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Selected 5G Bands"
+                            android:textSize="10sp"
+                            android:textColor="#808090" />
+
+                        <TextView
+                            android:id="@+id/selected_gen_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0/7"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btn_clear_gen_bands"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:background="@drawable/card_bg_dark"
+                        android:paddingHorizontal="16dp"
+                        android:text="Clear"
+                        android:textColor="#E5A376"
+                        android:textSize="11sp" />
+                </RelativeLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Sticky Bottom Action Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="16dp"
-        android:elevation="8dp"
-        android:background="?android:attr/colorBackground">
+        android:background="#16161A"
+        android:elevation="12dp">
 
-        <Button
-            android:id="@+id/btn_reset_bands"
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/band_status_text"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/btn_secondary_m3"
-            android:textColor="?android:attr/textColorPrimary"
-            android:text="@string/network_bands_reset" />
+            android:layout_marginBottom="8dp"
+            android:textSize="11sp"
+            android:textColor="#E5A376"
+            android:text="Selected Bands: 4" />
 
-        <Button
-            android:id="@+id/btn_apply_bands"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/btn_primary_m3"
-            android:textColor="@android:color/white"
-            android:text="@string/network_bands_apply" />
+            android:orientation="horizontal">
 
+            <Button
+                android:id="@+id/btn_reset_bands"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/card_bg_dark"
+                android:textColor="#FFFFFF"
+                android:text="Reset" />
+
+            <Button
+                android:id="@+id/btn_apply_bands"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="2"
+                android:background="@drawable/btn_primary_accent"
+                android:textColor="#101012"
+                android:textStyle="bold"
+                android:enabled="false"
+                android:text="Apply Band Lock" />
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>
