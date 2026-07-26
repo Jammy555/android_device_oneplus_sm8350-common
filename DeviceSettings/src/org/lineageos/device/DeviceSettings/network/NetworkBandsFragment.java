@@ -15,6 +15,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemProperties;
@@ -420,6 +421,8 @@ public class NetworkBandsFragment extends Fragment {
             toast("Select at least 1 RAT slot (2G/3G/4G/5G)");
             return;
         }
+
+        Log.i(TAG, "applyRatFromSlots: Applying custom RAT preference bitmask=" + bitmask + " (2G=" + g2 + ", 3G=" + g3 + ", 4G=" + g4 + ", 5G=" + g5 + ")");
 
         try {
             getTelephonyManager().setAllowedNetworkTypesForReason(
@@ -985,6 +988,7 @@ public class NetworkBandsFragment extends Fragment {
     }
 
     private static void setOplusVoNrEnabledStatic(int slotId, boolean enabled) {
+        Log.i(TAG, "setOplusVoNrEnabledStatic: Toggling Vo5G/VoNR for slot=" + slotId + ", enabled=" + enabled);
         try {
             SystemProperties.set("persist.sys.vonr_enable", enabled ? "true" : "false");
             SystemProperties.set("persist.vendor.radio.vonr_enabled", enabled ? "1" : "0");
@@ -1321,6 +1325,15 @@ public class NetworkBandsFragment extends Fragment {
         boolean isValidRsrp = (rsrp != -999 && rsrp != Integer.MAX_VALUE);
         boolean isValidSinr = (sinr != -999 && sinr != Integer.MAX_VALUE);
 
+        boolean isLocationEnabled = false;
+        try {
+            android.location.LocationManager lm = (android.location.LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+            if (lm != null) {
+                isLocationEnabled = lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
+                        || lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER);
+            }
+        } catch (Exception ignored) {}
+
         // Timing Advance (TA) distance parsing (1 TA unit ≈ 78.12 meters in 3GPP LTE)
         boolean isValidTa = (ta >= 0 && ta != Integer.MAX_VALUE);
         String taDisplay;
@@ -1333,6 +1346,10 @@ public class NetworkBandsFragment extends Fragment {
             } else {
                 taDisplay = String.format(java.util.Locale.US, "%d (~%d m)", ta, distanceMeters);
             }
+        } else if (isLegacyRat) {
+            taDisplay = "N/A (Not supported on 2G GSM)";
+        } else if (!isLocationEnabled) {
+            taDisplay = "N/A (Location Service Needed)";
         } else {
             taDisplay = "--";
         }
@@ -1813,7 +1830,11 @@ public class NetworkBandsFragment extends Fragment {
         }
         saveBandKeys(newSavedKeys);
 
+        Log.i(TAG, "applyBandsNow: Applying custom band lock for subId=" + mCurrentSubId + ", selectedCount=" + countChecked() + ", savedKeys=" + newSavedKeys);
+
         List<RadioAccessSpecifier> specifiers = buildSpecifiers(true);
+        Log.d(TAG, "applyBandsNow: Generated RadioAccessSpecifiers count=" + specifiers.size());
+
         if (specifiers.isEmpty()) {
             toast(getString(R.string.network_bands_nothing_selected));
             return;
@@ -1849,6 +1870,7 @@ public class NetworkBandsFragment extends Fragment {
 
     @android.annotation.SuppressLint("MissingPermission")
     private void resetBandsClean() {
+        Log.i(TAG, "resetBandsClean: Resetting band lock configuration to modem defaults for subId=" + mCurrentSubId);
         // 1. Clear stored band keys and preferences
         saveBandKeys(new HashSet<>());
         getPrefs().edit().remove(PREF_KEY_RAT_MODE_PREFIX + mCurrentSubId).apply();
