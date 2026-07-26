@@ -62,8 +62,10 @@ import org.lineageos.device.DeviceSettings.R;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -148,7 +150,7 @@ public class NetworkBandsFragment extends Fragment {
     private Runnable mPendingRatUpdateRunnable = null;
     private Runnable mPendingNrModeUpdateRunnable = null;
     private SubscriptionManager.OnSubscriptionsChangedListener mSubChangeListener = null;
-    private String mKnownIccid = null;
+    private final Map<Integer, String> mKnownSubIccidMap = new HashMap<>();
     private int mLastDefaultDataSubId = -1;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
@@ -856,14 +858,22 @@ public class NetworkBandsFragment extends Fragment {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position < mActiveSubscriptions.size()) {
-                    mCurrentSubId = mActiveSubscriptions.get(position).getSubscriptionId();
-                    unregisterBandMonitor();
-                    loadCurrentBands();
-                    registerBandMonitor();
-                    updateActiveBands();
-                    setupCarrierPresetSpinner();
-                    syncRatSlotsFromSystem();
-                    checkApplyButtonState();
+                    int selectedSubId = mActiveSubscriptions.get(position).getSubscriptionId();
+                    if (selectedSubId != mCurrentSubId) {
+                        mCurrentSubId = selectedSubId;
+                        mLastSystem5gStateInitialized = false;
+                        SubscriptionInfo info = mActiveSubscriptions.get(position);
+                        if (info != null && info.getIccId() != null) {
+                            mKnownSubIccidMap.put(mCurrentSubId, info.getIccId());
+                        }
+                        unregisterBandMonitor();
+                        loadCurrentBands();
+                        registerBandMonitor();
+                        updateActiveBands();
+                        setupCarrierPresetSpinner();
+                        syncRatSlotsFromSystem();
+                        checkApplyButtonState();
+                    }
                 }
             }
             @Override
@@ -905,9 +915,6 @@ public class NetworkBandsFragment extends Fragment {
                     TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
 
             boolean is5gEnabledInSystem = (bitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
-            if (mLastSystem5gStateInitialized && !is5gEnabledInSystem && mLastSystem5gState) {
-                toast("5G system toggle disabled — reapplying current profile.");
-            }
             mLastSystem5gState = is5gEnabledInSystem;
             mLastSystem5gStateInitialized = true;
 
@@ -1081,12 +1088,15 @@ public class NetworkBandsFragment extends Fragment {
                         SubscriptionInfo info = sm.getActiveSubscriptionInfo(mCurrentSubId);
                         if (info != null) {
                             String iccid = info.getIccId();
-                            if (iccid != null && mKnownIccid != null && !iccid.equals(mKnownIccid)) {
-                                Log.i(TAG, "SIM card swap detected on slot! Executing automatic band reset.");
+                            String prevIccid = mKnownSubIccidMap.get(mCurrentSubId);
+                            if (iccid != null && prevIccid != null && !iccid.equals(prevIccid)) {
+                                Log.i(TAG, "SIM card swap detected for subId=" + mCurrentSubId + "! Executing automatic band reset.");
                                 toast("SIM Card changed — automatically reset band filters to modem default.");
                                 resetBandsClean();
                             }
-                            mKnownIccid = iccid;
+                            if (iccid != null) {
+                                mKnownSubIccidMap.put(mCurrentSubId, iccid);
+                            }
                         }
                     }
                 };
