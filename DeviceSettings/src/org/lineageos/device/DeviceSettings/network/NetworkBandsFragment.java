@@ -1918,6 +1918,30 @@ public class NetworkBandsFragment extends Fragment {
             return;
         }
 
+        // Enable & enforce LTE Carrier Aggregation (4G+) if user locked multiple frequency bands
+        if (countChecked() > 1) {
+            try {
+                boolean isAlreadyEnabled = android.provider.Settings.Global.getInt(
+                        requireContext().getContentResolver(), "lte_ca_enabled", 0) == 1
+                        || "1".equals(SystemProperties.get("persist.vendor.radio.lte_ca_enabled", "0"))
+                        || "true".equalsIgnoreCase(SystemProperties.get("persist.sys.lte_ca_enable", "false"));
+
+                if (!isAlreadyEnabled) {
+                    android.provider.Settings.Global.putInt(requireContext().getContentResolver(), "lte_ca_enabled", 1);
+                    android.provider.Settings.Global.putInt(requireContext().getContentResolver(), "show_carrier_aggregation_option", 1);
+                    android.provider.Settings.System.putInt(requireContext().getContentResolver(), "lte_ca_enabled", 1);
+                    SystemProperties.set("persist.vendor.radio.lte_ca_enabled", "1");
+                    SystemProperties.set("persist.sys.lte_ca_enable", "true");
+                    SystemProperties.set("vendor.radio.lte_ca.enable", "1");
+                    Log.i(TAG, "applyBandsNow: Multi-band selection detected (" + countChecked() + " bands) — enabling LTE Carrier Aggregation (4G+) in ROM Settings");
+                } else {
+                    Log.d(TAG, "applyBandsNow: LTE Carrier Aggregation (4G+) already active in ROM Settings — skipping redundant write.");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to check/enforce LTE CA settings: " + e.getMessage());
+            }
+        }
+
         try {
             TelephonyManager tm = getTelephonyManager();
             tm.setSystemSelectionChannels(specifiers);
