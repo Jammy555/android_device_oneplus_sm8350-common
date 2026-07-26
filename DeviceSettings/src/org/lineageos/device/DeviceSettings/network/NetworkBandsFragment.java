@@ -145,6 +145,8 @@ public class NetworkBandsFragment extends Fragment {
     private int mLastCqiVal = -1;
     private int mLastTaVal = -1;
 
+    private Runnable mPendingRatUpdateRunnable = null;
+    private Runnable mPendingNrModeUpdateRunnable = null;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     /** Boot restore static handler */
@@ -358,10 +360,22 @@ public class NetworkBandsFragment extends Fragment {
         mApplyButton.setAlpha(modified ? 1.0f : 0.4f);
     }
 
+    private void triggerDebouncedRatUpdate() {
+        if (mPendingRatUpdateRunnable != null) {
+            mHandler.removeCallbacks(mPendingRatUpdateRunnable);
+        }
+        toast("Applying RAT selection (2s delay guard)...");
+        mPendingRatUpdateRunnable = () -> {
+            applyRatFromSlots();
+            mPendingRatUpdateRunnable = null;
+        };
+        mHandler.postDelayed(mPendingRatUpdateRunnable, 2000);
+    }
+
     /** Dynamic RAT Selection Slots & System Sync */
     private void setupRatSlotsAndSpinner() {
         View.OnClickListener listener = v -> {
-            applyRatFromSlots();
+            triggerDebouncedRatUpdate();
             updateNrModeSeekbarForCarrier();
             checkApplyButtonState();
         };
@@ -405,7 +419,9 @@ public class NetworkBandsFragment extends Fragment {
         boolean g5 = mChk5G != null && mChk5G.isChecked();
 
         // Safety Guard: 5G NSA requires 4G LTE anchor cell for non-SA carriers
-        if (g5 && !g4 && !isJioCarrier()) {
+        int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
+        boolean isNsaMode = (savedNrMode == 0);
+        if ((g5 || isNsaMode) && !g4 && !isJioCarrier()) {
             g4 = true;
             if (mChk4G != null) mChk4G.setChecked(true);
             toast("5G NSA requires 4G LTE anchor — auto-enabled 4G for network stability.");
@@ -931,26 +947,32 @@ public class NetworkBandsFragment extends Fragment {
     private void updateNrMode(int progress) {
         getPrefs().edit().putInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, progress).apply();
 
-        if ("Airtel".equalsIgnoreCase(detectActiveCarrierName()) && progress == 2) {
-            toast("Airtel operates 5G NSA — SA Only mode may cause 5G signal disconnection.");
+        if (mPendingNrModeUpdateRunnable != null) {
+            mHandler.removeCallbacks(mPendingNrModeUpdateRunnable);
         }
 
-        int oplusMode;
-        switch (progress) {
-            case 0:  oplusMode = OPLUS_NR_MODE_NSA_ONLY; break;
-            case 2:  oplusMode = OPLUS_NR_MODE_SA_ONLY;  break;
-            default: oplusMode = OPLUS_NR_MODE_SA_PRE;   break;
-        }
+        toast("Applying 5G NR mode (2s delay guard)...");
 
-        // Battery & Wakelock Optimization: Only invoke modem HAL if 5G is enabled in RAT Preference
-        boolean is5gChecked = (mChk5G != null && mChk5G.isChecked());
-        if (is5gChecked) {
-            int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
-            if (SubscriptionManager.isValidSlotIndex(slotId)) {
-                setOplusNrModeStatic(slotId, oplusMode);
+        mPendingNrModeUpdateRunnable = () -> {
+            int oplusMode;
+            switch (progress) {
+                case 0:  oplusMode = OPLUS_NR_MODE_NSA_ONLY; break;
+                case 2:  oplusMode = OPLUS_NR_MODE_SA_ONLY;  break;
+                default: oplusMode = OPLUS_NR_MODE_SA_PRE;   break;
             }
-        }
-        updateActiveNrModeDisplay();
+
+            boolean is5gChecked = (mChk5G != null && mChk5G.isChecked());
+            if (is5gChecked) {
+                int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
+                if (SubscriptionManager.isValidSlotIndex(slotId)) {
+                    setOplusNrModeStatic(slotId, oplusMode);
+                }
+            }
+            updateActiveNrModeDisplay();
+            mPendingNrModeUpdateRunnable = null;
+        };
+
+        mHandler.postDelayed(mPendingNrModeUpdateRunnable, 2000);
     }
 
     private static void setOplusNrModeStatic(int slotId, int mode) {
