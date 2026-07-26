@@ -142,8 +142,7 @@ public class PowerProfileUtil {
         SharedPreferences.Editor editor = prefs.edit();
 
         for (String key : PERSIST_KEYS) {
-            String val = getStockValueForMode(mode, key);
-            if (isGovernorKey(key)) val = validateGovernor(key, val);
+            String val = getValidatedStockValueForMode(mode, key);
             editor.putString(key, val);
         }
 
@@ -163,37 +162,130 @@ public class PowerProfileUtil {
         return values != null ? values[targetIndex] : "";
     }
 
-    private boolean isGovernorKey(String key) {
-        return key.equals(KEY_CPU_LITTLE_GOVERNOR) || key.equals(KEY_CPU_BIG_GOVERNOR)
-                || key.equals(KEY_CPU_PRIME_GOVERNOR) || key.equals(KEY_GPU_GOVERNOR)
-                || key.equals(KEY_IO_SCHEDULER);
+    public String getValidatedStockValueForMode(int mode, String key) {
+        return validateKernelValue(key, getStockValueForMode(mode, key));
     }
 
-    private String validateGovernor(String key, String requested) {
-        String sysfsPath = getSysfsPathForKey(key);
-        if (sysfsPath == null) return requested;
-        String available = SysfsUtils.readLine(sysfsPath);
-        if (available == null) return requested;
-        available = available.replace("[", "").replace("]", "");
-        for (String g : available.split("\\s+")) {
-            if (g.equals(requested)) return requested;
+    private String validateKernelValue(String key, String requested) {
+        String[] sysfsPaths = getSysfsPathsForKey(key);
+        if (sysfsPaths == null || requested == null || requested.isEmpty()) return requested;
+
+        String[] available = KernelOptionUtils.readAvailableValues(sysfsPaths, shouldDropNone(key));
+        if (available.length == 0) return requested;
+
+        for (String value : available) {
+            if (value.equals(requested)) return requested;
         }
-        String fallback = key.equals(KEY_GPU_GOVERNOR) ? "msm-adreno-tz" : "schedutil";
-        String label = key.replace("_governor", "").replace("_", " ").replace("io scheduler", "IO");
-        mFallbackMessages.add("'" + requested + "' not available for " + label + ", using " + fallback);
+
+        String fallback = isFrequencyKey(key)
+                ? findNearestFrequencyValue(key, requested, available)
+                : available[0];
+        mFallbackMessages.add(buildFallbackMessage(key, requested, fallback));
         Log.w(TAG, mFallbackMessages.get(mFallbackMessages.size() - 1));
         return fallback;
     }
 
-    private String getSysfsPathForKey(String key) {
+    private String[] getSysfsPathsForKey(String key) {
         switch (key) {
-            case KEY_CPU_LITTLE_GOVERNOR: return "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors";
-            case KEY_CPU_BIG_GOVERNOR:    return "/sys/devices/system/cpu/cpufreq/policy4/scaling_available_governors";
-            case KEY_CPU_PRIME_GOVERNOR:  return "/sys/devices/system/cpu/cpufreq/policy7/scaling_available_governors";
-            case KEY_GPU_GOVERNOR:        return "/sys/class/kgsl/kgsl-3d0/devfreq/available_governors";
-            case KEY_IO_SCHEDULER:        return "/sys/block/sda/queue/scheduler";
+            case KEY_CPU_LITTLE_MIN_FREQ:
+            case KEY_CPU_LITTLE_MAX_FREQ:
+                return new String[] { KernelOptionUtils.CPU_LITTLE_AVAILABLE_FREQUENCIES };
+            case KEY_CPU_BIG_MIN_FREQ:
+            case KEY_CPU_BIG_MAX_FREQ:
+                return new String[] { KernelOptionUtils.CPU_BIG_AVAILABLE_FREQUENCIES };
+            case KEY_CPU_PRIME_MIN_FREQ:
+            case KEY_CPU_PRIME_MAX_FREQ:
+                return new String[] { KernelOptionUtils.CPU_PRIME_AVAILABLE_FREQUENCIES };
+            case KEY_CPU_LITTLE_GOVERNOR:
+                return new String[] { KernelOptionUtils.CPU_LITTLE_AVAILABLE_GOVERNORS };
+            case KEY_CPU_BIG_GOVERNOR:
+                return new String[] { KernelOptionUtils.CPU_BIG_AVAILABLE_GOVERNORS };
+            case KEY_CPU_PRIME_GOVERNOR:
+                return new String[] { KernelOptionUtils.CPU_PRIME_AVAILABLE_GOVERNORS };
+            case KEY_GPU_MIN_FREQ:
+            case KEY_GPU_MAX_FREQ:
+                return KernelOptionUtils.GPU_AVAILABLE_FREQUENCY_PATHS;
+            case KEY_GPU_GOVERNOR:
+                return new String[] { KernelOptionUtils.GPU_AVAILABLE_GOVERNORS };
+            case KEY_IO_SCHEDULER:
+                return new String[] { KernelOptionUtils.IO_SCHEDULER };
             default: return null;
         }
+    }
+
+    private boolean shouldDropNone(String key) {
+        return KEY_IO_SCHEDULER.equals(key);
+    }
+
+    private boolean isFrequencyKey(String key) {
+        return key.endsWith("_frequency");
+    }
+
+    private String findNearestFrequencyValue(String key, String requested, String[] available) {
+        try {
+            long requestedValue = Long.parseLong(requested);
+            String fallback = null;
+            long fallbackValue = 0L;
+
+            for (String value : available) {
+                long candidate = Long.parseLong(value);
+                if (key.contains("_min_frequency")) {
+                    if (candidate >= requestedValue && (fallback == null || candidate < fallbackValue)) {
+                        fallback = value;
+                        fallbackValue = candidate;
+                    }
+                } else if (key.contains("_max_frequency")) {
+                    if (candidate <= requestedValue && (fallback == null || candidate > fallbackValue)) {
+                        fallback = value;
+                        fallbackValue = candidate;
+                    }
+                }
+            }
+
+            if (fallback != null) return fallback;
+
+            fallback = available[0];
+            fallbackValue = Long.parseLong(fallback);
+            for (String value : available) {
+                long candidate = Long.parseLong(value);
+                if (key.contains("_min_frequency")) {
+                    if (candidate > fallbackValue) {
+                        fallback = value;
+                        fallbackValue = candidate;
+                    }
+                } else if (candidate < fallbackValue) {
+                    fallback = value;
+                    fallbackValue = candidate;
+                }
+            }
+            return fallback;
+        } catch (NumberFormatException e) {
+            return available[0];
+        }
+    }
+
+    private String buildFallbackMessage(String key, String requested, String fallback) {
+        return mContext.getString(R.string.powertools_fallback_message,
+                KernelOptionUtils.displayValue(requested),
+                getPreferenceLabel(key),
+                KernelOptionUtils.displayValue(fallback));
+    }
+
+    private String getPreferenceLabel(String key) {
+        if (KEY_IO_SCHEDULER.equals(key)) return mContext.getString(R.string.powertools_label_io_scheduler);
+        if (KEY_GPU_MIN_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_gpu_min_frequency);
+        if (KEY_GPU_MAX_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_gpu_max_frequency);
+        if (KEY_GPU_GOVERNOR.equals(key)) return mContext.getString(R.string.powertools_label_gpu_governor);
+        if (KEY_CPU_LITTLE_MIN_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_cpu_little_min_frequency);
+        if (KEY_CPU_LITTLE_MAX_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_cpu_little_max_frequency);
+        if (KEY_CPU_LITTLE_GOVERNOR.equals(key)) return mContext.getString(R.string.powertools_label_cpu_little_governor);
+        if (KEY_CPU_BIG_MIN_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_cpu_big_min_frequency);
+        if (KEY_CPU_BIG_MAX_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_cpu_big_max_frequency);
+        if (KEY_CPU_BIG_GOVERNOR.equals(key)) return mContext.getString(R.string.powertools_label_cpu_big_governor);
+        if (KEY_CPU_PRIME_MIN_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_cpu_prime_min_frequency);
+        if (KEY_CPU_PRIME_MAX_FREQ.equals(key)) return mContext.getString(R.string.powertools_label_cpu_prime_max_frequency);
+        if (KEY_CPU_PRIME_GOVERNOR.equals(key)) return mContext.getString(R.string.powertools_label_cpu_prime_governor);
+        return key.replace("_", " ");
     }
 
     private void applyUserTouchPanel() {
@@ -227,8 +319,8 @@ public class PowerProfileUtil {
 
     public String getModeLabel() {
         int mode = getManagedMode();
-        if (mode == MODE_BATTERY_SAVER) return "PowerSave";
-        if (mode == MODE_BALANCE) return "Normal";
+        if (mode == MODE_BATTERY_SAVER) return mModes[MODE_BATTERY_SAVER];
+        if (mode == MODE_BALANCE) return mModes[MODE_BALANCE];
         return (mode >= 0 && mode < mModes.length) ? mModes[mode] : mModes[MODE_UNKNOWN];
     }
 

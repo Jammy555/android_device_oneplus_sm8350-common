@@ -11,6 +11,7 @@
 package org.lineageos.device.DeviceSettings.network;
 
 import android.os.Bundle;
+import android.view.Menu;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
@@ -21,13 +22,7 @@ import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 import org.lineageos.device.DeviceSettings.R;
 
 /**
- * Thin Activity wrapper that hosts NetworkBandsFragment.
- * Mirrors the exact pattern used by PowertoolsActivity.
- *
- * Registered in AndroidManifest.xml as:
- *   <activity android:name=".network.NetworkBandsActivity" .../>
- *
- * Launched from main.xml preference via android:fragment or explicit Intent.
+ * Activity hosting NetworkBandsFragment using standard SettingsLib collapsing toolbar frame.
  */
 public final class NetworkBandsActivity extends CollapsingToolbarBaseActivity {
 
@@ -36,16 +31,17 @@ public final class NetworkBandsActivity extends CollapsingToolbarBaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_network_bands);
 
         if (getActionBar() != null) {
             getActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
+        setTitle("Network Band Locking");
+
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
-                    .replace(R.id.network_bands_fragment_container,
+                    .replace(com.android.settingslib.collapsingtoolbar.R.id.content_frame,
                             new NetworkBandsFragment(),
                             FRAGMENT_TAG)
                     .commit();
@@ -53,9 +49,21 @@ public final class NetworkBandsActivity extends CollapsingToolbarBaseActivity {
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.network_bands_menu, menu);
+        return true;
+    }
+
+    @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
             getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        } else if (item.getItemId() == R.id.action_advanced_settings) {
+            NetworkBandsFragment fragment = (NetworkBandsFragment) getSupportFragmentManager().findFragmentByTag(FRAGMENT_TAG);
+            if (fragment != null) {
+                fragment.showAdvancedSettingsDialog();
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
