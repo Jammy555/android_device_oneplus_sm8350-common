@@ -404,6 +404,13 @@ public class NetworkBandsFragment extends Fragment {
         boolean g4 = mChk4G != null && mChk4G.isChecked();
         boolean g5 = mChk5G != null && mChk5G.isChecked();
 
+        // Safety Guard: 5G NSA requires 4G LTE anchor cell for non-SA carriers
+        if (g5 && !g4 && !isJioCarrier()) {
+            g4 = true;
+            if (mChk4G != null) mChk4G.setChecked(true);
+            toast("5G NSA requires 4G LTE anchor — auto-enabled 4G for network stability.");
+        }
+
         long bitmask = 0;
         if (g2) bitmask |= TelephonyManager.NETWORK_TYPE_BITMASK_GSM
                          | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS
@@ -725,9 +732,6 @@ public class NetworkBandsFragment extends Fragment {
                         return;
                     }
                     mLastNrModeUserInteractionTime = android.os.SystemClock.elapsedRealtime();
-                    if (isBsnlCarrier() && progress != 0) {
-                        toast("BSNL does not currently operate 5G towers in this region.");
-                    }
                     updateNrMode(progress);
                     checkApplyButtonState();
                 }
@@ -926,6 +930,10 @@ public class NetworkBandsFragment extends Fragment {
 
     private void updateNrMode(int progress) {
         getPrefs().edit().putInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, progress).apply();
+
+        if ("Airtel".equalsIgnoreCase(detectActiveCarrierName()) && progress == 2) {
+            toast("Airtel operates 5G NSA — SA Only mode may cause 5G signal disconnection.");
+        }
 
         int oplusMode;
         switch (progress) {
