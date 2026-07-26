@@ -189,7 +189,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="• Unavailable / -- : The metric is not reported by the cell tower or modem RIL in the current state.\n• N/A (Not supported on 2G GSM): 2G (GERAN) networks do not measure CQI, SINR, or Timing Advance.\n• ▲ (Green Arrow): Metric value improved since last sample (higher RSRP/SINR/CQI).\n• ▼ (Red Arrow): Metric value degraded since last sample."
+                android:text="• Spectrum Deployment Note: Spectrum allocation varies by telecom circle and local cell tower infrastructure. Even within the same network operator (e.g. Jio/Airtel/Vi/BSNL or global SIMs), not all frequency bands are broadcast in every geographical area.\n• Unavailable / -- : The metric is not reported by the cell tower or modem RIL in the current state.\n• N/A (Not supported on 2G GSM): 2G (GERAN) networks do not measure CQI, SINR, or Timing Advance.\n• ▲ (Green Arrow): Metric value improved since last sample (higher RSRP/SINR/CQI).\n• ▼ (Red Arrow): Metric value degraded since last sample."
                 android:textSize="10sp"
                 android:textColor="#A0A0B0"
                 android:lineSpacingExtra="4dp" />
