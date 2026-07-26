@@ -364,7 +364,20 @@ public class NetworkBandsFragment extends Fragment {
         if (mPendingRatUpdateRunnable != null) {
             mHandler.removeCallbacks(mPendingRatUpdateRunnable);
         }
-        toast("Applying RAT selection (2s delay guard)...");
+        boolean g2 = mChk2G != null && mChk2G.isChecked();
+        boolean g3 = mChk3G != null && mChk3G.isChecked();
+        boolean g4 = mChk4G != null && mChk4G.isChecked();
+        boolean g5 = mChk5G != null && mChk5G.isChecked();
+
+        String toastMsg;
+        if (g5 && g4 && !g3 && !g2) toastMsg = "Applying 5G + 4G...";
+        else if (g4 && !g5 && !g3 && !g2) toastMsg = "Applying 4G LTE Only...";
+        else if (g4 && g2 && !g5 && !g3) toastMsg = "Applying 4G + 2G...";
+        else if (g5 && !g4 && !g3 && !g2) toastMsg = "Applying 5G Only...";
+        else toastMsg = "Applying RAT Preference...";
+
+        toast(toastMsg);
+
         mPendingRatUpdateRunnable = () -> {
             applyRatFromSlots();
             mPendingRatUpdateRunnable = null;
@@ -951,7 +964,7 @@ public class NetworkBandsFragment extends Fragment {
             mHandler.removeCallbacks(mPendingNrModeUpdateRunnable);
         }
 
-        toast("Applying 5G NR mode (2s delay guard)...");
+        toast("Applying 5G NR Mode...");
 
         mPendingNrModeUpdateRunnable = () -> {
             int oplusMode;
@@ -1379,7 +1392,7 @@ public class NetworkBandsFragment extends Fragment {
         } else if (isLegacyRat) {
             taDisplay = "N/A (Not supported on 2G GSM)";
         } else if (!isLocationEnabled) {
-            taDisplay = "N/A (Location Service Needed)";
+            taDisplay = "N/A (Location Required)";
         } else {
             taDisplay = "--";
         }
