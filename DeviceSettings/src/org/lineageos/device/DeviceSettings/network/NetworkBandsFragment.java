@@ -149,6 +149,7 @@ public class NetworkBandsFragment extends Fragment {
     private Runnable mPendingNrModeUpdateRunnable = null;
     private SubscriptionManager.OnSubscriptionsChangedListener mSubChangeListener = null;
     private String mKnownIccid = null;
+    private int mLastDefaultDataSubId = -1;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     /** Boot restore static handler */
@@ -1069,6 +1070,14 @@ public class NetworkBandsFragment extends Fragment {
                     @Override
                     public void onSubscriptionsChanged() {
                         if (!isAdded()) return;
+                        int currentDefaultDataSub = SubscriptionManager.getDefaultDataSubscriptionId();
+                        if (mLastDefaultDataSubId != -1 && currentDefaultDataSub != mLastDefaultDataSubId) {
+                            Log.i(TAG, "Default Mobile Data SIM switched in Android System Settings (Old: " + mLastDefaultDataSubId + ", New: " + currentDefaultDataSub + ") — resetting band lock.");
+                            toast("Mobile Data SIM switched in System Settings — reset band lock to default.");
+                            resetBandsClean();
+                        }
+                        mLastDefaultDataSubId = currentDefaultDataSub;
+
                         SubscriptionInfo info = sm.getActiveSubscriptionInfo(mCurrentSubId);
                         if (info != null) {
                             String iccid = info.getIccId();
