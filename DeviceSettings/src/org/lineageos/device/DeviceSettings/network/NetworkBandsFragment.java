@@ -147,6 +147,8 @@ public class NetworkBandsFragment extends Fragment {
 
     private Runnable mPendingRatUpdateRunnable = null;
     private Runnable mPendingNrModeUpdateRunnable = null;
+    private SubscriptionManager.OnSubscriptionsChangedListener mSubChangeListener = null;
+    private String mKnownIccid = null;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     /** Boot restore static handler */
@@ -1050,24 +1052,57 @@ public class NetworkBandsFragment extends Fragment {
     /** Registration of Live Telephony Callbacks */
 
     private void registerBandMonitor() {
-        if (mBandMonitorCallback != null) return;
-        mBandMonitorCallback = new BandMonitorCallback();
-        try {
-            getTelephonyManager().registerTelephonyCallback(mMainExecutor, mBandMonitorCallback);
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to register BandMonitorCallback: " + e.getMessage());
-            mBandMonitorCallback = null;
+        if (mBandMonitorCallback == null) {
+            mBandMonitorCallback = new BandMonitorCallback();
+            try {
+                getTelephonyManager().registerTelephonyCallback(mMainExecutor, mBandMonitorCallback);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to register BandMonitorCallback: " + e.getMessage());
+                mBandMonitorCallback = null;
+            }
+        }
+
+        if (mSubChangeListener == null) {
+            try {
+                SubscriptionManager sm = SubscriptionManager.from(requireContext());
+                mSubChangeListener = new SubscriptionManager.OnSubscriptionsChangedListener() {
+                    @Override
+                    public void onSubscriptionsChanged() {
+                        if (!isAdded()) return;
+                        SubscriptionInfo info = sm.getActiveSubscriptionInfo(mCurrentSubId);
+                        if (info != null) {
+                            String iccid = info.getIccId();
+                            if (iccid != null && mKnownIccid != null && !iccid.equals(mKnownIccid)) {
+                                Log.i(TAG, "SIM card swap detected on slot! Executing automatic band reset.");
+                                toast("SIM Card changed — automatically reset band filters to modem default.");
+                                resetBandsClean();
+                            }
+                            mKnownIccid = iccid;
+                        }
+                    }
+                };
+                sm.addOnSubscriptionsChangedListener(mMainExecutor, mSubChangeListener);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to register OnSubscriptionsChangedListener: " + e.getMessage());
+            }
         }
     }
 
     private void unregisterBandMonitor() {
-        if (mBandMonitorCallback == null) return;
-        try {
-            getTelephonyManager().unregisterTelephonyCallback(mBandMonitorCallback);
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to unregister BandMonitorCallback: " + e.getMessage());
-        } finally {
-            mBandMonitorCallback = null;
+        if (mBandMonitorCallback != null) {
+            try {
+                getTelephonyManager().unregisterTelephonyCallback(mBandMonitorCallback);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to unregister BandMonitorCallback: " + e.getMessage());
+            } finally {
+                mBandMonitorCallback = null;
+            }
+        }
+        if (mSubChangeListener != null) {
+            try {
+                SubscriptionManager.from(requireContext()).removeOnSubscriptionsChangedListener(mSubChangeListener);
+            } catch (Exception ignored) {}
+            mSubChangeListener = null;
         }
     }
 
@@ -1497,7 +1532,7 @@ public class NetworkBandsFragment extends Fragment {
         diagBuilder.append("RF & SIGNAL METRICS\n");
         diagBuilder.append("• EARFCN: ").append(isValidEarfcn ? String.valueOf(earfcn) : (is2gNet ? "N/A (GERAN)" : "--")).append("\n");
         diagBuilder.append("• PCI: ").append(isValidPci ? String.valueOf(pci) : (is2gNet ? "N/A (BSIC Used)" : "--")).append("\n");
-        diagBuilder.append("• NR-ARFCN: ").append(isValidNrArfcn ? String.valueOf(nrArfcn) : "N/A (Not on 5G)").append("\n");
+        diagBuilder.append("• NR-ARFCN: ").append(isValidNrArfcn ? String.valueOf(nrArfcn) : "N/A (Only on 5G)").append("\n");
         diagBuilder.append("• RSRP (Signal Power): ").append(rsrpDisplay).append("\n");
         diagBuilder.append("• RSRQ (Signal Quality): ").append(rsrqDisplay).append("\n");
         diagBuilder.append("• SINR (Signal Noise Ratio): ").append(sinrDisplay).append("\n");
