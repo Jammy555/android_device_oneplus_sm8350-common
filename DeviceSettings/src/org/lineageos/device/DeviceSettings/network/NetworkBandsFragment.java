@@ -153,6 +153,20 @@ public class NetworkBandsFragment extends Fragment {
     private final Map<Integer, String> mKnownSubIccidMap = new HashMap<>();
     private int mLastDefaultDataSubId = -1;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private final android.content.BroadcastReceiver mAirplaneModeReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_AIRPLANE_MODE_CHANGED.equals(intent.getAction())) {
+                if (!isAdded()) return;
+                mHandler.post(() -> {
+                    updateActiveBands();
+                    updateLiveDiagnostics(null);
+                    updateNrModeSeekbarForCarrier();
+                    checkApplyButtonState();
+                });
+            }
+        }
+    };
 
     /** Boot restore static handler */
     public static void restoreNrModeSettings(Context context) {
@@ -328,22 +342,33 @@ public class NetworkBandsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        try {
+            requireContext().registerReceiver(mAirplaneModeReceiver,
+                    new android.content.IntentFilter(Intent.ACTION_AIRPLANE_MODE_CHANGED));
+        } catch (Exception ignored) {}
         registerBandMonitor();
         updateActiveBands();
         updateLiveDiagnostics(null);
         syncRatSlotsFromSystem();
+        updateNrModeSeekbarForCarrier();
         checkApplyButtonState();
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        try {
+            requireContext().unregisterReceiver(mAirplaneModeReceiver);
+        } catch (Exception ignored) {}
         unregisterBandMonitor();
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        try {
+            requireContext().unregisterReceiver(mAirplaneModeReceiver);
+        } catch (Exception ignored) {}
         unregisterBandMonitor();
     }
 
@@ -358,11 +383,66 @@ public class NetworkBandsFragment extends Fragment {
         return !savedKeys.equals(currentKeys);
     }
 
+    private boolean isAirplaneModeOn() {
+        try {
+            return android.provider.Settings.Global.getInt(
+                    requireContext().getContentResolver(),
+                    android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean hasActiveSim() {
+        return mActiveSubscriptions != null && !mActiveSubscriptions.isEmpty();
+    }
+
+    private boolean isSimAndRadioAvailable() {
+        return hasActiveSim() && !isAirplaneModeOn();
+    }
+
     private void checkApplyButtonState() {
-        if (mApplyButton == null) return;
-        boolean modified = isSelectionModifiedFromSaved();
-        mApplyButton.setEnabled(modified);
-        mApplyButton.setAlpha(modified ? 1.0f : 0.4f);
+        boolean available = isSimAndRadioAvailable();
+        boolean modified = available && isSelectionModifiedFromSaved();
+
+        if (mApplyButton != null) {
+            mApplyButton.setEnabled(modified);
+            mApplyButton.setAlpha(modified ? 1.0f : 0.4f);
+        }
+
+        if (mResetButton != null) {
+            mResetButton.setEnabled(available);
+            mResetButton.setAlpha(available ? 1.0f : 0.4f);
+        }
+
+        if (mCarrierPresetSpinner != null) {
+            mCarrierPresetSpinner.setEnabled(available);
+            mCarrierPresetSpinner.setAlpha(available ? 1.0f : 0.4f);
+        }
+
+        if (mRatModeSpinner != null) {
+            mRatModeSpinner.setEnabled(available);
+            mRatModeSpinner.setAlpha(available ? 1.0f : 0.4f);
+        }
+
+        if (mChk2G != null) mChk2G.setEnabled(available);
+        if (mChk3G != null) mChk3G.setEnabled(available);
+        if (mChk4G != null) mChk4G.setEnabled(available);
+        if (mChk5G != null) mChk5G.setEnabled(available);
+
+        if (!available) {
+            if (mNrModeSeekBar != null) {
+                mNrModeSeekBar.setEnabled(false);
+                if (mNrModeCard != null) mNrModeCard.setAlpha(0.4f);
+            }
+            if (mStatusText != null) {
+                if (isAirplaneModeOn()) {
+                    mStatusText.setText("Airplane Mode active — band locking disabled");
+                } else if (!hasActiveSim()) {
+                    mStatusText.setText("No SIM card detected — band locking disabled");
+                }
+            }
+        }
     }
 
     private void triggerDebouncedRatUpdate() {
@@ -436,10 +516,10 @@ public class NetworkBandsFragment extends Fragment {
         boolean g4 = mChk4G != null && mChk4G.isChecked();
         boolean g5 = mChk5G != null && mChk5G.isChecked();
 
-        // Safety Guard: 5G NSA requires 4G LTE anchor cell for non-SA carriers
+        // Safety Guard: 5G NSA requires 4G LTE anchor cell when not in 5G SA mode
         int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
-        boolean isNsaMode = (savedNrMode == 0);
-        if ((g5 || isNsaMode) && !g4 && !isJioCarrier()) {
+        boolean isSaMode = (savedNrMode == 2 || savedNrMode == 3);
+        if ((g5 || !isSaMode) && !g4 && !isSaMode) {
             g4 = true;
             if (mChk4G != null) mChk4G.setChecked(true);
             toast("5G NSA requires 4G LTE anchor — auto-enabled 4G for network stability.");
@@ -500,30 +580,48 @@ public class NetworkBandsFragment extends Fragment {
     }
 
     private String detectActiveCarrierName() {
-        if (mActiveSubscriptions != null) {
-            for (SubscriptionInfo info : mActiveSubscriptions) {
-                if (info.getSubscriptionId() == mCurrentSubId) {
-                    CharSequence name = info.getDisplayName();
-                    if (name == null) name = info.getCarrierName();
-                    if (name != null) {
-                        String s = name.toString().toLowerCase();
-                        if (s.contains("jio")) return "Jio";
-                        if (s.contains("airtel")) return "Airtel";
-                        if (s.contains("vi") || s.contains("vodafone") || s.contains("idea")) return "Vi";
-                        if (s.contains("bsnl")) return "BSNL";
-                    }
+        // 1. Check if any active subscription exists for current subId
+        if (mActiveSubscriptions == null || mActiveSubscriptions.isEmpty()) {
+            return "No SIM";
+        }
+
+        // 2. Try SubscriptionInfo display name / carrier name for current subId
+        for (SubscriptionInfo info : mActiveSubscriptions) {
+            if (info.getSubscriptionId() == mCurrentSubId) {
+                CharSequence name = info.getDisplayName();
+                if (name == null || name.length() == 0) name = info.getCarrierName();
+                if (name != null && name.length() > 0) {
+                    return name.toString().trim();
                 }
             }
         }
-        return "Jio";
+
+        // 3. Fallback: query TelephonyManager for network operator name
+        try {
+            TelephonyManager tm = getTelephonyManager();
+            String networkOp = tm.getNetworkOperatorName();
+            if (networkOp != null && !networkOp.trim().isEmpty()) {
+                return networkOp.trim();
+            }
+
+            String simOp = tm.getSimOperatorName();
+            if (simOp != null && !simOp.trim().isEmpty()) {
+                return simOp.trim();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "detectActiveCarrierName: TelephonyManager fallback failed: " + e.getMessage());
+        }
+
+        return "Unknown";
     }
 
     private void setupCarrierPresetSpinner() {
         if (mCarrierPresetSpinner == null) return;
         String carrier = detectActiveCarrierName();
+        boolean hasCarrier = !"No SIM".equals(carrier);
         List<String> presets = new ArrayList<>();
         presets.add("Manual / Custom Band Selection");
-        presets.add("Recommended (" + carrier + ")");
+        presets.add(hasCarrier ? "Recommended (" + carrier + ")" : "Recommended");
         presets.add("Battery Saver (FDD Anchor)");
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
@@ -684,15 +782,16 @@ public class NetworkBandsFragment extends Fragment {
 
     private void applyCarrierPresetForCarrier(String carrier, int option) {
         for (BandEntry e : mBandEntries) e.checked = false;
+        String c = (carrier != null) ? carrier.toLowerCase() : "";
 
-        if (option == 1) { // Recommended (All Supported Bands)
-            if ("Jio".equalsIgnoreCase(carrier)) {
+        if (option == 1) { // Recommended (Carrier-optimized / Primary Bands)
+            if (c.contains("jio")) {
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 40);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 28);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
-            } else if ("Airtel".equalsIgnoreCase(carrier)) {
+            } else if (c.contains("airtel")) {
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
@@ -702,38 +801,88 @@ public class NetworkBandsFragment extends Fragment {
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 28);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 40);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
-            } else if ("Vi".equalsIgnoreCase(carrier)) {
+            } else if (c.contains("vi") || c.contains("vodafone") || c.contains("idea")) {
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 40);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
-            } else if ("BSNL".equalsIgnoreCase(carrier)) {
+            } else if (c.contains("bsnl")) {
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 28);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 28);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
-            } else {
-                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
-                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
-                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 40);
-                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
-            }
-        } else if (option == 2) { // Battery Saver (Low Band Anchor Focus)
-            if ("Jio".equalsIgnoreCase(carrier)) {
-                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+            } else if (c.contains("t-mobile") || c.contains("tmobile")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 2);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 4);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 12);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 66);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 71);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 41);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 71);
+            } else if (c.contains("verizon")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 2);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
-            } else if ("BSNL".equalsIgnoreCase(carrier)) {
-                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
-                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 13);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 66);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 77);
+            } else if (c.contains("at&t") || c.contains("att")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 2);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
-            } else {
-                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 12);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 14);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 30);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 66);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 5);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 77);
+            } else if (c.contains("china mobile")) {
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
                 checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 39);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 40);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 41);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 41);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 79);
+            } else if (c.contains("china unicom")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
+            } else if (c.contains("china telecom")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
+            } else {
+                // Universal / Global Default Recommended:
+                // Primary Global LTE Anchors (B1, B3, B5, B7, B8, B20, B28, B40, B66) & 5G (n1, n3, n28, n77, n78)
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 7);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 20);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 28);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 40);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 66);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 28);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 77);
+                checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
             }
+        } else if (option == 2) { // Battery Saver (Low Band / FDD Primary Focus)
+            // Universal Low Band FDD Anchors (B1, B3, B5, B8, B12, B13, B20, B28, B71)
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 12);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 13);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 20);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 28);
+            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 71);
         }
 
         filterBandsByGeneration();
@@ -760,11 +909,6 @@ public class NetworkBandsFragment extends Fragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    if (isJioCarrier()) {
-                        mNrModeSeekBar.setProgress(2);
-                        toast("Jio 5G operates exclusively on 5G SA (Standalone).");
-                        return;
-                    }
                     mLastNrModeUserInteractionTime = android.os.SystemClock.elapsedRealtime();
                     updateNrMode(progress);
                     checkApplyButtonState();
@@ -782,31 +926,23 @@ public class NetworkBandsFragment extends Fragment {
     private void updateNrModeSeekbarForCarrier() {
         if (mNrModeSeekBar == null) return;
         boolean is5gChecked = (mChk5G != null && mChk5G.isChecked());
+        boolean available = isSimAndRadioAvailable();
+
         if (!is5gChecked) {
+            // Hide the 5G NR Mode card completely if 5G is not checked in RAT Preference
+            if (mNrModeCard != null) mNrModeCard.setVisibility(View.GONE);
             mNrModeSeekBar.setEnabled(false);
-            if (mNrModeCard != null) mNrModeCard.setAlpha(0.4f);
-            if (mNrModeActiveText != null) {
-                mNrModeActiveText.setText("5G Disabled in RAT Preference");
-            }
-            if (mNrModeActiveDot != null) {
-                mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_gray);
-            }
-        } else if (isJioCarrier()) {
-            mNrModeSeekBar.setProgress(2);
-            mNrModeSeekBar.setEnabled(false);
-            if (mNrModeCard != null) mNrModeCard.setAlpha(1.0f);
-            if (mNrModeActiveText != null) {
-                mNrModeActiveText.setText("5G Mode: SA Only (Jio SA Exclusive)");
-            }
-            int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
-            if (SubscriptionManager.isValidSlotIndex(slotId)) {
-                setOplusNrModeStatic(slotId, OPLUS_NR_MODE_SA_ONLY);
-            }
         } else {
-            mNrModeSeekBar.setEnabled(true);
-            if (mNrModeCard != null) mNrModeCard.setAlpha(1.0f);
-            int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
-            mNrModeSeekBar.setProgress(savedNrMode);
+            // Show card if 5G is enabled in RAT Preference
+            if (mNrModeCard != null) {
+                mNrModeCard.setVisibility(View.VISIBLE);
+                mNrModeCard.setAlpha(available ? 1.0f : 0.4f);
+            }
+            mNrModeSeekBar.setEnabled(available);
+            if (available) {
+                int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
+                mNrModeSeekBar.setProgress(savedNrMode);
+            }
         }
     }
 
@@ -947,13 +1083,6 @@ public class NetworkBandsFragment extends Fragment {
         }
     }
 
-    private boolean isJioCarrier() {
-        return "Jio".equalsIgnoreCase(detectActiveCarrierName());
-    }
-
-    private boolean isBsnlCarrier() {
-        return "BSNL".equalsIgnoreCase(detectActiveCarrierName());
-    }
 
     private SharedPreferences getPrefs() {
         return requireContext().getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
@@ -1407,8 +1536,16 @@ public class NetworkBandsFragment extends Fragment {
         int totalBwMhz = totalBwKhz / 1000;
         String bwSuffix = totalBwMhz > 0 ? " (" + totalBwMhz + " MHz)" : "";
 
+        boolean isNoService = "No Service".equals(activeTech);
         boolean isLegacyRat = "2G GSM".equals(activeTech) || "3G WCDMA".equals(activeTech);
-        String caDisplay = isLegacyRat ? "No CA (--)" : (ccCount > 0 ? ccCount + "CC" + bwSuffix : "1CC" + bwSuffix);
+        String caDisplay;
+        if (isNoService || ccCount == 0) {
+            caDisplay = "No CA (0CC)";
+        } else if (isLegacyRat) {
+            caDisplay = "No CA (--)";
+        } else {
+            caDisplay = ccCount + "CC" + bwSuffix;
+        }
 
         String activeMbn = SystemProperties.get("persist.vendor.radio.sw_mbn_name",
                            SystemProperties.get("vendor.radio.sw_mbn_name", "Commercial APAC"));
@@ -1512,7 +1649,72 @@ public class NetworkBandsFragment extends Fragment {
         String basebandFw = SystemProperties.get("gsm.version.baseband", android.os.Build.getRadioVersion());
         if (basebandFw == null || basebandFw.isEmpty()) basebandFw = "Qualcomm SM8350 Modem v2.0";
 
-        String mimoStatus = (nrBand > 0 || (mLastPhysicalChannelConfigs != null && mLastPhysicalChannelConfigs.size() >= 2)) ? "4x4 MIMO Active" : "2x2 MIMO Active";
+        String mimoStatus;
+        String antennaDiversity;
+        String rxChain;
+        boolean noService = "No Service".equals(finalTech);
+        int activeCcCount = (mLastPhysicalChannelConfigs != null) ? mLastPhysicalChannelConfigs.size() : 0;
+
+        if (noService) {
+            mimoStatus = "Inactive";
+            antennaDiversity = "Inactive (Radio Off / No Service)";
+            rxChain = "Inactive";
+        } else if (nrBand > 0) {
+            // 5G NR: SM8350 supports up to 4x4 MIMO on NR Sub-6
+            mimoStatus = activeCcCount >= 2 ? "4x4 MIMO Active" : "2x2 MIMO Active";
+            antennaDiversity = "Rx0/Rx1/Rx2/Rx3 Active";
+            rxChain = "4-Branch Receiver (Primary + Diversity)";
+        } else if ("4G LTE".equals(finalTech) || finalTech.contains("VoWiFi")) {
+            if (activeCcCount >= 3) {
+                mimoStatus = "4x4 MIMO Active";
+                antennaDiversity = "Rx0/Rx1/Rx2/Rx3 Active";
+                rxChain = "4-Branch Receiver (Primary + Diversity)";
+            } else if (activeCcCount >= 2) {
+                mimoStatus = "2x2 MIMO Active";
+                antennaDiversity = "Rx0/Rx1 Active";
+                rxChain = "2-Branch Receiver (Primary + Diversity)";
+            } else {
+                mimoStatus = "2x2 MIMO Active";
+                antennaDiversity = "Rx0/Rx1 Active";
+                rxChain = "2-Branch Receiver (Primary + Diversity)";
+            }
+        } else {
+            // 3G/2G: typically single Rx or 2-branch
+            mimoStatus = "SISO (Single Stream)";
+            antennaDiversity = "Rx0 Active";
+            rxChain = "1-Branch Receiver (Primary Only)";
+        }
+
+        // Dynamic Tx Power: Hardware Sensor or 3GPP Closed-Loop Adaptive Power Control
+        String txPower;
+        if (noService) {
+            txPower = "Inactive (Radio Off / No Service)";
+        } else {
+            String vendorTxPower = SystemProperties.get("vendor.radio.txpower", "");
+            if (!vendorTxPower.isEmpty()) {
+                try {
+                    double txDbm = Double.parseDouble(vendorTxPower);
+                    txPower = String.format(java.util.Locale.US, "%.1f dBm (Hardware Sensor)", txDbm);
+                } catch (NumberFormatException e) {
+                    txPower = vendorTxPower;
+                }
+            } else if (isValidRsrp) {
+                // Adaptive Power Control calculation (3GPP TS 36.213 / 38.213)
+                double estTxDbm = Math.min(23.0, Math.max(-5.0, 23.0 - (rsrp + 105) * 0.45));
+                txPower = String.format(java.util.Locale.US, "%.1f dBm (Adaptive Power Control)", estTxDbm);
+            } else if (nrBand > 0) {
+                txPower = "≤ 23.0 dBm (Power Class 3 / FR1)";
+            } else if ("4G LTE".equals(finalTech)) {
+                txPower = "≤ 23.0 dBm (Power Class 3)";
+            } else if ("3G WCDMA".equals(finalTech)) {
+                txPower = "≤ 24.0 dBm (Power Class 3)";
+            } else if (finalTech.contains("2G")) {
+                txPower = "≤ 33.0 dBm (Power Class 4 / GSM)";
+            } else {
+                txPower = "N/A";
+            }
+        }
+
         String modemTemp = readModemTemperature();
 
         String rsrpTrend = "";
@@ -1560,9 +1762,9 @@ public class NetworkBandsFragment extends Fragment {
 
         diagBuilder.append("ANTENNA & HARDWARE\n");
         diagBuilder.append("• MIMO Status: ").append(mimoStatus).append("\n");
-        diagBuilder.append("• Antenna Diversity: ").append("Rx0/Rx1/Rx2/Rx3 Active").append("\n");
-        diagBuilder.append("• Rx Chain: ").append("4-Branch Receiver (Primary + Diversity)").append("\n");
-        diagBuilder.append("• Tx Power: ").append("23.0 dBm (Class 3 Standard)").append("\n");
+        diagBuilder.append("• Antenna Diversity: ").append(antennaDiversity).append("\n");
+        diagBuilder.append("• Rx Chain: ").append(rxChain).append("\n");
+        diagBuilder.append("• Tx Power: ").append(txPower).append("\n");
         diagBuilder.append("• Modem Temp: ").append(modemTemp).append("\n\n");
 
         diagBuilder.append("NETWORK & IMS STATE\n");
@@ -1597,6 +1799,17 @@ public class NetworkBandsFragment extends Fragment {
                 if (mStatusTechText != null) mStatusTechText.setText(finalTech);
                 if (mSummaryTechVal != null) mSummaryTechVal.setText(finalTech);
                 if (mStatusCaText != null) mStatusCaText.setText(finalCaDisplay);
+
+                // Dynamically update Connected pill based on actual network registration
+                if (mStatusConnectedPill != null) {
+                    boolean hasService = !"No Service".equals(finalTech);
+                    mStatusConnectedPill.setText(hasService ? "Connected" : "No Service");
+                    mStatusConnectedPill.setBackgroundResource(hasService
+                            ? R.drawable.pill_connected_green
+                            : R.drawable.pill_connected_gray);
+                    mStatusConnectedPill.setTextColor(Color.parseColor(hasService ? "#4ADE80" : "#9CA3AF"));
+                }
+
                 if (mDiagRsrpVal != null) {
                     mDiagRsrpVal.setText(isValidRsrp ? finalRsrp + " dBm" + finalRsrpTrend : "--");
                     if (finalRsrpTrend.contains("▲")) mDiagRsrpVal.setTextColor(Color.parseColor("#4ADE80"));
@@ -1620,7 +1833,7 @@ public class NetworkBandsFragment extends Fragment {
                     else if (isValidRsrp && finalRsrp > -105) mDiagSignalQuality.setText("Good");
                     else if (isValidRsrp && finalRsrp > -115) mDiagSignalQuality.setText("Fair");
                     else if (isValidRsrp) mDiagSignalQuality.setText("Poor");
-                    else mDiagSignalQuality.setText("Connected");
+                    else mDiagSignalQuality.setText("--");
                 }
             });
         }
@@ -1883,10 +2096,7 @@ public class NetworkBandsFragment extends Fragment {
 
         mHandler.post(() -> {
             if (!isAdded()) return;
-            if (isJioCarrier()) {
-                mNrModeActiveText.setText("5G Mode: SA Only (Jio SA Exclusive)");
-                mNrModeActiveDot.setBackgroundResource(R.drawable.active_dot_green);
-            } else if (nr) {
+            if (nr) {
                 String nrStr = nrBand > 0 ? ("NR n" + nrBand) : "NR";
                 if (lte) {
                     mNrModeActiveText.setText("EN-DC Active: 5G NSA (LTE Anchor + " + nrStr + ")");
@@ -2017,7 +2227,7 @@ public class NetworkBandsFragment extends Fragment {
 
         updateNrModeSeekbarForCarrier();
 
-        if (!isJioCarrier() && mNrModeSeekBar != null) {
+        if (mNrModeSeekBar != null) {
             mNrModeSeekBar.setProgress(1); // Auto (SA+NSA)
         }
 
@@ -2059,7 +2269,7 @@ public class NetworkBandsFragment extends Fragment {
 
             // 7. Reset OPlus 5G NR mode HAL to default
             int slotId = SubscriptionManager.getSlotIndex(mCurrentSubId);
-            if (SubscriptionManager.isValidSlotIndex(slotId) && !isJioCarrier()) {
+            if (SubscriptionManager.isValidSlotIndex(slotId)) {
                 setOplusNrModeStatic(slotId, OPLUS_NR_MODE_SA_PRE);
             }
 
@@ -2304,13 +2514,18 @@ public class NetworkBandsFragment extends Fragment {
             bvh.checkbox.setText(entry.label);
             bvh.freqText.setText(entry.freqHint);
 
+            boolean available = isSimAndRadioAvailable();
+            bvh.checkbox.setEnabled(available);
+
             bvh.checkbox.setOnCheckedChangeListener(null);
             bvh.checkbox.setChecked(entry.checked);
-            bvh.checkbox.setOnCheckedChangeListener((btn, isChecked) -> {
-                entry.checked = isChecked;
-                if (mClickListener != null) mClickListener.onPresetClicked();
-                checkApplyButtonState();
-            });
+            if (available) {
+                bvh.checkbox.setOnCheckedChangeListener((btn, isChecked) -> {
+                    entry.checked = isChecked;
+                    if (mClickListener != null) mClickListener.onPresetClicked();
+                    checkApplyButtonState();
+                });
+            }
 
             if (entry.isPCell) {
                 bvh.activeBadge.setText("PCell");
@@ -2331,13 +2546,17 @@ public class NetworkBandsFragment extends Fragment {
                 bvh.activeBadge.setVisibility(View.GONE);
             }
 
-            bvh.itemView.setOnClickListener(v -> {
-                entry.checked = !entry.checked;
-                bvh.checkbox.setOnCheckedChangeListener(null);
-                bvh.checkbox.setChecked(entry.checked);
-                if (mClickListener != null) mClickListener.onPresetClicked();
-                checkApplyButtonState();
-            });
+            if (available) {
+                bvh.itemView.setOnClickListener(v -> {
+                    entry.checked = !entry.checked;
+                    bvh.checkbox.setOnCheckedChangeListener(null);
+                    bvh.checkbox.setChecked(entry.checked);
+                    if (mClickListener != null) mClickListener.onPresetClicked();
+                    checkApplyButtonState();
+                });
+            } else {
+                bvh.itemView.setOnClickListener(null);
+            }
         }
 
         @Override
