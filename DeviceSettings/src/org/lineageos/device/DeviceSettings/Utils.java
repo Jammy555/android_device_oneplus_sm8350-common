@@ -78,4 +78,50 @@ public final class Utils {
     public static boolean fileWritable(String filename) {
         return filename != null && new File(filename).canWrite();
     }
+
+    public static void applyAppTheme(android.app.Activity activity) {
+        if (activity == null) return;
+        android.content.SharedPreferences prefs = activity.getSharedPreferences("band_lock_prefs", android.content.Context.MODE_PRIVATE);
+        boolean useDynamic = prefs.getBoolean("use_dynamic_colors", true);
+        if (!useDynamic) {
+            activity.setTheme(R.style.Theme_DeviceSettings_WarmPeach);
+        } else {
+            activity.setTheme(R.style.Theme_DeviceSettings);
+        }
+    }
+
+    public static int getSystemAccentColor(android.content.Context context) {
+        if (context == null) return android.graphics.Color.parseColor("#E5A376");
+        android.content.SharedPreferences prefs = context.getSharedPreferences("band_lock_prefs", android.content.Context.MODE_PRIVATE);
+        boolean useDynamic = prefs.getBoolean("use_dynamic_colors", true);
+        boolean isNight = (context.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        if (!useDynamic) {
+            return isNight ? android.graphics.Color.parseColor("#E5A376") : android.graphics.Color.parseColor("#D97736");
+        }
+        int accent = 0;
+        if (isNight) {
+            try {
+                int resId = context.getResources().getIdentifier("system_accent1_300", "color", "android");
+                if (resId != 0) accent = context.getColor(resId);
+            } catch (Exception ignored) {}
+        } else {
+            try {
+                int resId = context.getResources().getIdentifier("system_accent1_600", "color", "android");
+                if (resId != 0) accent = context.getColor(resId);
+            } catch (Exception ignored) {}
+        }
+        if (accent == 0) {
+            try {
+                android.util.TypedValue typedValue = new android.util.TypedValue();
+                if (context.getTheme().resolveAttribute(android.R.attr.colorAccent, typedValue, true)) {
+                    if (typedValue.data != 0) accent = typedValue.data;
+                }
+            } catch (Exception ignored) {}
+        }
+        if (accent == 0) {
+            accent = isNight ? android.graphics.Color.parseColor("#E5A376") : android.graphics.Color.parseColor("#D97736");
+        }
+        return accent;
+    }
 }
