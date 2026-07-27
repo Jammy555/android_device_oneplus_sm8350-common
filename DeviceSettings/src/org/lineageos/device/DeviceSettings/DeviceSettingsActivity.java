@@ -34,6 +34,7 @@ public final class DeviceSettingsActivity extends CollapsingToolbarBaseActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Utils.applyAppTheme(this);
         super.onCreate(savedInstanceState);
 
         if (getActionBar() != null) {

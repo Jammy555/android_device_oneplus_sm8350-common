@@ -21,12 +21,18 @@ import android.os.Looper;
 import android.os.SystemProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CellInfo;
+import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoNr;
+import android.telephony.CellInfoWcdma;
+import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityNr;
+import android.telephony.CellIdentityWcdma;
+import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthNr;
+import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessSpecifier;
@@ -82,6 +88,8 @@ public class NetworkBandsFragment extends Fragment {
     private static final String PREF_KEY_NR_MODE_PREFIX = "nr_mode_sub_"; // + subId
     private static final String PREF_KEY_RAT_MODE_PREFIX = "rat_mode_sub_"; // + subId
     private static final String PREF_KEY_CARRIER_PRESET_PREFIX = "carrier_preset_sub_"; // + subId
+    private static final String PREF_KEY_CUSTOM_RECOMMENDED_PREFIX = "custom_recommended_sub_"; // + subId
+    private static final String PREF_KEY_CUSTOM_BATTERY_SAVER_PREFIX = "custom_battery_saver_sub_"; // + subId
 
     private static final int OPLUS_NR_MODE_NSA_PRE = 0;
     private static final int OPLUS_NR_MODE_NSA_ONLY = 1;
@@ -117,6 +125,7 @@ public class NetworkBandsFragment extends Fragment {
     private Spinner mSimSpinner;
     private Button mApplyButton;
     private Button mResetButton;
+    private Button mBtnSaveCustomPreset;
     private TextView mStatusText;
 
     private View mCarrierSummaryCard;
@@ -276,6 +285,10 @@ public class NetworkBandsFragment extends Fragment {
         mSelectedGenLabel = view.findViewById(R.id.selected_gen_label);
         mSelectedGenCount = view.findViewById(R.id.selected_gen_count);
         mBtnClearGenBands = view.findViewById(R.id.btn_clear_gen_bands);
+        mBtnSaveCustomPreset = view.findViewById(R.id.btn_save_custom_preset);
+        if (mBtnSaveCustomPreset != null) {
+            mBtnSaveCustomPreset.setOnClickListener(v -> showSaveCustomProfileDialog());
+        }
 
         RecyclerView recyclerView = view.findViewById(R.id.bands_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -308,16 +321,19 @@ public class NetworkBandsFragment extends Fragment {
                 Button posBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
                 if (posBtn != null) {
                     posBtn.setEnabled(false);
+                    posBtn.setTextColor(Color.parseColor("#F87171"));
                     new CountDownTimer(3000, 1000) {
                         @Override
                         public void onTick(long millisUntilFinished) {
                             long sec = (millisUntilFinished / 1000) + 1;
                             posBtn.setText("Reset (" + sec + "s)");
+                            posBtn.setTextColor(Color.parseColor("#F87171"));
                         }
 
                         @Override
                         public void onFinish() {
                             posBtn.setText("Reset");
+                            posBtn.setTextColor(Color.parseColor("#F87171"));
                             posBtn.setEnabled(true);
                         }
                     }.start();
@@ -337,6 +353,80 @@ public class NetworkBandsFragment extends Fragment {
         updateActiveBands();
         updateLiveDiagnostics(null);
         checkApplyButtonState();
+        checkShowNonIndiaFirstTimePopup();
+    }
+
+    private static final String PREF_KEY_FIRST_TIME_NON_INDIA_POPUP_SHOWN = "first_time_non_india_popup_shown";
+
+    private boolean isNonIndiaRegion() {
+        try {
+            // Check modem RF version from init_oplus.cpp (rf_version 13 = IN)
+            String rfVer = SystemProperties.get("ro.boot.rf_version", "");
+            if ("13".equals(rfVer)) return false;
+
+            // Check product model from init_oplus.cpp (RMX3360, MT2111, LE2111, LE2121 = India)
+            String model = SystemProperties.get("ro.product.product.model", "");
+            if ("LE2111".equalsIgnoreCase(model) || "LE2121".equalsIgnoreCase(model)
+                    || "RMX3360".equalsIgnoreCase(model) || "MT2111".equalsIgnoreCase(model)) {
+                return false;
+            }
+
+            // Check active SIM MCC (404 / 405 = India)
+            TelephonyManager tm = getTelephonyManager();
+            String simOperator = tm.getSimOperator();
+            if (simOperator != null && (simOperator.startsWith("404") || simOperator.startsWith("405"))) {
+                return false;
+            }
+
+            return true; // Non-India region device / SIM
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void checkShowNonIndiaFirstTimePopup() {
+        if (!isNonIndiaRegion()) return;
+
+        boolean alreadyShown = getPrefs().getBoolean(PREF_KEY_FIRST_TIME_NON_INDIA_POPUP_SHOWN, false);
+        if (alreadyShown) return;
+
+        getPrefs().edit().putBoolean(PREF_KEY_FIRST_TIME_NON_INDIA_POPUP_SHOWN, true).apply();
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Global Band Profiles Note")
+                .setMessage("Welcome! Preset profiles (Recommended & Battery Saver) haven't been tailored for all regional operators. Since local spectrum allocations vary by region and the cell tower you are close to, you can customize and save your own preferred anchor & primary bands anytime using the 'Save Profile' button!")
+                .setPositiveButton("Got it (5s)", null)
+                .create();
+
+        dialog.show();
+
+        Button btn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        if (btn != null) {
+            btn.setTextColor(getSystemAccentColor(requireContext()));
+            CountDownTimer timer = new CountDownTimer(5000, 1000) {
+                @Override
+                public void onTick(long millisUntilFinished) {
+                    long sec = (millisUntilFinished / 1000) + 1;
+                    btn.setText("Got it (" + sec + "s)");
+                }
+
+                @Override
+                public void onFinish() {
+                    if (dialog.isShowing()) {
+                        try {
+                            dialog.dismiss();
+                        } catch (Exception ignored) {}
+                    }
+                }
+            };
+            timer.start();
+            btn.setOnClickListener(v -> {
+                timer.cancel();
+                try {
+                    dialog.dismiss();
+                } catch (Exception ignored) {}
+            });
+        }
     }
 
     @Override
@@ -491,8 +581,8 @@ public class NetworkBandsFragment extends Fragment {
         ratPresets.add("3G/2G Legacy Network");
         ratPresets.add("Global All RATs Allowed");
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, ratPresets);
+        ContrastSpinnerAdapter adapter = new ContrastSpinnerAdapter(
+                requireContext(), R.layout.item_sim_spinner, ratPresets);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mRatModeSpinner.setAdapter(adapter);
 
@@ -516,13 +606,23 @@ public class NetworkBandsFragment extends Fragment {
         boolean g4 = mChk4G != null && mChk4G.isChecked();
         boolean g5 = mChk5G != null && mChk5G.isChecked();
 
-        // Safety Guard: 5G NSA requires 4G LTE anchor cell when not in 5G SA mode
-        int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
-        boolean isSaMode = (savedNrMode == 2 || savedNrMode == 3);
-        if ((g5 || !isSaMode) && !g4 && !isSaMode) {
-            g4 = true;
-            if (mChk4G != null) mChk4G.setChecked(true);
-            toast("5G NSA requires 4G LTE anchor — auto-enabled 4G for network stability.");
+        // Safety Guard: Evaluate 5G NSA 4G anchor requirements ONLY if 5G is enabled by user
+        if (g5) {
+            int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
+            boolean isNsaOnlyMode = (savedNrMode == 0);
+            boolean isAutoNsaSaMode = (savedNrMode == 1);
+
+            if (!g4) {
+                if (isNsaOnlyMode) {
+                    // In 5G NSA Only mode, 4G LTE anchor is mandatory for EN-DC dual connectivity
+                    g4 = true;
+                    if (mChk4G != null) mChk4G.setChecked(true);
+                    toast("5G NSA Only requires 4G LTE anchor — auto-enabled 4G.");
+                } else if (isAutoNsaSaMode) {
+                    // In Auto SA+NSA mode, allow unticking 4G, but inform the user
+                    toast("Note: 5G NSA connection requires 4G LTE anchor cell.");
+                }
+            }
         }
 
         long bitmask = 0;
@@ -624,8 +724,8 @@ public class NetworkBandsFragment extends Fragment {
         presets.add(hasCarrier ? "Recommended (" + carrier + ")" : "Recommended");
         presets.add("Battery Saver (FDD Anchor)");
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                requireContext(), android.R.layout.simple_spinner_item, presets);
+        ContrastSpinnerAdapter adapter = new ContrastSpinnerAdapter(
+                requireContext(), R.layout.item_sim_spinner, presets);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         mCarrierPresetSpinner.setOnItemSelectedListener(null);
@@ -717,14 +817,160 @@ public class NetworkBandsFragment extends Fragment {
         return AccessNetworkConstants.AccessNetworkType.NGRAN;
     }
 
+    private static final String PREF_KEY_USE_DYNAMIC_COLORS = "use_dynamic_colors";
+
+    private boolean isNightMode(Context context) {
+        if (context == null) return true;
+        int uiMode = context.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return uiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private int getSystemAccentColor(Context context) {
+        if (context == null) return Color.parseColor("#E5A376");
+        boolean useDynamic = getPrefs().getBoolean(PREF_KEY_USE_DYNAMIC_COLORS, true);
+        boolean isNight = isNightMode(context);
+        if (!useDynamic) {
+            return isNight ? Color.parseColor("#E5A376") : Color.parseColor("#D97736");
+        }
+        int accent = 0;
+        if (isNight) {
+            try {
+                int resId = context.getResources().getIdentifier("system_accent1_300", "color", "android");
+                if (resId != 0) accent = context.getColor(resId);
+            } catch (Exception ignored) {}
+            if (accent == 0) {
+                try {
+                    int resId = context.getResources().getIdentifier("system_accent1_200", "color", "android");
+                    if (resId != 0) accent = context.getColor(resId);
+                } catch (Exception ignored) {}
+            }
+        } else {
+            try {
+                int resId = context.getResources().getIdentifier("system_accent1_600", "color", "android");
+                if (resId != 0) accent = context.getColor(resId);
+            } catch (Exception ignored) {}
+        }
+        if (accent == 0) {
+            try {
+                android.util.TypedValue typedValue = new android.util.TypedValue();
+                if (context.getTheme().resolveAttribute(android.R.attr.colorAccent, typedValue, true)) {
+                    if (typedValue.data != 0) {
+                        accent = typedValue.data;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        if (accent == 0) {
+            accent = isNight ? Color.parseColor("#E5A376") : Color.parseColor("#D97736");
+        }
+        return isNight ? ensureReadableOnDark(accent) : ensureReadableOnLight(accent);
+    }
+
+    private int ensureReadableOnDark(int color) {
+        float[] hsl = new float[3];
+        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
+        if (hsl[2] < 0.60f) {
+            hsl[2] = 0.72f;
+            return androidx.core.graphics.ColorUtils.HSLToColor(hsl);
+        }
+        return color;
+    }
+
+    private int ensureReadableOnLight(int color) {
+        float[] hsl = new float[3];
+        androidx.core.graphics.ColorUtils.colorToHSL(color, hsl);
+        if (hsl[2] > 0.55f) {
+            hsl[2] = 0.45f;
+            return androidx.core.graphics.ColorUtils.HSLToColor(hsl);
+        }
+        return color;
+    }
+
+    private int getSpinnerBackgroundTint(int accentColor) {
+        int r = (int) (Color.red(accentColor) * 0.35f);
+        int g = (int) (Color.green(accentColor) * 0.32f);
+        int b = (int) (Color.blue(accentColor) * 0.30f);
+        r = Math.max(r, 45);
+        g = Math.max(g, 40);
+        b = Math.max(b, 35);
+        return Color.rgb(r, g, b);
+    }
+
     private void updateTabStyles() {
-        int accent = Color.parseColor("#E5A376");
-        int muted = Color.parseColor("#808090");
+        Context context = getContext();
+        if (context == null) return;
+        int accent = getSystemAccentColor(context);
+        int muted = context.getColor(R.color.text_secondary_color);
 
         if (mTab5G != null) mTab5G.setTextColor(mSelectedGenerationTab == 0 ? accent : muted);
         if (mTab4G != null) mTab4G.setTextColor(mSelectedGenerationTab == 1 ? accent : muted);
         if (mTab3G != null) mTab3G.setTextColor(mSelectedGenerationTab == 2 ? accent : muted);
         if (mTab2G != null) mTab2G.setTextColor(mSelectedGenerationTab == 3 ? accent : muted);
+
+        android.content.res.ColorStateList accentTintList = android.content.res.ColorStateList.valueOf(accent);
+        int spinnerBg = accent;
+        double spinnerLum = (Color.red(spinnerBg) * 0.299 + Color.green(spinnerBg) * 0.587 + Color.blue(spinnerBg) * 0.114);
+        int spinnerTextColor = spinnerLum > 140 ? Color.parseColor("#101012") : Color.parseColor("#FFFFFF");
+        android.content.res.ColorStateList spinnerTintList = android.content.res.ColorStateList.valueOf(spinnerBg);
+
+        if (mSimSpinner != null) {
+            mSimSpinner.setBackgroundTintList(spinnerTintList);
+            if (mSimSpinner.getAdapter() instanceof ContrastSpinnerAdapter) {
+                ((ContrastSpinnerAdapter) mSimSpinner.getAdapter()).setTextColor(spinnerTextColor);
+            }
+        }
+        if (mCarrierPresetSpinner != null) {
+            mCarrierPresetSpinner.setBackgroundTintList(spinnerTintList);
+            if (mCarrierPresetSpinner.getAdapter() instanceof ContrastSpinnerAdapter) {
+                ((ContrastSpinnerAdapter) mCarrierPresetSpinner.getAdapter()).setTextColor(spinnerTextColor);
+            }
+        }
+        if (mRatModeSpinner != null) {
+            mRatModeSpinner.setBackgroundTintList(spinnerTintList);
+            if (mRatModeSpinner.getAdapter() instanceof ContrastSpinnerAdapter) {
+                ((ContrastSpinnerAdapter) mRatModeSpinner.getAdapter()).setTextColor(spinnerTextColor);
+            }
+        }
+
+        if (mChk2G != null) mChk2G.setButtonTintList(accentTintList);
+        if (mChk3G != null) mChk3G.setButtonTintList(accentTintList);
+        if (mChk4G != null) mChk4G.setButtonTintList(accentTintList);
+        if (mChk5G != null) mChk5G.setButtonTintList(accentTintList);
+
+        if (mSummaryBandLockVal != null) {
+            mSummaryBandLockVal.setTextColor(accent);
+        }
+        if (mApplyButton != null) {
+            double luminance = (Color.red(accent) * 0.299 + Color.green(accent) * 0.587 + Color.blue(accent) * 0.114);
+            int contrastTextColor = luminance > 135 ? Color.parseColor("#101012") : Color.parseColor("#FFFFFF");
+            mApplyButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));
+            mApplyButton.setTextColor(contrastTextColor);
+        }
+        if (mBtnSaveCustomPreset != null) {
+            mBtnSaveCustomPreset.setTextColor(accent);
+        }
+        if (mBtnClearGenBands != null) {
+            mBtnClearGenBands.setTextColor(accent);
+        }
+        if (mNrModeSeekBar != null) {
+            mNrModeSeekBar.setProgressTintList(android.content.res.ColorStateList.valueOf(accent));
+            mNrModeSeekBar.setThumbTintList(android.content.res.ColorStateList.valueOf(accent));
+        }
+        if (mAdvancedDiagChevron != null) {
+            mAdvancedDiagChevron.setTextColor(accent);
+        }
+        if (getView() != null) {
+            TextView headerCarrier = getView().findViewById(R.id.header_carrier_summary);
+            if (headerCarrier != null) headerCarrier.setTextColor(accent);
+            TextView headerDiag = getView().findViewById(R.id.header_advanced_diag);
+            if (headerDiag != null) headerDiag.setTextColor(accent);
+        }
+        if (mStatusActiveBandsChips != null) {
+            mStatusActiveBandsChips.setTextColor(accent);
+        }
+        if (mStatusText != null) {
+            mStatusText.setTextColor(accent);
+        }
 
         String genName = (mSelectedGenerationTab == 0) ? "5G" :
                          (mSelectedGenerationTab == 1) ? "4G" :
@@ -732,6 +978,10 @@ public class NetworkBandsFragment extends Fragment {
 
         if (mSelectedGenLabel != null) {
             mSelectedGenLabel.setText("Selected " + genName + " Bands");
+        }
+
+        if (mAdapter != null) {
+            mAdapter.notifyDataSetChanged();
         }
     }
 
@@ -750,8 +1000,8 @@ public class NetworkBandsFragment extends Fragment {
         Collections.sort(filtered, (a, b) -> {
             boolean aSaved = savedKeys.contains(a.rat + ":" + a.bandNum);
             boolean bSaved = savedKeys.contains(b.rat + ":" + b.bandNum);
-            boolean aTop = aSaved || a.isPCell || a.isSCell;
-            boolean bTop = bSaved || b.isPCell || b.isSCell;
+            boolean aTop = a.checked || aSaved || a.isActive || a.isPCell || a.isSCell;
+            boolean bTop = b.checked || bSaved || b.isActive || b.isPCell || b.isSCell;
             if (aTop != bTop) {
                 return aTop ? -1 : 1;
             }
@@ -780,9 +1030,72 @@ public class NetworkBandsFragment extends Fragment {
         }
     }
 
+    private void showSaveCustomProfileDialog() {
+        int count = countChecked();
+        if (count == 0) {
+            toast("No bands selected to save profile.");
+            return;
+        }
+
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_save_custom_profile, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setView(view)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        View btnRecommended = view.findViewById(R.id.btn_save_recommended_slot);
+        View btnBatterySaver = view.findViewById(R.id.btn_save_battery_saver_slot);
+        View btnCancel = view.findViewById(R.id.btn_cancel_save_profile);
+
+        View.OnClickListener clickListener = v -> {
+            int id = v.getId();
+            if (id == R.id.btn_save_recommended_slot || id == R.id.btn_save_battery_saver_slot) {
+                boolean isRecommended = (id == R.id.btn_save_recommended_slot);
+                Set<String> keysToSave = new HashSet<>();
+                for (BandEntry e : mBandEntries) {
+                    if (e.checked && !e.isHeader) {
+                        keysToSave.add(e.rat + ":" + e.bandNum);
+                    }
+                }
+                String key = isRecommended
+                        ? (PREF_KEY_CUSTOM_RECOMMENDED_PREFIX + mCurrentSubId)
+                        : (PREF_KEY_CUSTOM_BATTERY_SAVER_PREFIX + mCurrentSubId);
+                getPrefs().edit().putStringSet(key, keysToSave).apply();
+                toast((isRecommended ? "Recommended" : "Battery Saver") + " custom profile saved!");
+                dialog.dismiss();
+            } else if (id == R.id.btn_cancel_save_profile) {
+                dialog.dismiss();
+            }
+        };
+
+        if (btnRecommended != null) btnRecommended.setOnClickListener(clickListener);
+        if (btnBatterySaver != null) btnBatterySaver.setOnClickListener(clickListener);
+        if (btnCancel != null) btnCancel.setOnClickListener(clickListener);
+
+        dialog.show();
+    }
+
     private void applyCarrierPresetForCarrier(String carrier, int option) {
         for (BandEntry e : mBandEntries) e.checked = false;
         String c = (carrier != null) ? carrier.toLowerCase() : "";
+
+        // 1. Check if user saved a custom profile for this subId first
+        String customKey = (option == 1)
+                ? (PREF_KEY_CUSTOM_RECOMMENDED_PREFIX + mCurrentSubId)
+                : (PREF_KEY_CUSTOM_BATTERY_SAVER_PREFIX + mCurrentSubId);
+        Set<String> customSaved = getPrefs().getStringSet(customKey, null);
+        if (customSaved != null && !customSaved.isEmpty()) {
+            for (BandEntry e : mBandEntries) {
+                if (!e.isHeader && customSaved.contains(e.rat + ":" + e.bandNum)) {
+                    e.checked = true;
+                }
+            }
+            filterBandsByGeneration();
+            return;
+        }
 
         if (option == 1) { // Recommended (Carrier-optimized / Primary Bands)
             if (c.contains("jio")) {
@@ -872,17 +1185,37 @@ public class NetworkBandsFragment extends Fragment {
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 77);
                 checkBand(AccessNetworkConstants.AccessNetworkType.NGRAN, 78);
             }
-        } else if (option == 2) { // Battery Saver (Low Band / FDD Primary Focus)
-            // Universal Low Band FDD Anchors (B1, B3, B5, B8, B12, B13, B20, B28, B71)
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 12);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 13);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 20);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 28);
-            checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 71);
+        } else if (option == 2) { // Battery Saver (Carrier-specific Low Band FDD Focus)
+            if (c.contains("jio")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+            } else if (c.contains("airtel") || c.contains("vi") || c.contains("vodafone") || c.contains("idea")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
+            } else if (c.contains("bsnl")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 28);
+            } else if (c.contains("t-mobile") || c.contains("tmobile")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 12);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 71);
+            } else if (c.contains("verizon")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 13);
+            } else if (c.contains("at&t") || c.contains("att")) {
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 12);
+            } else {
+                // Universal Low Band FDD Anchors (B1, B3, B5, B8, B20, B28)
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 1);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 3);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 5);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 8);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 20);
+                checkBand(AccessNetworkConstants.AccessNetworkType.EUTRAN, 28);
+            }
         }
 
         filterBandsByGeneration();
@@ -893,6 +1226,11 @@ public class NetworkBandsFragment extends Fragment {
     }
 
     private void checkBand(int rat, int bandNum) {
+        if (rat == AccessNetworkConstants.AccessNetworkType.NGRAN && (mChk5G != null && !mChk5G.isChecked())) return;
+        if (rat == AccessNetworkConstants.AccessNetworkType.EUTRAN && (mChk4G != null && !mChk4G.isChecked())) return;
+        if (rat == AccessNetworkConstants.AccessNetworkType.UTRAN && (mChk3G != null && !mChk3G.isChecked())) return;
+        if (rat == AccessNetworkConstants.AccessNetworkType.GERAN && (mChk2G != null && !mChk2G.isChecked())) return;
+
         for (BandEntry e : mBandEntries) {
             if (e.rat == rat && e.bandNum == bandNum) {
                 e.checked = true;
@@ -924,25 +1262,60 @@ public class NetworkBandsFragment extends Fragment {
     }
 
     private void updateNrModeSeekbarForCarrier() {
-        if (mNrModeSeekBar == null) return;
-        boolean is5gChecked = (mChk5G != null && mChk5G.isChecked());
+        boolean g2 = (mChk2G != null && mChk2G.isChecked());
+        boolean g3 = (mChk3G != null && mChk3G.isChecked());
+        boolean g4 = (mChk4G != null && mChk4G.isChecked());
+        boolean g5 = (mChk5G != null && mChk5G.isChecked());
         boolean available = isSimAndRadioAvailable();
 
-        if (!is5gChecked) {
-            // Hide the 5G NR Mode card completely if 5G is not checked in RAT Preference
+        // 1. Update 5G NR Mode Card Visibility
+        if (!g5) {
             if (mNrModeCard != null) mNrModeCard.setVisibility(View.GONE);
-            mNrModeSeekBar.setEnabled(false);
+            if (mNrModeSeekBar != null) mNrModeSeekBar.setEnabled(false);
         } else {
-            // Show card if 5G is enabled in RAT Preference
             if (mNrModeCard != null) {
                 mNrModeCard.setVisibility(View.VISIBLE);
                 mNrModeCard.setAlpha(available ? 1.0f : 0.4f);
             }
-            mNrModeSeekBar.setEnabled(available);
-            if (available) {
+            if (mNrModeSeekBar != null) mNrModeSeekBar.setEnabled(available);
+            if (available && mNrModeSeekBar != null) {
                 int savedNrMode = getPrefs().getInt(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId, 1);
                 mNrModeSeekBar.setProgress(savedNrMode);
             }
+        }
+
+        // 2. Dynamic Per-RAT Generation Tab Fading (2G, 3G, 4G, 5G)
+        if (mTab5G != null) {
+            mTab5G.setEnabled(g5 && available);
+            mTab5G.setAlpha((g5 && available) ? 1.0f : 0.35f);
+        }
+        if (mTab4G != null) {
+            mTab4G.setEnabled(g4 && available);
+            mTab4G.setAlpha((g4 && available) ? 1.0f : 0.35f);
+        }
+        if (mTab3G != null) {
+            mTab3G.setEnabled(g3 && available);
+            mTab3G.setAlpha((g3 && available) ? 1.0f : 0.35f);
+        }
+        if (mTab2G != null) {
+            mTab2G.setEnabled(g2 && available);
+            mTab2G.setAlpha((g2 && available) ? 1.0f : 0.35f);
+        }
+
+        // 3. Auto-switch active generation tab if user unchecked the currently selected tab
+        boolean activeTabAllowed = (mSelectedGenerationTab == 0 && g5)
+                                || (mSelectedGenerationTab == 1 && g4)
+                                || (mSelectedGenerationTab == 2 && g3)
+                                || (mSelectedGenerationTab == 3 && g2);
+
+        if (!activeTabAllowed) {
+            if (g5) mSelectedGenerationTab = 0;
+            else if (g4) mSelectedGenerationTab = 1;
+            else if (g3) mSelectedGenerationTab = 2;
+            else if (g2) mSelectedGenerationTab = 3;
+
+            updateTabStyles();
+            filterBandsByGeneration();
         }
     }
 
@@ -974,7 +1347,7 @@ public class NetworkBandsFragment extends Fragment {
             labels.add(label);
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+        ContrastSpinnerAdapter adapter = new ContrastSpinnerAdapter(
                 requireContext(), R.layout.item_sim_spinner, labels);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mSimSpinner.setAdapter(adapter);
@@ -1145,6 +1518,7 @@ public class NetworkBandsFragment extends Fragment {
                 .inflate(R.layout.dialog_advanced_network_settings, null);
 
         Switch switchVonr = dialogView.findViewById(R.id.dialog_switch_vonr);
+        Switch switchDynamicColors = dialogView.findViewById(R.id.dialog_switch_dynamic_colors);
 
         if (switchVonr != null) {
             boolean vonrEnabled = SystemProperties.getBoolean("persist.sys.vonr_enable",
@@ -1159,13 +1533,49 @@ public class NetworkBandsFragment extends Fragment {
             });
         }
 
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+        final AlertDialog[] dialogHolder = new AlertDialog[1];
+        dialogHolder[0] = new AlertDialog.Builder(requireContext())
                 .setView(dialogView)
                 .setPositiveButton("Done", null)
                 .create();
-        dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dialogHolder[0].show();
+
+        Runnable updateDialogColors = () -> {
+            int currentAccent = getSystemAccentColor(requireContext());
+            int[] titleIds = {
+                R.id.dialog_title_radio, R.id.dialog_title_rf, R.id.dialog_title_antenna,
+                R.id.dialog_title_security, R.id.dialog_title_status, R.id.dialog_title_credits
+            };
+            for (int id : titleIds) {
+                TextView tv = dialogView.findViewById(id);
+                if (tv != null) tv.setTextColor(currentAccent);
+            }
+            android.content.res.ColorStateList tintList = android.content.res.ColorStateList.valueOf(currentAccent);
+            if (dialogHolder[0] != null) {
+                Button doneBtn = dialogHolder[0].getButton(AlertDialog.BUTTON_POSITIVE);
+                if (doneBtn != null) {
+                    double lum = (Color.red(currentAccent) * 0.299 + Color.green(currentAccent) * 0.587 + Color.blue(currentAccent) * 0.114);
+                    int textContrast = lum > 140 ? Color.parseColor("#101012") : Color.parseColor("#FFFFFF");
+                    doneBtn.setBackgroundTintList(tintList);
+                    doneBtn.setTextColor(textContrast);
+                }
+            }
+        };
+        updateDialogColors.run();
+
+        if (switchDynamicColors != null) {
+            boolean enabled = getPrefs().getBoolean(PREF_KEY_USE_DYNAMIC_COLORS, true);
+            switchDynamicColors.setChecked(enabled);
+            switchDynamicColors.setOnCheckedChangeListener((btn, isChecked) -> {
+                getPrefs().edit().putBoolean(PREF_KEY_USE_DYNAMIC_COLORS, isChecked).commit();
+                toast(isChecked ? "System Monet Dynamic Colors Enabled" : "Warm Peach Accent Theme Enabled");
+                updateTabStyles();
+                filterBandsByGeneration();
+                updateDialogColors.run();
+            });
+        }
+        if (dialogHolder[0].getWindow() != null) {
+            dialogHolder[0].getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
     }
 
@@ -1438,6 +1848,22 @@ public class NetworkBandsFragment extends Fragment {
                     if (rsrp == -999) rsrp = nrSs.getSsRsrp();
                     if (rsrq == -999) rsrq = nrSs.getSsRsrq();
                     if (sinr == -999) sinr = nrSs.getSsSinr();
+                } else if (css instanceof CellSignalStrengthGsm) {
+                    CellSignalStrengthGsm gsmSs = (CellSignalStrengthGsm) css;
+                    if (rsrp == -999) rsrp = gsmSs.getDbm();
+                    if (ta == -1 || ta == Integer.MAX_VALUE) ta = gsmSs.getTimingAdvance();
+                } else if (css instanceof CellSignalStrengthWcdma) {
+                    CellSignalStrengthWcdma wcdmaSs = (CellSignalStrengthWcdma) css;
+                    if (rsrp == -999) rsrp = wcdmaSs.getDbm();
+                    if (sinr == -999) sinr = wcdmaSs.getEcNo();
+                }
+            }
+
+            // Fallback: system level primary dBm if legacy RAT specific method is unavailable
+            if (rsrp == -999 || rsrp == Integer.MAX_VALUE) {
+                int dbm = ss.getDbm();
+                if (dbm != 0 && dbm != -1 && dbm != Integer.MAX_VALUE) {
+                    rsrp = dbm;
                 }
             }
         }
@@ -1472,6 +1898,24 @@ public class NetworkBandsFragment extends Fragment {
                         if (rsrp == -999) rsrp = nrSs.getSsRsrp();
                         if (rsrq == -999) rsrq = nrSs.getSsRsrq();
                         if (sinr == -999) sinr = nrSs.getSsSinr();
+                    } else if (info instanceof CellInfoGsm) {
+                        CellInfoGsm gsmInfo = (CellInfoGsm) info;
+                        CellIdentityGsm cellId = gsmInfo.getCellIdentity();
+                        if (pci < 0) pci = cellId.getBsic();
+                        if (earfcn <= 0) earfcn = cellId.getArfcn();
+
+                        CellSignalStrengthGsm gsmSs = gsmInfo.getCellSignalStrength();
+                        if (rsrp == -999) rsrp = gsmSs.getDbm();
+                        if (ta == -1 || ta == Integer.MAX_VALUE) ta = gsmSs.getTimingAdvance();
+                    } else if (info instanceof CellInfoWcdma) {
+                        CellInfoWcdma wcdmaInfo = (CellInfoWcdma) info;
+                        CellIdentityWcdma cellId = wcdmaInfo.getCellIdentity();
+                        if (pci < 0) pci = cellId.getPsc();
+                        if (earfcn <= 0) earfcn = cellId.getUarfcn();
+
+                        CellSignalStrengthWcdma wcdmaSs = wcdmaInfo.getCellSignalStrength();
+                        if (rsrp == -999) rsrp = wcdmaSs.getDbm();
+                        if (sinr == -999) sinr = wcdmaSs.getEcNo();
                     }
                 }
             }
@@ -2202,13 +2646,8 @@ public class NetworkBandsFragment extends Fragment {
     @android.annotation.SuppressLint("MissingPermission")
     private void resetBandsClean() {
         Log.i(TAG, "resetBandsClean: Resetting band lock configuration to modem defaults for subId=" + mCurrentSubId);
-        // 1. Clear stored band keys and preferences
-        saveBandKeys(new HashSet<>());
-        getPrefs().edit().remove(PREF_KEY_RAT_MODE_PREFIX + mCurrentSubId).apply();
-        getPrefs().edit().remove(PREF_KEY_NR_MODE_PREFIX + mCurrentSubId).apply();
-        getPrefs().edit().remove(PREF_KEY_CARRIER_PRESET_PREFIX + mCurrentSubId).apply();
 
-        // 2. Uncheck all band entries in UI
+        // 1. Uncheck all band entries in UI (preserve stored custom profiles in SharedPreferences)
         for (BandEntry e : mBandEntries) {
             e.checked = false;
             e.isActive = false;
@@ -2514,6 +2953,9 @@ public class NetworkBandsFragment extends Fragment {
             bvh.checkbox.setText(entry.label);
             bvh.freqText.setText(entry.freqHint);
 
+            int currentAccent = getSystemAccentColor(holder.itemView.getContext());
+            bvh.checkbox.setButtonTintList(android.content.res.ColorStateList.valueOf(currentAccent));
+
             boolean available = isSimAndRadioAvailable();
             bvh.checkbox.setEnabled(available);
 
@@ -2572,6 +3014,32 @@ public class NetworkBandsFragment extends Fragment {
                 freqText    = v.findViewById(R.id.band_freq_text);
                 activeBadge = v.findViewById(R.id.band_active_badge);
             }
+        }
+    }
+
+    private static class ContrastSpinnerAdapter extends ArrayAdapter<String> {
+        private int mTextColor = Color.WHITE;
+
+        public ContrastSpinnerAdapter(Context context, int resource, List<String> objects) {
+            super(context, resource, objects);
+        }
+
+        public void setTextColor(int color) {
+            if (mTextColor != color) {
+                mTextColor = color;
+                notifyDataSetChanged();
+            }
+        }
+
+        @NonNull
+        @Override
+        public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+            View v = super.getView(position, convertView, parent);
+            TextView tv = v.findViewById(android.R.id.text1);
+            if (tv != null) {
+                tv.setTextColor(mTextColor);
+            }
+            return v;
         }
     }
 }

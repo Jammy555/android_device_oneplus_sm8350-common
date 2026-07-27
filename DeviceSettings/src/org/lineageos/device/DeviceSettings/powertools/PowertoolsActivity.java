@@ -27,6 +27,7 @@ public final class PowertoolsActivity extends CollapsingToolbarBaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        org.lineageos.device.DeviceSettings.Utils.applyAppTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_powertools);
 

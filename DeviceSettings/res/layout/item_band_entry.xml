@@ -16,7 +16,7 @@
         android:layout_weight="1"
         android:textSize="14sp"
         android:textStyle="bold"
-        android:textColor="#E0E0E0"
+        android:textColor="@color/text_primary_color"
         android:paddingStart="4dp" />
 
     <!-- "PCell" / "SCell" / "ACTIVE" pill badge: shown when modem is live on this band -->
@@ -40,7 +40,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="11sp"
-        android:textColor="#808090"
+        android:textColor="@color/text_secondary_color"
         android:gravity="end" />
 
 </LinearLayout>

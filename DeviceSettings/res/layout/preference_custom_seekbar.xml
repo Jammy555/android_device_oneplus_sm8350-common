@@ -92,7 +92,8 @@
                 android:id="@+id/minus"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_custom_seekbar_minus" />
+                android:src="@drawable/ic_custom_seekbar_minus"
+                android:tint="?android:attr/textColorSecondary" />
 
             <SeekBar
                 android:id="@+id/seekbar"
@@ -101,13 +102,15 @@
                 android:layout_weight="1"
                 android:splitTrack="false"
                 android:progressDrawable="@drawable/squiggly_progress_drawable"
+                android:thumb="@drawable/seekbar_thumb_knob"
                 android:thumbTint="?android:attr/colorAccent" />
 
             <ImageView
                 android:id="@+id/plus"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_custom_seekbar_plus" />
+                android:src="@drawable/ic_custom_seekbar_plus"
+                android:tint="?android:attr/textColorSecondary" />
         </LinearLayout>
     </RelativeLayout>
 </LinearLayout>
