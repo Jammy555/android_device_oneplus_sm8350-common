@@ -101,11 +101,11 @@
     <string name="gpu_governor">Governor</string>
     <string name="gpu_governor_summary">Select GPU frequency scaling algorithm</string>
 
-    <string name="powertools_cpu_enable_title">CPU Manual Control</string>
-    <string name="powertools_cpu_enable_summary">Adjust available CPU cluster limits and governors within profile bounds</string>
-    <string name="powertools_cpu_little_category">Little Cluster (policy0)</string>
-    <string name="powertools_cpu_big_category">Big Cluster (policy4)</string>
-    <string name="powertools_cpu_prime_category">Prime Cluster (policy7)</string>
+    <string name="powertools_cpu_enable_title">CPU Tweaking</string>
+    <string name="powertools_cpu_enable_summary">Adjust CPU cluster limits and governors within profile bounds</string>
+    <string name="powertools_cpu_little_category">Little Cluster (Cortex-A55, Cores 0-3)</string>
+    <string name="powertools_cpu_big_category">Big Cluster (Cortex-A78, Cores 4-6)</string>
+    <string name="powertools_cpu_prime_category">Prime Cluster (Cortex-X1, Core 7)</string>
     <string name="powertools_min_freq">Minimum Frequency</string>
     <string name="powertools_max_freq">Maximum Frequency</string>
     <string name="powertools_governor">Governor</string>

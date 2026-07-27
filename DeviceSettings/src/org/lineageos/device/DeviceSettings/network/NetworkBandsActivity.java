@@ -30,6 +30,7 @@ public final class NetworkBandsActivity extends CollapsingToolbarBaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        org.lineageos.device.DeviceSettings.Utils.applyAppTheme(this);
         super.onCreate(savedInstanceState);
 
         if (getActionBar() != null) {
@@ -51,6 +52,10 @@ public final class NetworkBandsActivity extends CollapsingToolbarBaseActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.network_bands_menu, menu);
+        MenuItem item = menu.findItem(R.id.action_advanced_settings);
+        if (item != null) {
+            item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        }
         return true;
     }
 

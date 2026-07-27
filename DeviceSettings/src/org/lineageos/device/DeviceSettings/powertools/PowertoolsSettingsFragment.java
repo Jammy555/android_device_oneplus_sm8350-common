@@ -63,6 +63,22 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
 
     @Override
+    public void onViewCreated(android.view.View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        androidx.recyclerview.widget.RecyclerView listView = getListView();
+        if (listView != null) {
+            listView.setClipToPadding(false);
+            int paddingBottom = (int) (24 * getResources().getDisplayMetrics().density);
+            listView.setPadding(
+                listView.getPaddingLeft(),
+                listView.getPaddingTop(),
+                listView.getPaddingRight(),
+                paddingBottom
+            );
+        }
+    }
+
+    @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.powertools_settings, rootKey);
         mPowerProfileUtil = new PowerProfileUtil(requireContext());
@@ -91,21 +107,49 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
         initializeControlGroups();
 
-        // Pre-populate mode card and summaries immediately so there is no blank flash
-        // when the fragment is first drawn. onResume will do a full sync afterwards.
-        syncActiveModeUI();
-        int mode = getCurrentProfileMode();
-        if (mPowerProfilePref != null) {
-            CharSequence entry = mPowerProfilePref.getEntry();
-            if (entry != null) mPowerProfilePref.setSummary(entry);
+        androidx.preference.PreferenceScreen screen = getPreferenceScreen();
+        if (screen != null) {
+            for (int i = 0; i < screen.getPreferenceCount(); i++) {
+                Preference p = screen.getPreference(i);
+                if (p instanceof androidx.preference.PreferenceCategory) {
+                    androidx.preference.PreferenceCategory category = (androidx.preference.PreferenceCategory) p;
+                    category.setLayoutResource(R.layout.preference_category_card_header);
+                    for (int j = 0; j < category.getPreferenceCount(); j++) {
+                        Preference child = category.getPreference(j);
+                        String childKey = child.getKey();
+                        if (KEY_POWER_PROFILE_MODE.equals(childKey) ||
+                            KEY_GPU_ENABLE.equals(childKey) ||
+                            KEY_CPU_ENABLE.equals(childKey) ||
+                            KEY_STORAGE_ENABLE.equals(childKey)) {
+                            child.setLayoutResource(R.layout.preference_card_item);
+                        } else {
+                            child.setLayoutResource(R.layout.preference_m3);
+                        }
+                    }
+                } else if (!"mode_card_header".equals(p.getKey())) {
+                    p.setLayoutResource(R.layout.preference_card_item);
+                }
+            }
         }
-        updateModeDisplays(mode);
+
+        // Pre-populate mode card, summaries, and active card backgrounds immediately
+        // so there is zero delay or pop-in flash when opening Power Tools.
+        syncActiveModeUI();
+        refreshModeState();
     }
 
     @SuppressWarnings("unchecked")
     private <T extends Preference> T bindPref(String key) {
         T pref = findPreference(key);
         if (pref != null) {
+            if (KEY_POWER_PROFILE_MODE.equals(key) ||
+                KEY_GPU_ENABLE.equals(key) ||
+                KEY_CPU_ENABLE.equals(key) ||
+                KEY_STORAGE_ENABLE.equals(key)) {
+                pref.setLayoutResource(R.layout.preference_card_item);
+            } else {
+                pref.setLayoutResource(R.layout.preference_m3);
+            }
             pref.setOnPreferenceChangeListener(this);
         }
         return pref;
@@ -185,25 +229,74 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         safeSetEnabled(mGpuEnablePref, true);
         safeSetEnabled(mStorageEnablePref, true);
 
-        safeSetEnabled(mCpuLittleMinFreqPref, cpuEnabled);
-        safeSetEnabled(mCpuLittleMaxFreqPref, cpuEnabled);
-        safeSetEnabled(mCpuLittleGovernorPref, cpuEnabled);
-        safeSetEnabled(mCpuBigMinFreqPref, cpuEnabled);
-        safeSetEnabled(mCpuBigMaxFreqPref, cpuEnabled);
-        safeSetEnabled(mCpuBigGovernorPref, cpuEnabled);
-        safeSetEnabled(mCpuPrimeMinFreqPref, cpuEnabled);
-        safeSetEnabled(mCpuPrimeMaxFreqPref, cpuEnabled);
-        safeSetEnabled(mCpuPrimeGovernorPref, cpuEnabled);
+        // Keep sub-preferences enabled so frequency values stay 100% crisp & full opacity
+        safeSetEnabled(mCpuLittleMinFreqPref, true);
+        safeSetEnabled(mCpuLittleMaxFreqPref, true);
+        safeSetEnabled(mCpuLittleGovernorPref, true);
+        safeSetEnabled(mCpuBigMinFreqPref, true);
+        safeSetEnabled(mCpuBigMaxFreqPref, true);
+        safeSetEnabled(mCpuBigGovernorPref, true);
+        safeSetEnabled(mCpuPrimeMinFreqPref, true);
+        safeSetEnabled(mCpuPrimeMaxFreqPref, true);
+        safeSetEnabled(mCpuPrimeGovernorPref, true);
 
-        safeSetEnabled(mGpuMinFreqPref, gpuEnabled);
-        safeSetEnabled(mGpuMaxFreqPref, gpuEnabled);
-        safeSetEnabled(mGpuGovernorPref, gpuEnabled);
+        safeSetEnabled(mGpuMinFreqPref, true);
+        safeSetEnabled(mGpuMaxFreqPref, true);
+        safeSetEnabled(mGpuGovernorPref, true);
 
-        safeSetEnabled(mIoSchedulerPref, storageEnabled);
+        safeSetEnabled(mIoSchedulerPref, true);
+
+        // Dynamic system accent color tint on card background when turned ON
+        updateCardActiveBackground(mCpuEnablePref, cpuEnabled);
+        updateCardActiveBackground(mGpuEnablePref, gpuEnabled);
+        updateCardActiveBackground(mStorageEnablePref, storageEnabled);
 
         if (!cpuEnabled) resetHardwareCategoryToDefaults(KEY_CPU_ENABLE, mode);
         if (!gpuEnabled) resetHardwareCategoryToDefaults(KEY_GPU_ENABLE, mode);
         if (!storageEnabled) resetHardwareCategoryToDefaults(KEY_STORAGE_ENABLE, mode);
+    }
+
+    private void updateCardActiveBackground(Preference pref, boolean active) {
+        if (pref != null) {
+            int newLayout = active ? R.layout.preference_card_item_active : R.layout.preference_card_item;
+            if (pref.getLayoutResource() != newLayout) {
+                pref.setLayoutResource(newLayout);
+            }
+            if (pref.getIcon() != null) {
+                android.graphics.drawable.Drawable icon = pref.getIcon().mutate();
+                if (active) {
+                    icon.setTint(org.lineageos.device.DeviceSettings.Utils.getSystemAccentColor(requireContext()));
+                } else {
+                    icon.setTintList(null);
+                }
+                pref.setIcon(icon);
+            }
+        }
+    }
+
+    @Override
+    public boolean onPreferenceTreeClick(Preference preference) {
+        if (isCpuSubPref(preference) && !isChecked(mCpuEnablePref)) {
+            showToast("Enable CPU Tweaking to modify frequency limits");
+            return true;
+        }
+        if (isGpuSubPref(preference) && !isChecked(mGpuEnablePref)) {
+            showToast("Enable GPU Manual Control to modify frequency limits");
+            return true;
+        }
+        if (preference == mIoSchedulerPref && !isChecked(mStorageEnablePref)) {
+            showToast("Enable Storage I/O Manual Control to modify scheduler");
+            return true;
+        }
+        return super.onPreferenceTreeClick(preference);
+    }
+
+    private boolean isCpuSubPref(Preference p) {
+        return isCpuLittlePref(p) || isCpuBigPref(p) || isCpuPrimePref(p);
+    }
+
+    private boolean isGpuSubPref(Preference p) {
+        return p == mGpuMinFreqPref || p == mGpuMaxFreqPref || p == mGpuGovernorPref;
     }
 
 

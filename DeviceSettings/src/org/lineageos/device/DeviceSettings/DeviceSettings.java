@@ -112,6 +112,22 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
         }
     }
 
+    @Override
+    public void onViewCreated(android.view.View view, android.os.Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        androidx.recyclerview.widget.RecyclerView listView = getListView();
+        if (listView != null) {
+            listView.setClipToPadding(false);
+            int paddingBottom = (int) (24 * getResources().getDisplayMetrics().density);
+            listView.setPadding(
+                listView.getPaddingLeft(),
+                listView.getPaddingTop(),
+                listView.getPaddingRight(),
+                paddingBottom
+            );
+        }
+    }
+
     private void enforceVibPowersaveCap() {
         if (mVibratorStrengthPreference == null || !mVibratorStrengthPreference.isEnabled()) return;
         
@@ -128,8 +144,6 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
             Utils.writeValue(FILE_LEVEL, "2");
         }
     }
-
-    
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
@@ -148,7 +162,17 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
             }
             editor.putInt(KEY_VIBSTRENGTH, value).apply();
             Utils.writeValue(FILE_LEVEL, String.valueOf(value));
-            if (mVibrator != null) mVibrator.vibrate(TEST_VIB_PATTERN, -1);
+            if (mVibrator != null && mVibrator.hasVibrator()) {
+                if (value > 0) {
+                    int duration = 8 + (value * 3);
+                    int amplitude = Math.min(160, 40 + (value * 35));
+                    try {
+                        mVibrator.vibrate(android.os.VibrationEffect.createOneShot(duration, amplitude));
+                    } catch (Exception e) {
+                        mVibrator.vibrate(duration);
+                    }
+                }
+            }
             return true;
         }
 

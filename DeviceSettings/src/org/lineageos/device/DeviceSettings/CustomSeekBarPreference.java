@@ -25,7 +25,7 @@ public class CustomSeekBarPreference extends Preference implements SeekBar.OnSee
     protected int mInterval = 1;
     protected boolean mShowSign = false;
     protected String mUnits = "";
-    protected boolean mContinuousUpdates = false;
+    protected boolean mContinuousUpdates = true;
 
     protected int mMinValue = 0;
     protected int mMaxValue = 100;
@@ -117,6 +117,9 @@ public class CustomSeekBarPreference extends Preference implements SeekBar.OnSee
             mSeekBar.setProgress(getSeekValue(mValue));
             mSeekBar.setEnabled(isEnabled());
             mSeekBar.setOnSeekBarChangeListener(this);
+            int accent = Utils.getSystemAccentColor(getContext());
+            mSeekBar.setProgressTintList(android.content.res.ColorStateList.valueOf(accent));
+            mSeekBar.setThumbTintList(android.content.res.ColorStateList.valueOf(accent));
         }
 
         updateValueViews();
@@ -189,20 +192,9 @@ public class CustomSeekBarPreference extends Preference implements SeekBar.OnSee
     protected void updateValueViews() {
         if (mValueTextView != null) {
             if (!mTrackingTouch || mContinuousUpdates) {
-                if (mDefaultValueTextExists && mDefaultValueExists && mValue == mDefaultValue) {
-                    mValueTextView.setText(mDefaultValueText + " (" +
-                        getContext().getString(R.string.custom_seekbar_default_value) + ")");
-                } else {
-                    mValueTextView.setText(getContext().getString(R.string.custom_seekbar_value, getTextValue(mValue)) +
-                        (mDefaultValueExists && mValue == mDefaultValue ? " (" +
-                        getContext().getString(R.string.custom_seekbar_default_value) + ")" : ""));
-                }
+                mValueTextView.setText(getContext().getString(R.string.custom_seekbar_value, getTextValue(mValue)));
             } else {
-                if (mDefaultValueTextExists && mDefaultValueExists && mTrackingValue == mDefaultValue) {
-                    mValueTextView.setText("[" + mDefaultValueText + "]");
-                } else {
-                    mValueTextView.setText(getContext().getString(R.string.custom_seekbar_value, "[" + getTextValue(mTrackingValue) + "]"));
-                }
+                mValueTextView.setText(getContext().getString(R.string.custom_seekbar_value, "[" + getTextValue(mTrackingValue) + "]"));
             }
         }
         if (mResetImageView != null) {

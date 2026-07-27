@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@drawable/card_bg_dark">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Custom Band Profile"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Save your currently selected bands as a quick preset profile for this SIM:"
+        android:textSize="12sp"
+        android:textColor="#808090" />
+
+    <!-- Option 1: Recommended Profile Slot -->
+    <LinearLayout
+        android:id="@+id/btn_save_recommended_slot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/card_bg_accent"
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save as Recommended Profile"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#4ADE80" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Overrides carrier recommended preset with your custom bands"
+            android:textSize="10sp"
+            android:textColor="#A0A0B0" />
+    </LinearLayout>
+
+    <!-- Option 2: Battery Saver Profile Slot -->
+    <LinearLayout
+        android:id="@+id/btn_save_battery_saver_slot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/card_bg_accent"
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save as Battery Saver Profile"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#E5A376" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Overrides battery saver preset with your low-band FDD anchors"
+            android:textSize="10sp"
+            android:textColor="#A0A0B0" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_cancel_save_profile"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_gravity="end"
+        android:layout_marginTop="16dp"
+        android:background="@android:color/transparent"
+        android:text="Cancel"
+        android:textColor="#808090"
+        android:textSize="12sp" />
+</LinearLayout>

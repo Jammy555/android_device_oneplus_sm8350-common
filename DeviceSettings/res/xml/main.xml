@@ -74,6 +74,7 @@
             android:max="5"
             android:min="0"
             settings:units=""
+            settings:continuousUpdates="true"
             android:defaultValue="3" />
     </PreferenceCategory>
 
@@ -98,7 +99,7 @@
 
         <Preference
             android:key="network_bands_entry"
-            android:icon="@drawable/ic_settings_device"
+            android:icon="@drawable/ic_network_band_lock"
             android:title="@string/network_bands_title"
             android:summary="@string/network_bands_summary">
             <intent

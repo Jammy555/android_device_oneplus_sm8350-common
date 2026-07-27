@@ -40,7 +40,7 @@ public final class ConfigPanelSearchIndexablesProvider extends SearchIndexablesP
     private static final SearchIndexableResource[] INDEXABLE_RES = new SearchIndexableResource[]{
             new SearchIndexableResource(1, R.xml.main,
                     DeviceSettingsActivity.class.getName(),
-                    R.drawable.ic_settings_device),
+                    R.drawable.ic_network_band_lock),
     };
 
     @Override
