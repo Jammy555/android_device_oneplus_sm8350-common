@@ -211,6 +211,12 @@ public class NetworkBandsFragment extends Fragment {
                         Log.w(TAG, "Failed to restore RAT bitmask on boot for sub " + subId + ": " + e.getMessage());
                     }
                 }
+
+                // 3. Clear transient band lock & preset UI states
+                prefs.edit()
+                        .remove(PREF_KEY_PREFIX + subId)
+                        .remove(PREF_KEY_CARRIER_PRESET_PREFIX + subId)
+                        .apply();
             }
         } catch (Exception e) {
             Log.w(TAG, "Failed to restore telephony settings on boot: " + e.getMessage());
@@ -348,6 +354,7 @@ public class NetworkBandsFragment extends Fragment {
         setupAdvancedDiagAccordion();
         setupGenerationTabsAndControls();
 
+        syncRatSlotsFromSystem();
         loadCurrentBands();
         registerBandMonitor();
         updateActiveBands();
@@ -1267,8 +1274,16 @@ public class NetworkBandsFragment extends Fragment {
         boolean g4 = (mChk4G != null && mChk4G.isChecked());
         boolean g5 = (mChk5G != null && mChk5G.isChecked());
         boolean available = isSimAndRadioAvailable();
+        boolean is2gOnly = g2 && !g3 && !g4 && !g5;
 
-        // 1. Update 5G NR Mode Card Visibility
+        // 1. Update Carrier Preset Spinner state (faded/disabled if 2G only)
+        if (mCarrierPresetSpinner != null) {
+            boolean enableCarrierPreset = available && !is2gOnly;
+            mCarrierPresetSpinner.setEnabled(enableCarrierPreset);
+            mCarrierPresetSpinner.setAlpha(enableCarrierPreset ? 1.0f : 0.4f);
+        }
+
+        // 2. Update 5G NR Mode Card Visibility & Alpha
         if (!g5) {
             if (mNrModeCard != null) mNrModeCard.setVisibility(View.GONE);
             if (mNrModeSeekBar != null) mNrModeSeekBar.setEnabled(false);
@@ -1284,7 +1299,7 @@ public class NetworkBandsFragment extends Fragment {
             }
         }
 
-        // 2. Dynamic Per-RAT Generation Tab Fading (2G, 3G, 4G, 5G)
+        // 3. Dynamic Per-RAT Generation Tab Fading (2G, 3G, 4G, 5G)
         if (mTab5G != null) {
             mTab5G.setEnabled(g5 && available);
             mTab5G.setAlpha((g5 && available) ? 1.0f : 0.35f);
@@ -1302,7 +1317,7 @@ public class NetworkBandsFragment extends Fragment {
             mTab2G.setAlpha((g2 && available) ? 1.0f : 0.35f);
         }
 
-        // 3. Auto-switch active generation tab if user unchecked the currently selected tab
+        // 4. Auto-switch active generation tab if user unchecked the currently selected tab
         boolean activeTabAllowed = (mSelectedGenerationTab == 0 && g5)
                                 || (mSelectedGenerationTab == 1 && g4)
                                 || (mSelectedGenerationTab == 2 && g3)
@@ -1417,11 +1432,43 @@ public class NetworkBandsFragment extends Fragment {
         updateNrModeSeekbarForCarrier();
     }
 
+    private void updateRatSpinnerSelection(boolean g2, boolean g3, boolean g4, boolean g5) {
+        if (mRatModeSpinner == null) return;
+        int preset;
+        if (g5 && g4 && !g3 && !g2) preset = 1;       // 5G + 4G Auto
+        else if (!g5 && g4 && !g3 && !g2) preset = 2; // 4G LTE Only
+        else if (g5 && !g4 && !g3 && !g2) preset = 3; // 5G SA/NSA Only
+        else if (!g5 && !g4 && g3 && g2) preset = 4;  // 3G/2G Legacy
+        else if (g5 && g4 && g3 && g2) preset = 5;    // All RATs
+        else preset = 0;                              // Custom Slot Combo
+
+        mRatModeSpinner.setSelection(preset);
+    }
+
     private void syncRatSlotsFromSystem() {
         try {
+            long savedBitmask = getPrefs().getLong(PREF_KEY_RAT_MODE_PREFIX + mCurrentSubId, 0);
+
             TelephonyManager tm = getTelephonyManager();
-            long bitmask = tm.getAllowedNetworkTypesForReason(
-                    TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
+            long bitmask = 0;
+            try {
+                bitmask = tm.getAllowedNetworkTypesForReason(
+                        TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to get allowed network types from system: " + e.getMessage());
+            }
+
+            if (savedBitmask != 0) {
+                if (bitmask == 0 || bitmask != savedBitmask) {
+                    bitmask = savedBitmask;
+                    try {
+                        tm.setAllowedNetworkTypesForReason(
+                                TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER, savedBitmask);
+                    } catch (Exception e) {
+                        Log.w(TAG, "Failed to restore saved RAT bitmask: " + e.getMessage());
+                    }
+                }
+            }
 
             boolean is5gEnabledInSystem = (bitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
             mLastSystem5gState = is5gEnabledInSystem;
@@ -1429,27 +1476,28 @@ public class NetworkBandsFragment extends Fragment {
 
             mIsUpdatingRatFromSystem = true;
 
-            if (mChk2G != null) {
-                mChk2G.setChecked((bitmask & (TelephonyManager.NETWORK_TYPE_BITMASK_GSM
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_EDGE)) != 0);
-            }
-            if (mChk3G != null) {
-                mChk3G.setChecked((bitmask & (TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_HSDPA
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_HSUPA
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_HSPA
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_HSPAP)) != 0);
-            }
-            if (mChk4G != null) {
-                mChk4G.setChecked((bitmask & (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
-                        | TelephonyManager.NETWORK_TYPE_BITMASK_LTE_CA)) != 0);
-            }
-            if (mChk5G != null) {
-                mChk5G.setChecked(is5gEnabledInSystem);
-            }
+            boolean g2 = (bitmask & (TelephonyManager.NETWORK_TYPE_BITMASK_GSM
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_EDGE)) != 0;
+            boolean g3 = (bitmask & (TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_HSDPA
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_HSUPA
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_HSPA
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_HSPAP)) != 0;
+            boolean g4 = (bitmask & (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                    | TelephonyManager.NETWORK_TYPE_BITMASK_LTE_CA)) != 0;
+            boolean g5 = is5gEnabledInSystem;
+
+            if (mChk2G != null) mChk2G.setChecked(g2);
+            if (mChk3G != null) mChk3G.setChecked(g3);
+            if (mChk4G != null) mChk4G.setChecked(g4);
+            if (mChk5G != null) mChk5G.setChecked(g5);
+
+            updateRatSpinnerSelection(g2, g3, g4, g5);
 
             mIsUpdatingRatFromSystem = false;
+
+            updateNrModeSeekbarForCarrier();
         } catch (Exception e) {
             Log.w(TAG, "Failed to sync RAT slots from system: " + e.getMessage());
             mIsUpdatingRatFromSystem = false;
