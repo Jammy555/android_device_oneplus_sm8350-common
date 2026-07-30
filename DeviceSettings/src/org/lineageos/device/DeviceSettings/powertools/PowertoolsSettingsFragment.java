@@ -203,11 +203,26 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         refreshModeState();
     }
 
+    private final java.util.concurrent.ExecutorService mExecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+
     private void refreshModeState() {
-        SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
-        updateDynamicDropdowns();
-        syncAllListPrefsToData(prefs);
-        configurePresetModeUI();
+        mExecutor.execute(() -> {
+            updateDynamicDropdowns();
+            mMainHandler.post(() -> {
+                if (!isAdded()) return;
+                SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+                syncAllListPrefsToData(prefs);
+                configurePresetModeUI();
+            });
+        });
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mExecutor != null) {
+            mExecutor.shutdownNow();
+        }
     }
 
 
