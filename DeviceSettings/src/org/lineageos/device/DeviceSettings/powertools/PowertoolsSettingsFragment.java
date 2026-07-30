@@ -30,6 +30,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private static final String KEY_STORAGE_ENABLE = "storage_enable";
     private static final String KEY_IO_SCHEDULER = PowerProfileUtil.KEY_IO_SCHEDULER;
+    private static final String KEY_TCP_CONGESTION = "tcp_congestion_control";
 
     private static final String KEY_GPU_ENABLE = "gpu_enable";
     private static final String KEY_GPU_MIN_FREQ = PowerProfileUtil.KEY_GPU_MIN_FREQ;
@@ -49,7 +50,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private SwitchPreferenceCompat mStorageEnablePref, mGpuEnablePref, mCpuEnablePref;
     private Preference mModeStatusPref;
-    private ListPreference mPowerProfilePref, mIoSchedulerPref;
+    private ListPreference mPowerProfilePref, mIoSchedulerPref, mTcpCongestionPref;
     private ListPreference mGpuMinFreqPref, mGpuMaxFreqPref, mGpuGovernorPref;
     private ListPreference mCpuLittleMinFreqPref, mCpuLittleMaxFreqPref, mCpuLittleGovernorPref;
     private ListPreference mCpuBigMinFreqPref, mCpuBigMaxFreqPref, mCpuBigGovernorPref;
@@ -88,6 +89,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
         mStorageEnablePref = bindPref(KEY_STORAGE_ENABLE);
         mIoSchedulerPref = bindPref(KEY_IO_SCHEDULER);
+        mTcpCongestionPref = bindPref(KEY_TCP_CONGESTION);
 
         mGpuEnablePref = bindPref(KEY_GPU_ENABLE);
         mGpuMinFreqPref = bindPref(KEY_GPU_MIN_FREQ);
@@ -203,11 +205,24 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         refreshModeState();
     }
 
+    private final java.util.concurrent.ExecutorService mExecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+
     private void refreshModeState() {
-        SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
-        updateDynamicDropdowns();
-        syncAllListPrefsToData(prefs);
-        configurePresetModeUI();
+        mExecutor.execute(() -> {
+            updateDynamicDropdowns();
+            mMainHandler.post(() -> {
+                if (!isAdded()) return;
+                SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+                syncAllListPrefsToData(prefs);
+                configurePresetModeUI();
+            });
+        });
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mExecutor.shutdownNow();
     }
 
 
@@ -386,6 +401,8 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private void applyHardwareSetting(Preference preference, String key, String newValue) {
         if (preference == mIoSchedulerPref) {
             StorageUtils.setIoScheduler(newValue);
+        } else if (preference == mTcpCongestionPref) {
+            SysfsUtils.writeValue(KernelOptionUtils.TCP_CONGESTION_CONTROL, newValue);
         } else if (preference == mGpuMinFreqPref) {
             GPUUtils.setGPUMinFrequency(newValue);
         } else if (preference == mGpuMaxFreqPref) {
@@ -611,6 +628,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
     private void syncAllListPrefsToData(SharedPreferences prefs) {
         syncListPrefToData(mIoSchedulerPref, prefs, KEY_IO_SCHEDULER);
+        syncListPrefToData(mTcpCongestionPref, prefs, KEY_TCP_CONGESTION);
         syncListPrefToData(mGpuMinFreqPref, prefs, KEY_GPU_MIN_FREQ);
         syncListPrefToData(mGpuMaxFreqPref, prefs, KEY_GPU_MAX_FREQ);
         syncListPrefToData(mGpuGovernorPref, prefs, KEY_GPU_GOVERNOR);
@@ -661,7 +679,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
                KEY_CPU_PRIME_MIN_FREQ.equals(key) || KEY_CPU_PRIME_MAX_FREQ.equals(key) ||
                KEY_CPU_PRIME_GOVERNOR.equals(key) || KEY_GPU_MIN_FREQ.equals(key) ||
                KEY_GPU_MAX_FREQ.equals(key) || KEY_GPU_GOVERNOR.equals(key) ||
-               KEY_IO_SCHEDULER.equals(key);
+               KEY_IO_SCHEDULER.equals(key) || KEY_TCP_CONGESTION.equals(key);
     }
 
     private String getTrueActiveValue(String key) {
@@ -680,6 +698,8 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
             case KEY_GPU_MIN_FREQ: path = KernelOptionUtils.GPU_MIN_FREQ; break;
             case KEY_GPU_MAX_FREQ: path = KernelOptionUtils.GPU_MAX_FREQ; break;
             case KEY_GPU_GOVERNOR: path = KernelOptionUtils.GPU_GOVERNOR; break;
+            case KEY_TCP_CONGESTION:
+                return SysfsUtils.readLine(KernelOptionUtils.TCP_CONGESTION_CONTROL);
             case KEY_IO_SCHEDULER: 
                 path = KernelOptionUtils.IO_SCHEDULER;
                 isIo = true;
@@ -746,6 +766,9 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         populateNameFromSysfs(mIoSchedulerPref,
                 KernelOptionUtils.IO_SCHEDULER,
                 R.array.io_scheduler_entries, R.array.io_scheduler_values);
+        populateNameFromSysfs(mTcpCongestionPref,
+                KernelOptionUtils.TCP_AVAILABLE_CONGESTION_CONTROL,
+                R.array.tcp_congestion_entries, R.array.tcp_congestion_values);
     }
 
     private void populateFrequencyFromSysfs(ListPreference pref, String sysfsPath,

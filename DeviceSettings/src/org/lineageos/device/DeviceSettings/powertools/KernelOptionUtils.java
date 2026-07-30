@@ -35,6 +35,8 @@ public final class KernelOptionUtils {
             "/sys/class/kgsl/kgsl-3d0/devfreq/available_governors";
 
     public static final String IO_SCHEDULER = "/sys/block/sda/queue/scheduler";
+    public static final String TCP_CONGESTION_CONTROL = "/proc/sys/net/ipv4/tcp_congestion_control";
+    public static final String TCP_AVAILABLE_CONGESTION_CONTROL = "/proc/sys/net/ipv4/tcp_available_congestion_control";
 
     public static final String CPU_LITTLE_MIN_FREQ =
             "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq";
