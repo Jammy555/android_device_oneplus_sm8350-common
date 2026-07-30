@@ -123,6 +123,12 @@
     <string name="io_scheduler_title">I/O Scheduler</string>
     <string name="io_scheduler_dialog_title">Select I/O Scheduler</string>
 
+    <!-- Network Kernel Tuning -->
+    <string name="network_kernel_category_title">Network Kernel Tuning</string>
+    <string name="tcp_congestion_title">TCP Congestion Control</string>
+    <string name="tcp_congestion_summary">Select kernel TCP congestion algorithm (BBR, CUBIC, RENO)</string>
+    <string name="tcp_congestion_dialog_title">Select TCP Congestion Control</string>
+
     <string name="governor_restricted_powersave">%s is not available in PowerSave mode</string>
     <string name="governor_restricted_performance">%s is not available in Performance mode</string>
 
@@ -134,6 +140,7 @@
     <string name="network_category_title">Network</string>
     <string name="network_bands_title">Network Band Locking</string>
     <string name="network_bands_summary">Custom band locking, RAT combo and 5G modes</string>
+
     <string name="network_bands_apply">Apply Band Lock</string>
     <string name="network_bands_nothing_selected">No bands selected.</string>
     <string name="network_bands_reset_success">Bands and network settings cleanly reset to automatic.</string>

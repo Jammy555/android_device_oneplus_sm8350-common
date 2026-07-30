@@ -257,6 +257,17 @@
     <item>mq-deadline</item>
 </string-array>
 
+    <!-- Powertools: TCP Congestion Control -->
+    <string-array name="tcp_congestion_entries" translatable="false">
+        <item>BBR (Google RTT &amp; Low Latency)</item>
+        <item>CUBIC (Stock Default)</item>
+        <item>RENO (Standard TCP)</item>
+        <item>WESTWOOD (Wireless Loss Optimized)</item>
+    </string-array>
+    <string-array name="tcp_congestion_values" translatable="false">
+        <item>bbr</item>
+        <item>cubic</item>
+        <item>reno</item>
+        <item>westwood</item>
+    </string-array>
 
-
-</resources>

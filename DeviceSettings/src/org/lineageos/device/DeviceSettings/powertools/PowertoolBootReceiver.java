@@ -57,7 +57,12 @@ public final class PowertoolBootReceiver extends BroadcastReceiver {
                 PowerProfileUtil profileUtil = new PowerProfileUtil(context);
                 profileUtil.setModeOnBoot(PowerProfileUtil.MODE_BALANCE);
 
-                Log.i(TAG, "Boot: Normal mode applied (blur untouched)");
+                String savedTcpAlgo = prefs.getString("tcp_congestion_control", "");
+                if (!savedTcpAlgo.isEmpty()) {
+                    SysfsUtils.writeValue(KernelOptionUtils.TCP_CONGESTION_CONTROL, savedTcpAlgo);
+                }
+
+                Log.i(TAG, "Boot: Normal mode & TCP congestion applied");
             } finally {
                 pendingResult.finish();
             }
