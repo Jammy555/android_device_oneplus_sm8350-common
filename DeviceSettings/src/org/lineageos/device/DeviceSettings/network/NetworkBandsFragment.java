@@ -513,8 +513,15 @@ public class NetworkBandsFragment extends Fragment {
         }
 
         if (mCarrierPresetSpinner != null) {
-            mCarrierPresetSpinner.setEnabled(available);
-            mCarrierPresetSpinner.setAlpha(available ? 1.0f : 0.4f);
+            boolean g2 = (mChk2G != null && mChk2G.isChecked());
+            boolean g3 = (mChk3G != null && mChk3G.isChecked());
+            boolean g4 = (mChk4G != null && mChk4G.isChecked());
+            boolean g5 = (mChk5G != null && mChk5G.isChecked());
+            boolean is2gOnly = g2 && !g3 && !g4 && !g5;
+            
+            boolean enableCarrierPreset = available && !is2gOnly;
+            mCarrierPresetSpinner.setEnabled(enableCarrierPreset);
+            mCarrierPresetSpinner.setAlpha(enableCarrierPreset ? 1.0f : 0.4f);
         }
 
         if (mRatModeSpinner != null) {
@@ -786,6 +793,10 @@ public class NetworkBandsFragment extends Fragment {
     /** On-Screen Clickable Generation Filter Tabs */
     private void setupGenerationTabsAndControls() {
         View.OnClickListener tabListener = v -> {
+            if (!v.isEnabled()) {
+                toast("This network generation is currently disabled in RAT preferences.");
+                return;
+            }
             int id = v.getId();
             if (id == R.id.tab_5g) mSelectedGenerationTab = 0;
             else if (id == R.id.tab_4g) mSelectedGenerationTab = 1;
