@@ -59,16 +59,16 @@
     <string name="powerprofile_mode_unknown">Unknown</string>
     <string name="power_profile_footer_summary">Select a predefined profile to optimize hardware behavior. Enable CPU, GPU, or Storage controls to tweak within the allowed range of the active profile.</string>
 
-    <string name="mode_status_balanced">Kernel defaults • Dynamic CPU/GPU options • Standard scheduler tuning</string>
-    <string name="mode_status_performance">Validated boost profile • Dynamic clocks • Low-latency scheduler tuning</string>
-    <string name="mode_status_battery_saver">Validated capped profile • Dynamic clocks • Power-saving scheduler tuning</string>
+    <string name="mode_status_balanced">Standard kernel profile • Dynamic scaling</string>
+    <string name="mode_status_performance">Maximum performance • Touch boost enabled</string>
+    <string name="mode_status_battery_saver">Capped performance • Touch boost disabled</string>
 
     <string name="powertools_mode_card_performance_title">Performance</string>
-    <string name="powertools_mode_card_performance_summary">Boost profile • Dynamic CPU/GPU limits • Game mode on</string>
+    <string name="powertools_mode_card_performance_summary">Maximized hardware limits • Touch boost active</string>
     <string name="powertools_mode_card_powersave_title">Power Save</string>
-    <string name="powertools_mode_card_powersave_summary">Capped profile • Dynamic kernel values • Power-saving tuning</string>
+    <string name="powertools_mode_card_powersave_summary">Capped hardware limits • Maximum power savings</string>
     <string name="powertools_mode_card_balanced_title">Balanced</string>
-    <string name="powertools_mode_card_balanced_summary">Kernel defaults • Dynamic CPU/GPU scaling • Standard thermal policy</string>
+    <string name="powertools_mode_card_balanced_summary">Default kernel profile • Standard power policy</string>
 
     <string name="powertools_toast_applying">Applying…</string>
     <string name="powertools_toast_mode_applied">%s applied</string>
@@ -133,7 +133,7 @@
     <string name="governor_restricted_performance">%s is not available in Performance mode</string>
 
     <string name="widget_name">System Monitor</string>
-    <string name="widget_description">Live CPU, GPU, Memory, Battery \ Storage stats</string>
+    <string name="widget_description">Live CPU, GPU, Memory, Battery / Storage stats</string>
     <string name="powertools_widget_waking">Waking…</string>
 
     <!-- Selective Band Lock & Network Enhancements -->
