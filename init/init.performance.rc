@@ -92,6 +92,10 @@ on boot
     chown system system /sys/module/lpm_levels/parameters/sleep_disabled
     chmod 0664 /sys/module/lpm_levels/parameters/sleep_disabled
 
+    # KProfiles - allow system to control kernel profile mode
+    chown system system /sys/kernel/kprofiles/kp_mode
+    chmod 0660 /sys/kernel/kprofiles/kp_mode
+
     setprop sys.perf_mode_active 1
 
 on property:sys.perf_mode_active=2
@@ -180,3 +184,9 @@ on property:persist.sys.parts.cpu.prime.max_frequency=*
 
 on property:persist.sys.parts.cpu.prime.governor=*
     write /sys/devices/system/cpu/cpufreq/policy7/scaling_governor ${persist.sys.parts.cpu.prime.governor}
+
+on property:sys.kprofiles.restore_freq=1
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq 9999999
+    write /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq 9999999
+    write /sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq 9999999
+    setprop sys.kprofiles.restore_freq 0

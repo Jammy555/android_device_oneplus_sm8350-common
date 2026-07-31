@@ -25,6 +25,18 @@ public class PowerProfileUtil {
     private static final String TAG = "PowerProfileUtil";
     private static final String SYS_PROP = "sys.perf_mode_active";
 
+    /**
+     * KProfiles kernel sysfs node.
+     * Mode mapping (PowerTools → KProfiles):
+     *   MODE_BATTERY_SAVER (0) → kp_mode = 1  (Battery)
+     *   MODE_BALANCE       (1) → kp_mode = 2  (Balanced)
+     *   MODE_PERFORMANCE   (2) → kp_mode = 3  (Performance)
+     *
+     * Per commit 99b6b76 the kernel auto-promotes kp_mode=0 to 2,
+     * so userspace must never write 0; minimum write value is 1.
+     */
+    private static final String KPROFILES_NODE = "/sys/kernel/kprofiles/kp_mode";
+
     private static final String FILE_GAME = "/proc/touchpanel/game_switch_enable";
     private static final String FILE_EDGE = "/proc/touchpanel/oplus_tp_direction";
     private static final String KEY_LAST_PROFILE = "powertools_last_profile";
@@ -93,7 +105,49 @@ public class PowerProfileUtil {
 
 
 
+    // -------------------------------------------------------------------------
+    // KProfiles ↔ PowerTools mode mapping helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Converts a PowerTools mode constant (0-2) to a KProfiles sysfs value (1-3).
+     * Battery Saver (0) → 1, Balanced (1) → 2, Performance (2) → 3.
+     */
+    private static int ptModeToKpValue(int ptMode) {
+        // Simple +1 shift; ptMode is always 0, 1, or 2 from PowerTools constants.
+        return ptMode + 1;
+    }
+
+    /**
+     * Converts a KProfiles sysfs value (1-3) back to a PowerTools mode constant (0-2).
+     * Returns MODE_BALANCE as a safe fallback for any unexpected value.
+     */
+    private static int kpValueToPtMode(int kpValue) {
+        if (kpValue >= 1 && kpValue <= 3) return kpValue - 1;
+        return MODE_BALANCE; // safe fallback
+    }
+
+    /**
+     * Returns the currently active PowerTools profile mode.
+     *
+     * <p>Primary source: reads {@code /sys/kernel/kprofiles/kp_mode} and converts
+     * the KProfiles value (1/2/3) back to the PowerTools constant (0/1/2).</p>
+     *
+     * <p>Fallback: reads {@code sys.perf_mode_active} system property if the sysfs
+     * node is unavailable (e.g., on a kernel without KProfiles compiled in).</p>
+     */
     public int getCurrentMode() {
+        // Primary: KProfiles sysfs node
+        String raw = SysfsUtils.readLine(KPROFILES_NODE);
+        if (raw != null && !raw.isEmpty()) {
+            try {
+                int kpValue = Integer.parseInt(raw.trim());
+                return kpValueToPtMode(kpValue);
+            } catch (NumberFormatException ignored) {
+                Log.w(TAG, "Unexpected kp_mode value: " + raw + ", falling back to sysprop");
+            }
+        }
+        // Fallback: sysprop mirror (written on every setMode call below)
         return SystemProperties.getInt(SYS_PROP, MODE_BALANCE);
     }
 
@@ -180,8 +234,8 @@ public class PowerProfileUtil {
         String fallback = isFrequencyKey(key)
                 ? findNearestFrequencyValue(key, requested, available)
                 : available[0];
-        mFallbackMessages.add(buildFallbackMessage(key, requested, fallback));
-        Log.w(TAG, mFallbackMessages.get(mFallbackMessages.size() - 1));
+        // mFallbackMessages.add(buildFallbackMessage(key, requested, fallback));
+        // Log.w(TAG, mFallbackMessages.get(mFallbackMessages.size() - 1));
         return fallback;
     }
 
@@ -331,21 +385,60 @@ public class PowerProfileUtil {
         setMode(newMode);
     }
 
+    /**
+     * Activates the given PowerTools profile mode on the kernel and system property layer.
+     *
+     * <ol>
+     *   <li><b>Primary</b>: writes the mapped value to {@code /sys/kernel/kprofiles/kp_mode}.
+     *       This is the authoritative control for KProfiles-aware cpufreq/devfreq boosts.</li>
+     *   <li><b>Mirror</b>: updates {@code sys.perf_mode_active} system property so that any
+     *       other userspace consumers (vendor perf HAL, Qualcomm ADSP, etc.) continue to
+     *       observe the correct mode index.</li>
+     * </ol>
+     *
+     * @param mode PowerTools mode constant: 0 = Battery Saver, 1 = Balanced, 2 = Performance
+     * @return {@code true} if at least the KProfiles sysfs write succeeded;
+     *         {@code false} if both the sysfs write and the sysprop write failed.
+     */
     private boolean setPerformanceModeActive(int mode) {
+        // --- Primary: KProfiles sysfs node ---
+        int kpValue = ptModeToKpValue(mode); // 0→1, 1→2, 2→3
+        boolean kpOk = SysfsUtils.isWritable(KPROFILES_NODE)
+                && SysfsUtils.writeValue(KPROFILES_NODE, String.valueOf(kpValue));
+        if (!kpOk) {
+            Log.w(TAG, "KProfiles node not writable or write failed ("
+                    + KPROFILES_NODE + "), falling back to sysprop only");
+        } else {
+            Log.d(TAG, "KProfiles kp_mode set to " + kpValue
+                    + " (PowerTools mode " + mode + ")");
+        }
+
+        // --- Proactive Rewrite (Fix for libperfmgr thermal throttling statelessness) ---
+        // We MUST do this AFTER the kp_mode write above so kp_active_mode is no longer 1.
+        try {
+            SystemProperties.set("sys.kprofiles.restore_freq", "0");
+            SystemProperties.set("sys.kprofiles.restore_freq", "1");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to trigger restore_freq", e);
+        }
+
+        // --- Mirror: sys.perf_mode_active sysprop ---
+        // Kept for compatibility with any userspace that reads the sysprop directly.
+        // The -1 bounce forces observers to detect the change even if the new value
+        // equals the previous value.
         try {
             SystemProperties.set(SYS_PROP, "-1");
             Thread.sleep(50);
-            
             SystemProperties.set(SYS_PROP, String.valueOf(mode));
             SystemProperties.set("persist.sys.perf_mode_saved", String.valueOf(mode));
-            return true;
+            return true; // Full success: both sysfs and sysprop written
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // Best practice: restore interrupted state
+            Thread.currentThread().interrupt();
             Log.e(TAG, "Interrupted while bouncing performance mode property", e);
-            return false;
+            return kpOk; // Acceptable if at least the sysfs write worked
         } catch (Exception e) {
             Log.e(TAG, "Failed to set performance mode system properties", e);
-            return false;
+            return kpOk;
         }
     }
 }
