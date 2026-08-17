@@ -61,6 +61,9 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
     private final List<Preference> mAllControlPrefs = new ArrayList<>();
     private boolean mApplying = false;
+    private int mDisabledCpuClickCount = 0;
+    private int mDisabledGpuClickCount = 0;
+    private int mDisabledStorageClickCount = 0;
 
 
     @Override
@@ -244,22 +247,27 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         safeSetEnabled(mGpuEnablePref, true);
         safeSetEnabled(mStorageEnablePref, true);
 
-        // Keep sub-preferences enabled so frequency values stay 100% crisp & full opacity
-        safeSetEnabled(mCpuLittleMinFreqPref, true);
-        safeSetEnabled(mCpuLittleMaxFreqPref, true);
-        safeSetEnabled(mCpuLittleGovernorPref, true);
-        safeSetEnabled(mCpuBigMinFreqPref, true);
-        safeSetEnabled(mCpuBigMaxFreqPref, true);
-        safeSetEnabled(mCpuBigGovernorPref, true);
-        safeSetEnabled(mCpuPrimeMinFreqPref, true);
-        safeSetEnabled(mCpuPrimeMaxFreqPref, true);
-        safeSetEnabled(mCpuPrimeGovernorPref, true);
+        // Disable sub-preferences when their hardware toggle is OFF
+        safeSetEnabled(mCpuLittleMinFreqPref, cpuEnabled);
+        safeSetEnabled(mCpuLittleMaxFreqPref, cpuEnabled);
+        safeSetEnabled(mCpuLittleGovernorPref, cpuEnabled);
+        safeSetEnabled(mCpuBigMinFreqPref, cpuEnabled);
+        safeSetEnabled(mCpuBigMaxFreqPref, cpuEnabled);
+        safeSetEnabled(mCpuBigGovernorPref, cpuEnabled);
+        safeSetEnabled(mCpuPrimeMinFreqPref, cpuEnabled);
+        safeSetEnabled(mCpuPrimeMaxFreqPref, cpuEnabled);
+        safeSetEnabled(mCpuPrimeGovernorPref, cpuEnabled);
 
-        safeSetEnabled(mGpuMinFreqPref, true);
-        safeSetEnabled(mGpuMaxFreqPref, true);
-        safeSetEnabled(mGpuGovernorPref, true);
+        safeSetEnabled(mGpuMinFreqPref, gpuEnabled);
+        safeSetEnabled(mGpuMaxFreqPref, gpuEnabled);
+        safeSetEnabled(mGpuGovernorPref, gpuEnabled);
 
-        safeSetEnabled(mIoSchedulerPref, true);
+        safeSetEnabled(mIoSchedulerPref, storageEnabled);
+
+        // Reset click counters when toggles change
+        if (cpuEnabled) mDisabledCpuClickCount = 0;
+        if (gpuEnabled) mDisabledGpuClickCount = 0;
+        if (storageEnabled) mDisabledStorageClickCount = 0;
 
         // Dynamic system accent color tint on card background when turned ON
         updateCardActiveBackground(mCpuEnablePref, cpuEnabled);
@@ -292,15 +300,30 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     @Override
     public boolean onPreferenceTreeClick(Preference preference) {
         if (isCpuSubPref(preference) && !isChecked(mCpuEnablePref)) {
-            showToast("Enable CPU Tweaking to modify frequency limits");
+            mDisabledCpuClickCount++;
+            if (mDisabledCpuClickCount >= 3) {
+                showToast(getString(R.string.powertools_hint_enable_toggle,
+                        getString(R.string.powertools_cpu_enable_title)));
+                mDisabledCpuClickCount = 0;
+            }
             return true;
         }
         if (isGpuSubPref(preference) && !isChecked(mGpuEnablePref)) {
-            showToast("Enable GPU Manual Control to modify frequency limits");
+            mDisabledGpuClickCount++;
+            if (mDisabledGpuClickCount >= 3) {
+                showToast(getString(R.string.powertools_hint_enable_toggle,
+                        getString(R.string.powertools_gpu_enable_title)));
+                mDisabledGpuClickCount = 0;
+            }
             return true;
         }
         if (preference == mIoSchedulerPref && !isChecked(mStorageEnablePref)) {
-            showToast("Enable Storage I/O Manual Control to modify scheduler");
+            mDisabledStorageClickCount++;
+            if (mDisabledStorageClickCount >= 3) {
+                showToast(getString(R.string.powertools_hint_enable_toggle,
+                        getString(R.string.storage_enable_title)));
+                mDisabledStorageClickCount = 0;
+            }
             return true;
         }
         return super.onPreferenceTreeClick(preference);
@@ -724,42 +747,52 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     }
 
     private void updateDynamicDropdowns() {
+        boolean isBatterySaver = getCurrentProfileMode() == PowerProfileUtil.MODE_BATTERY_SAVER;
+
+        // Compute kprofiles ceiling for each CPU cluster (0 = no clamping)
+        long littleCeiling = isBatterySaver
+                ? PowerProfileUtil.getKpCeilingForCluster(KernelOptionUtils.CPU_LITTLE_AVAILABLE_FREQUENCIES) : 0;
+        long bigCeiling = isBatterySaver
+                ? PowerProfileUtil.getKpCeilingForCluster(KernelOptionUtils.CPU_BIG_AVAILABLE_FREQUENCIES) : 0;
+        long primeCeiling = isBatterySaver
+                ? PowerProfileUtil.getKpCeilingForCluster(KernelOptionUtils.CPU_PRIME_AVAILABLE_FREQUENCIES) : 0;
+
         populateFrequencyFromSysfs(mCpuLittleMinFreqPref,
                 KernelOptionUtils.CPU_LITTLE_AVAILABLE_FREQUENCIES,
-                R.array.cpu_little_freq_entries, R.array.cpu_little_freq_values);
+                R.array.cpu_little_freq_entries, R.array.cpu_little_freq_values, 0);
         populateFrequencyFromSysfs(mCpuLittleMaxFreqPref,
                 KernelOptionUtils.CPU_LITTLE_AVAILABLE_FREQUENCIES,
-                R.array.cpu_little_freq_entries, R.array.cpu_little_freq_values);
+                R.array.cpu_little_freq_entries, R.array.cpu_little_freq_values, littleCeiling);
         populateNameFromSysfs(mCpuLittleGovernorPref,
                 KernelOptionUtils.CPU_LITTLE_AVAILABLE_GOVERNORS,
                 R.array.cpu_governor_entries, R.array.cpu_governor_values);
 
         populateFrequencyFromSysfs(mCpuBigMinFreqPref,
                 KernelOptionUtils.CPU_BIG_AVAILABLE_FREQUENCIES,
-                R.array.cpu_big_freq_entries, R.array.cpu_big_freq_values);
+                R.array.cpu_big_freq_entries, R.array.cpu_big_freq_values, 0);
         populateFrequencyFromSysfs(mCpuBigMaxFreqPref,
                 KernelOptionUtils.CPU_BIG_AVAILABLE_FREQUENCIES,
-                R.array.cpu_big_freq_entries, R.array.cpu_big_freq_values);
+                R.array.cpu_big_freq_entries, R.array.cpu_big_freq_values, bigCeiling);
         populateNameFromSysfs(mCpuBigGovernorPref,
                 KernelOptionUtils.CPU_BIG_AVAILABLE_GOVERNORS,
                 R.array.cpu_governor_entries, R.array.cpu_governor_values);
 
         populateFrequencyFromSysfs(mCpuPrimeMinFreqPref,
                 KernelOptionUtils.CPU_PRIME_AVAILABLE_FREQUENCIES,
-                R.array.cpu_prime_freq_entries, R.array.cpu_prime_freq_values);
+                R.array.cpu_prime_freq_entries, R.array.cpu_prime_freq_values, 0);
         populateFrequencyFromSysfs(mCpuPrimeMaxFreqPref,
                 KernelOptionUtils.CPU_PRIME_AVAILABLE_FREQUENCIES,
-                R.array.cpu_prime_freq_entries, R.array.cpu_prime_freq_values);
+                R.array.cpu_prime_freq_entries, R.array.cpu_prime_freq_values, primeCeiling);
         populateNameFromSysfs(mCpuPrimeGovernorPref,
                 KernelOptionUtils.CPU_PRIME_AVAILABLE_GOVERNORS,
                 R.array.cpu_governor_entries, R.array.cpu_governor_values);
 
         populateFrequencyFromSysfs(mGpuMinFreqPref,
                 KernelOptionUtils.GPU_AVAILABLE_FREQUENCY_PATHS,
-                R.array.gpu_frequency_entries, R.array.gpu_frequency_values);
+                R.array.gpu_frequency_entries, R.array.gpu_frequency_values, 0);
         populateFrequencyFromSysfs(mGpuMaxFreqPref,
                 KernelOptionUtils.GPU_AVAILABLE_FREQUENCY_PATHS,
-                R.array.gpu_frequency_entries, R.array.gpu_frequency_values);
+                R.array.gpu_frequency_entries, R.array.gpu_frequency_values, 0);
         populateNameFromSysfs(mGpuGovernorPref,
                 KernelOptionUtils.GPU_AVAILABLE_GOVERNORS,
                 R.array.gpu_governor_entries, R.array.gpu_governor_values);
@@ -772,12 +805,12 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     }
 
     private void populateFrequencyFromSysfs(ListPreference pref, String sysfsPath,
-            int fallbackEntries, int fallbackValues) {
-        populateFrequencyFromSysfs(pref, new String[] { sysfsPath }, fallbackEntries, fallbackValues);
+            int fallbackEntries, int fallbackValues, long kpCeiling) {
+        populateFrequencyFromSysfs(pref, new String[] { sysfsPath }, fallbackEntries, fallbackValues, kpCeiling);
     }
 
     private void populateFrequencyFromSysfs(ListPreference pref, String[] sysfsPaths,
-            int fallbackEntries, int fallbackValues) {
+            int fallbackEntries, int fallbackValues, long kpCeiling) {
         if (pref == null) return;
         String[] values = KernelOptionUtils.readAvailableValues(sysfsPaths, false);
         if (values.length == 0) {
@@ -794,9 +827,27 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
             }
         });
 
+        // Filter out frequencies above kprofiles ceiling when active
+        if (kpCeiling > 0) {
+            List<String> filtered = new ArrayList<>();
+            for (String v : values) {
+                try {
+                    if (Long.parseLong(v) <= kpCeiling) filtered.add(v);
+                } catch (NumberFormatException e) {
+                    filtered.add(v);
+                }
+            }
+            values = filtered.toArray(new String[0]);
+        }
+
         String[] entries = new String[values.length];
         for (int i = 0; i < values.length; i++) {
-            entries[i] = KernelOptionUtils.formatFrequency(values[i]);
+            String label = KernelOptionUtils.formatFrequency(values[i]);
+            // Mark the ceiling frequency with a label
+            if (kpCeiling > 0 && i == values.length - 1) {
+                label = label + " (limit)";
+            }
+            entries[i] = label;
         }
         pref.setEntries(entries);
         pref.setEntryValues(values);
