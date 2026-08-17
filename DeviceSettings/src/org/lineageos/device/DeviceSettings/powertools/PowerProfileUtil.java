@@ -85,7 +85,7 @@ public class PowerProfileUtil {
         PROFILE_DEFAULTS.put(KEY_CPU_PRIME_MAX_FREQ,  new String[]{"2592000", "2841600", "2841600"});
         
         PROFILE_DEFAULTS.put(KEY_GPU_MIN_FREQ,        new String[]{"315000000", "315000000", "315000000"});
-        PROFILE_DEFAULTS.put(KEY_GPU_MAX_FREQ,        new String[]{"579000000", "840000000", "840000000"});
+        PROFILE_DEFAULTS.put(KEY_GPU_MAX_FREQ,        new String[]{"710000000", "840000000", "840000000"});
     }
 
     private final Context mContext;
@@ -212,8 +212,94 @@ public class PowerProfileUtil {
     public String getStockValueForMode(int mode, String key) {
         int targetIndex = (mode == MODE_BATTERY_SAVER || mode == MODE_PERFORMANCE) ? mode : MODE_BALANCE;
 
+        // For battery saver max-freq keys, compute ceiling dynamically from kp_max_freq_ratio
+        if (mode == MODE_BATTERY_SAVER && key.endsWith("_max_frequency")) {
+            String dynamicMax = computeKpCeilingForKey(key);
+            if (dynamicMax != null) return dynamicMax;
+        }
+
         String[] values = PROFILE_DEFAULTS.get(key);
         return values != null ? values[targetIndex] : "";
+    }
+
+    /**
+     * Reads kp_max_freq_ratio from the kernel sysfs node.
+     * Returns the ratio (10-100), or 100 if unavailable (no clamping).
+     */
+    public static int readKpMaxFreqRatio() {
+        String raw = SysfsUtils.readLine(KernelOptionUtils.KP_MAX_FREQ_RATIO);
+        if (raw != null && !raw.isEmpty()) {
+            try {
+                int ratio = Integer.parseInt(raw.trim());
+                if (ratio >= 10 && ratio <= 100) return ratio;
+            } catch (NumberFormatException ignored) {}
+        }
+        return 100; // No clamping
+    }
+
+    /**
+     * Computes the kprofiles-clamped max frequency for a given CPU cluster key,
+     * snapping down to the nearest available frequency step.
+     * Returns null if ratio is 100 (no clamping) or sysfs is unavailable.
+     */
+    private String computeKpCeilingForKey(String key) {
+        int ratio = readKpMaxFreqRatio();
+        if (ratio >= 100) return null; // No clamping active
+
+        String[] sysfsPaths = getSysfsPathsForKey(key);
+        if (sysfsPaths == null) return null;
+
+        String[] available = KernelOptionUtils.readAvailableValues(sysfsPaths, false);
+        if (available.length == 0) return null;
+
+        // Find cpuinfo_max_freq (highest available frequency)
+        long maxFreq = 0;
+        for (String f : available) {
+            try {
+                long v = Long.parseLong(f);
+                if (v > maxFreq) maxFreq = v;
+            } catch (NumberFormatException ignored) {}
+        }
+
+        long ceiling = (maxFreq * ratio) / 100;
+
+        // Snap down to nearest available frequency at or below ceiling
+        String best = null;
+        long bestVal = 0;
+        for (String f : available) {
+            try {
+                long v = Long.parseLong(f);
+                if (v <= ceiling && v > bestVal) {
+                    best = f;
+                    bestVal = v;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        return best;
+    }
+
+    /**
+     * Returns the kprofiles-clamped ceiling frequency for a given available-frequencies
+     * sysfs path. Used by the UI to filter dropdown entries.
+     * Returns 0 if no clamping is active.
+     */
+    public static long getKpCeilingForCluster(String availableFreqsPath) {
+        int ratio = readKpMaxFreqRatio();
+        if (ratio >= 100) return 0;
+
+        String[] available = KernelOptionUtils.readAvailableValues(availableFreqsPath, false);
+        if (available.length == 0) return 0;
+
+        long maxFreq = 0;
+        for (String f : available) {
+            try {
+                long v = Long.parseLong(f);
+                if (v > maxFreq) maxFreq = v;
+            } catch (NumberFormatException ignored) {}
+        }
+
+        return (maxFreq * ratio) / 100;
     }
 
     public String getValidatedStockValueForMode(int mode, String key) {

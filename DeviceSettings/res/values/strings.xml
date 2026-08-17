@@ -75,6 +75,7 @@
     <string name="powertools_toast_value_applied">%s applied</string>
     <string name="powertools_toast_defaults_restored">Restored profile defaults</string>
     <string name="powertools_toast_manual_enabled">Manual control enabled</string>
+    <string name="powertools_hint_enable_toggle">Turn on \"%s\" to make changes</string>
     <string name="powertools_fallback_message">%1$s not available for %2$s, using %3$s</string>
     <string name="powertools_restricted_powersave_max">Mode restriction: Cannot exceed %s in Power Save mode</string>
     <string name="powertools_restricted_performance_min">Mode restriction: Cannot go below %s in Performance mode</string>

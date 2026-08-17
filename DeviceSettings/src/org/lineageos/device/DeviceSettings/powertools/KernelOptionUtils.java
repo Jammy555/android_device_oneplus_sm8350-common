@@ -64,6 +64,9 @@ public final class KernelOptionUtils {
     public static final String GPU_GOVERNOR =
             "/sys/class/kgsl/kgsl-3d0/devfreq/governor";
 
+    public static final String KP_MAX_FREQ_RATIO =
+            "/sys/kernel/kprofiles/kp_max_freq_ratio";
+
     private KernelOptionUtils() {}
 
     public static String[] readAvailableValues(String path) {
