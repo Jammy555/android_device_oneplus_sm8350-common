@@ -379,6 +379,11 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         mPowerProfileUtil.setMode(mode);
         showFallbackToasts();
 
+        // Push the new profile's frequencies/governors to the kernel sysfs nodes
+        pushHardwareSettingsCategory(KEY_CPU_ENABLE);
+        pushHardwareSettingsCategory(KEY_GPU_ENABLE);
+        pushHardwareSettingsCategory(KEY_STORAGE_ENABLE);
+
         if (mPowerProfilePref != null) {
             mPowerProfilePref.setValue(newValue);
             mMainHandler.post(() -> mPowerProfilePref.setSummary(mPowerProfilePref.getEntry()));

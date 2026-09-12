@@ -95,6 +95,8 @@ on boot
     # KProfiles - allow system to control kernel profile mode
     chown system system /sys/kernel/kprofiles/kp_mode
     chmod 0660 /sys/kernel/kprofiles/kp_mode
+    chown system system /sys/kernel/kprofiles/kp_max_freq_ratio
+    chmod 0660 /sys/kernel/kprofiles/kp_max_freq_ratio
 
     setprop sys.perf_mode_active 1
 
