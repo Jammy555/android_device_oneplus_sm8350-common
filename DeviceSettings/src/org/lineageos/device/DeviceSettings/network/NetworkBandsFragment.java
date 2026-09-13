@@ -1469,16 +1469,10 @@ public class NetworkBandsFragment extends Fragment {
                 Log.w(TAG, "Failed to get allowed network types from system: " + e.getMessage());
             }
 
-            if (savedBitmask != 0) {
-                if (bitmask == 0 || bitmask != savedBitmask) {
-                    bitmask = savedBitmask;
-                    try {
-                        tm.setAllowedNetworkTypesForReason(
-                                TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER, savedBitmask);
-                    } catch (Exception e) {
-                        Log.w(TAG, "Failed to restore saved RAT bitmask: " + e.getMessage());
-                    }
-                }
+            if (bitmask != 0 && bitmask != savedBitmask) {
+                // System bitmask differs from our cache (user likely changed it in native Android Settings).
+                // Sync our cache to match the system, rather than overwriting the system.
+                getPrefs().edit().putLong(PREF_KEY_RAT_MODE_PREFIX + mCurrentSubId, bitmask).apply();
             }
 
             boolean is5gEnabledInSystem = (bitmask & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
