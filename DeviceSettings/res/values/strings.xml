@@ -129,6 +129,8 @@
     <string name="tcp_congestion_title">TCP Congestion Control</string>
     <string name="tcp_congestion_summary">Select kernel TCP congestion algorithm (BBR, CUBIC, RENO)</string>
     <string name="tcp_congestion_dialog_title">Select TCP Congestion Control</string>
+    <string name="tcp_plb_title">Protective Load Balancing (PLB)</string>
+    <string name="tcp_plb_summary">Rehash congested transport routes to prevent packet loss</string>
 
     <string name="governor_restricted_powersave">%s is not available in PowerSave mode</string>
     <string name="governor_restricted_performance">%s is not available in Performance mode</string>

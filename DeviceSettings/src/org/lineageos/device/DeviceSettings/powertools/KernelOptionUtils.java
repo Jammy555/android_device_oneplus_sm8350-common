@@ -37,6 +37,7 @@ public final class KernelOptionUtils {
     public static final String IO_SCHEDULER = "/sys/block/sda/queue/scheduler";
     public static final String TCP_CONGESTION_CONTROL = "/proc/sys/net/ipv4/tcp_congestion_control";
     public static final String TCP_AVAILABLE_CONGESTION_CONTROL = "/proc/sys/net/ipv4/tcp_available_congestion_control";
+    public static final String TCP_PLB_ENABLED = "/proc/sys/net/ipv4/tcp_plb_enabled";
 
     public static final String CPU_LITTLE_MIN_FREQ =
             "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq";
@@ -142,6 +143,9 @@ public final class KernelOptionUtils {
         if ("simple_ondemand".equals(raw)) return "Simple Ondemand";
         if ("mq-deadline".equals(raw)) return "MQ-Deadline";
         if ("schedutil".equals(raw)) return "Schedutil";
+        if ("cubic".equalsIgnoreCase(raw)) return "CUBIC";
+        if ("westwood".equalsIgnoreCase(raw)) return "Westwood";
+        if ("htcp".equalsIgnoreCase(raw)) return "H-TCP";
         if (raw == null || raw.isEmpty()) return "";
         if (raw.length() <= 4) return raw.toUpperCase();
         return raw.substring(0, 1).toUpperCase() + raw.substring(1);

@@ -60,9 +60,17 @@ public final class PowertoolBootReceiver extends BroadcastReceiver {
                 String savedTcpAlgo = prefs.getString("tcp_congestion_control", "");
                 if (!savedTcpAlgo.isEmpty()) {
                     SysfsUtils.writeValue(KernelOptionUtils.TCP_CONGESTION_CONTROL, savedTcpAlgo);
+                    try {
+                        android.os.SystemProperties.set("persist.sys.tcp_congestion", savedTcpAlgo);
+                    } catch (Exception ignored) {}
                 }
+                boolean savedPlb = prefs.getBoolean("tcp_plb_enabled", true);
+                SysfsUtils.writeValue(KernelOptionUtils.TCP_PLB_ENABLED, savedPlb ? "1" : "0");
+                try {
+                    android.os.SystemProperties.set("persist.sys.tcp_plb", savedPlb ? "1" : "0");
+                } catch (Exception ignored) {}
 
-                Log.i(TAG, "Boot: Normal mode & TCP congestion applied");
+                Log.i(TAG, "Boot: Normal mode & TCP tuning applied");
             } finally {
                 pendingResult.finish();
             }

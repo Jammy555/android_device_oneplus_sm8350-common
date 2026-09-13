@@ -31,6 +31,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private static final String KEY_STORAGE_ENABLE = "storage_enable";
     private static final String KEY_IO_SCHEDULER = PowerProfileUtil.KEY_IO_SCHEDULER;
     private static final String KEY_TCP_CONGESTION = "tcp_congestion_control";
+    private static final String KEY_TCP_PLB = "tcp_plb_enabled";
 
     private static final String KEY_GPU_ENABLE = "gpu_enable";
     private static final String KEY_GPU_MIN_FREQ = PowerProfileUtil.KEY_GPU_MIN_FREQ;
@@ -48,7 +49,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private static final String KEY_CPU_PRIME_MAX_FREQ = PowerProfileUtil.KEY_CPU_PRIME_MAX_FREQ;
     private static final String KEY_CPU_PRIME_GOVERNOR = PowerProfileUtil.KEY_CPU_PRIME_GOVERNOR;
 
-    private SwitchPreferenceCompat mStorageEnablePref, mGpuEnablePref, mCpuEnablePref;
+    private SwitchPreferenceCompat mStorageEnablePref, mGpuEnablePref, mCpuEnablePref, mTcpPlbPref;
     private Preference mModeStatusPref;
     private ListPreference mPowerProfilePref, mIoSchedulerPref, mTcpCongestionPref;
     private ListPreference mGpuMinFreqPref, mGpuMaxFreqPref, mGpuGovernorPref;
@@ -72,7 +73,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         androidx.recyclerview.widget.RecyclerView listView = getListView();
         if (listView != null) {
             listView.setClipToPadding(false);
-            int paddingBottom = (int) (24 * getResources().getDisplayMetrics().density);
+            int paddingBottom = (int) (80 * getResources().getDisplayMetrics().density);
             listView.setPadding(
                 listView.getPaddingLeft(),
                 listView.getPaddingTop(),
@@ -93,6 +94,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         mStorageEnablePref = bindPref(KEY_STORAGE_ENABLE);
         mIoSchedulerPref = bindPref(KEY_IO_SCHEDULER);
         mTcpCongestionPref = bindPref(KEY_TCP_CONGESTION);
+        mTcpPlbPref = bindPref(KEY_TCP_PLB);
 
         mGpuEnablePref = bindPref(KEY_GPU_ENABLE);
         mGpuMinFreqPref = bindPref(KEY_GPU_MIN_FREQ);
@@ -139,6 +141,7 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
 
         // Pre-populate mode card, summaries, and active card backgrounds immediately
         // so there is zero delay or pop-in flash when opening Power Tools.
+        populateTcpCongestionFromKernel();
         syncActiveModeUI();
         refreshModeState();
     }
@@ -358,6 +361,14 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
             case KEY_CPU_ENABLE:
                 handleHardwareToggleChange(key, (Boolean) newValue);
                 return true;
+
+            case KEY_TCP_PLB:
+                boolean plbEnabled = (Boolean) newValue;
+                SysfsUtils.writeValue(KernelOptionUtils.TCP_PLB_ENABLED, plbEnabled ? "1" : "0");
+                try {
+                    android.os.SystemProperties.set("persist.sys.tcp_plb", plbEnabled ? "1" : "0");
+                } catch (Exception ignored) {}
+                return true;
                 
             default:
                 return handleHardwareValueChange(preference, key, newValStr);
@@ -431,6 +442,9 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
             StorageUtils.setIoScheduler(newValue);
         } else if (preference == mTcpCongestionPref) {
             SysfsUtils.writeValue(KernelOptionUtils.TCP_CONGESTION_CONTROL, newValue);
+            try {
+                android.os.SystemProperties.set("persist.sys.tcp_congestion", newValue);
+            } catch (Exception ignored) {}
         } else if (preference == mGpuMinFreqPref) {
             GPUUtils.setGPUMinFrequency(newValue);
         } else if (preference == mGpuMaxFreqPref) {
@@ -657,6 +671,15 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
     private void syncAllListPrefsToData(SharedPreferences prefs) {
         syncListPrefToData(mIoSchedulerPref, prefs, KEY_IO_SCHEDULER);
         syncListPrefToData(mTcpCongestionPref, prefs, KEY_TCP_CONGESTION);
+        if (mTcpPlbPref != null) {
+            String plbVal = SysfsUtils.readLine(KernelOptionUtils.TCP_PLB_ENABLED);
+            if (plbVal == null || plbVal.isEmpty()) {
+                mTcpPlbPref.setVisible(false);
+            } else {
+                mTcpPlbPref.setVisible(true);
+                mTcpPlbPref.setChecked("1".equals(plbVal));
+            }
+        }
         syncListPrefToData(mGpuMinFreqPref, prefs, KEY_GPU_MIN_FREQ);
         syncListPrefToData(mGpuMaxFreqPref, prefs, KEY_GPU_MAX_FREQ);
         syncListPrefToData(mGpuGovernorPref, prefs, KEY_GPU_GOVERNOR);
@@ -677,7 +700,12 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         
         if (isKernelOptionKey(key)) {
             String trueVal = getTrueActiveValue(key);
-            if (!hasEntryValue(pref, savedVal)) {
+            if (KEY_TCP_CONGESTION.equals(key)) {
+                if (trueVal != null && !trueVal.isEmpty() && hasEntryValue(pref, trueVal)) {
+                    savedVal = trueVal;
+                    prefs.edit().putString(key, savedVal).apply();
+                }
+            } else if (!hasEntryValue(pref, savedVal)) {
                 savedVal = trueVal != null && hasEntryValue(pref, trueVal) ? trueVal : getDefaultValue(key);
                 prefs.edit().putString(key, savedVal).apply();
             }
@@ -804,9 +832,36 @@ public class PowertoolsSettingsFragment extends PreferenceFragmentCompat
         populateNameFromSysfs(mIoSchedulerPref,
                 KernelOptionUtils.IO_SCHEDULER,
                 R.array.io_scheduler_entries, R.array.io_scheduler_values);
-        populateNameFromSysfs(mTcpCongestionPref,
-                KernelOptionUtils.TCP_AVAILABLE_CONGESTION_CONTROL,
-                R.array.tcp_congestion_entries, R.array.tcp_congestion_values);
+        populateTcpCongestionFromKernel();
+    }
+
+    private void populateTcpCongestionFromKernel() {
+        if (mTcpCongestionPref == null) return;
+        String[] values = KernelOptionUtils.readAvailableValues(
+                KernelOptionUtils.TCP_AVAILABLE_CONGESTION_CONTROL, false);
+        if (values == null || values.length == 0) {
+            String active = SysfsUtils.readLine(KernelOptionUtils.TCP_CONGESTION_CONTROL);
+            if (active != null && !active.isEmpty()) {
+                values = new String[] { active };
+            } else {
+                mTcpCongestionPref.setVisible(false);
+                return;
+            }
+        }
+
+        mTcpCongestionPref.setVisible(true);
+        String[] entries = new String[values.length];
+        for (int i = 0; i < values.length; i++) {
+            entries[i] = KernelOptionUtils.prettifyName(values[i]);
+        }
+        mTcpCongestionPref.setEntries(entries);
+        mTcpCongestionPref.setEntryValues(values);
+
+        String active = SysfsUtils.readLine(KernelOptionUtils.TCP_CONGESTION_CONTROL);
+        if (active != null && !active.isEmpty() && hasEntryValue(mTcpCongestionPref, active)) {
+            mTcpCongestionPref.setValue(active);
+            mTcpCongestionPref.setSummary(KernelOptionUtils.prettifyName(active));
+        }
     }
 
     private void populateFrequencyFromSysfs(ListPreference pref, String sysfsPath,

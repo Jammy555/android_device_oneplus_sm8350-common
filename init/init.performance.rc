@@ -192,3 +192,9 @@ on property:sys.kprofiles.restore_freq=1
     write /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq 9999999
     write /sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq 9999999
     setprop sys.kprofiles.restore_freq 0
+
+on property:persist.sys.tcp_congestion=*
+    write /proc/sys/net/ipv4/tcp_congestion_control ${persist.sys.tcp_congestion}
+
+on property:persist.sys.tcp_plb=*
+    write /proc/sys/net/ipv4/tcp_plb_enabled ${persist.sys.tcp_plb}
