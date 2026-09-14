@@ -98,6 +98,9 @@ on boot
     chown system system /sys/kernel/kprofiles/kp_max_freq_ratio
     chmod 0660 /sys/kernel/kprofiles/kp_max_freq_ratio
 
+    # TCP Default Network Queueing
+    write /proc/sys/net/core/default_qdisc fq_codel
+
     setprop sys.perf_mode_active 1
 
 on property:sys.perf_mode_active=2
