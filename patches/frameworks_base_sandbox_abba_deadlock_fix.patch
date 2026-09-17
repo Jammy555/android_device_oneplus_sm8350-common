@@ -1,8 +1,8 @@
 diff --git a/services/core/java/com/android/server/wm/sandbox/AppControlController.java b/services/core/java/com/android/server/wm/sandbox/AppControlController.java
-index f9bc7f2582582..6cad6d9a3bf8d 100644
+index f9bc7f2582582..cb51c977c7c60 100644
 --- a/services/core/java/com/android/server/wm/sandbox/AppControlController.java
 +++ b/services/core/java/com/android/server/wm/sandbox/AppControlController.java
-@@ -273,28 +273,34 @@ public class AppControlController {
+@@ -273,68 +273,78 @@ public class AppControlController {
              return;
          }
          int uid = getPackageUid(packageName);
@@ -45,7 +45,12 @@ index f9bc7f2582582..6cad6d9a3bf8d 100644
          Slog.d(TAG, "removeLockedApp: " + packageName);
      }
  
-@@ -305,16 +311,18 @@ public class AppControlController {
+     public void setPackageHidden(String packageName, boolean hidden) {
+         if (TextUtils.isEmpty(packageName)) return;
+-        if (hidden && !isPackageLockable(packageName)) {
+-            Slog.w(TAG, "Cannot hide package - not lockable: " + packageName);
++        if (hidden && !isPackageHideable(packageName)) {
++            Slog.w(TAG, "Cannot hide package - not hideable: " + packageName);
              return;
          }
          int uid = getPackageUid(packageName);
@@ -69,7 +74,12 @@ index f9bc7f2582582..6cad6d9a3bf8d 100644
          Slog.d(TAG, "setPackageHidden: " + packageName + " hidden=" + hidden);
      }
  
-@@ -325,16 +333,18 @@ public class AppControlController {
+     public void setPackageHiddenFromLauncher(String packageName, boolean hidden) {
+         if (TextUtils.isEmpty(packageName)) return;
+-        if (hidden && !isPackageLockable(packageName)) {
+-            Slog.w(TAG, "Cannot hide package from launcher - not lockable: " + packageName);
++        if (hidden && !isPackageHideable(packageName)) {
++            Slog.w(TAG, "Cannot hide package from launcher - not hideable: " + packageName);
              return;
          }
          int uid = getPackageUid(packageName);
@@ -93,3 +103,45 @@ index f9bc7f2582582..6cad6d9a3bf8d 100644
          Slog.d(TAG, "setPackageHiddenFromLauncher: " + packageName + " hidden=" + hidden);
      }
  
+@@ -392,18 +402,36 @@ public class AppControlController {
+         }
+     }
+ 
++    public boolean isPackageHideable(String packageName) {
++        if (TextUtils.isEmpty(packageName)) return false;
++        if (mBlacklistedPackages.contains(packageName)) return false;
++        int uid = getPackageUid(packageName);
++        if (uid < 0) return false;
++        return !isSystemUid(uid);
++    }
++
+     public boolean isPackageLockable(String packageName) {
+         if (TextUtils.isEmpty(packageName)) return false;
+         if (mBlacklistedPackages.contains(packageName)) return false;
+ 
+-        if (mLauncherApps == null) return false;
++        int uid = getPackageUid(packageName);
++        if (uid < 0 || isSystemUid(uid)) return false;
++
++        if (mLauncherApps != null) {
++            try {
++                List<LauncherActivityInfo> activities = mLauncherApps.getActivityList(
++                        packageName, UserHandle.of(UserHandle.USER_SYSTEM));
++                if (activities != null && !activities.isEmpty()) {
++                    return true;
++                }
++            } catch (Exception e) {
++                Slog.w(TAG, "Failed to check if package is lockable via LauncherApps: " + packageName, e);
++            }
++        }
+ 
+         try {
+-            List<LauncherActivityInfo> activities = mLauncherApps.getActivityList(
+-                    packageName, UserHandle.of(UserHandle.USER_SYSTEM));
+-            return activities != null && !activities.isEmpty();
++            return mContext.getPackageManager().getLaunchIntentForPackage(packageName) != null;
+         } catch (Exception e) {
+-            Slog.w(TAG, "Failed to check if package is lockable: " + packageName, e);
+             return false;
+         }
+     }
