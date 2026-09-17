@@ -33,3 +33,4 @@ apply_patch "hardware/qcom-caf/sm8350/audio" "../../../../$PATCH_DIR/hardware_qc
 apply_patch "frameworks/base" "../../$PATCH_DIR/0001-CachedAppOptimizer-Fix-out-of-bounds-exception-for-F.patch" "CachedAppOptimizer FULL Compaction Fix"
 apply_patch "vendor/pixel/gms" "../../../$PATCH_DIR/vendor_pixel_gms_keep_aosp_dialer_messaging.patch" "Keep AOSP Dialer and Messaging in GMS"
 apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_waveforme_effect_strength.patch" "WaveformEffect Strength Setting"
+apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_sandbox_abba_deadlock_fix.patch" "Sandbox AppControlController ABBA Deadlock Fix"
