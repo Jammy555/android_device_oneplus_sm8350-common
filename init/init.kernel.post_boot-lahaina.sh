@@ -172,34 +172,26 @@ echo 0-6 > /dev/cpuset/foreground/cpus
 
 # configure governor settings for silver cluster
 # NOTE: scaling_governor, down/up_rate_limit_us are managed by Powertools (init.performance.rc)
-if [ $rev == "1.0" ]; then
-	echo 1190400 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/hispeed_freq
-else
-	echo 1209600 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/hispeed_freq
-fi
+# hispeed_freq lowered to base freq so WALT doesn't pin a high floor at idle;
+# rtg_boost_freq zeroed to disable Related Task Group frequency boosting;
+# pl (Predictive Load) disabled to stop look-ahead pre-boosting.
+echo 300000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/hispeed_freq
 # NOTE: scaling_min_freq is managed by Powertools (init.performance.rc)
-echo 1 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/pl
+echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/pl
+echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/rtg_boost_freq
 
 # configure input boost settings
 # NOTE: input_boost_freq and input_boost_ms are managed by Powertools (init.performance.rc)
 
 # configure governor settings for gold cluster
 # NOTE: scaling_governor, down/up_rate_limit_us are managed by Powertools (init.performance.rc)
-if [ $rev == "1.0" ]; then
-	echo 1497600 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/hispeed_freq
-else
-	echo 1555200 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/hispeed_freq
-fi
-echo 1 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/pl
+echo 1075200 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/hispeed_freq
+echo 0 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/pl
 
 # configure governor settings for gold+ cluster
 # NOTE: scaling_governor, down/up_rate_limit_us are managed by Powertools (init.performance.rc)
-if [ $rev == "1.0" ]; then
-	echo 1536000 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/hispeed_freq
-else
-	echo 1670400 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/hispeed_freq
-fi
-echo 1 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/pl
+echo 1209600 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/hispeed_freq
+echo 0 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/pl
 
 # configure bus-dcvs
 for device in /sys/devices/platform/soc
