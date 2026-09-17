@@ -1,0 +1,95 @@
+diff --git a/services/core/java/com/android/server/wm/sandbox/AppControlController.java b/services/core/java/com/android/server/wm/sandbox/AppControlController.java
+index f9bc7f2582582..6cad6d9a3bf8d 100644
+--- a/services/core/java/com/android/server/wm/sandbox/AppControlController.java
++++ b/services/core/java/com/android/server/wm/sandbox/AppControlController.java
+@@ -273,28 +273,34 @@ public class AppControlController {
+             return;
+         }
+         int uid = getPackageUid(packageName);
++        boolean changed;
+         synchronized (this) {
+-            if (mLockedPackages.add(packageName)) {
++            changed = mLockedPackages.add(packageName);
++            if (changed) {
+                 saveConfigToSettings();
+-                if (uid >= 0) {
+-                    broadcastPackageChange(packageName, uid);
+-                }
+             }
+         }
++        // Broadcast outside sync block to avoid ABBA deadlock with AMS
++        if (changed && uid >= 0) {
++            broadcastPackageChange(packageName, uid);
++        }
+         Slog.d(TAG, "addLockedApp: " + packageName);
+     }
+ 
+     public void removeLockedApp(String packageName) {
+         if (TextUtils.isEmpty(packageName)) return;
+         int uid = getPackageUid(packageName);
++        boolean changed;
+         synchronized (this) {
+-            if (mLockedPackages.remove(packageName)) {
++            changed = mLockedPackages.remove(packageName);
++            if (changed) {
+                 saveConfigToSettings();
+-                if (uid >= 0) {
+-                    broadcastPackageChange(packageName, uid);
+-                }
+             }
+         }
++        // Broadcast outside sync block to avoid ABBA deadlock with AMS
++        if (changed && uid >= 0) {
++            broadcastPackageChange(packageName, uid);
++        }
+         Slog.d(TAG, "removeLockedApp: " + packageName);
+     }
+ 
+@@ -305,16 +311,18 @@ public class AppControlController {
+             return;
+         }
+         int uid = getPackageUid(packageName);
++        boolean changed;
+         synchronized (this) {
+-            boolean changed = hidden ? mHiddenPackages.add(packageName)
+-                                     : mHiddenPackages.remove(packageName);
++            changed = hidden ? mHiddenPackages.add(packageName)
++                             : mHiddenPackages.remove(packageName);
+             if (changed) {
+                 saveConfigToSettings();
+-                if (uid >= 0) {
+-                    broadcastPackageChange(packageName, uid);
+-                }
+             }
+         }
++        // Broadcast outside sync block to avoid ABBA deadlock with AMS
++        if (changed && uid >= 0) {
++            broadcastPackageChange(packageName, uid);
++        }
+         Slog.d(TAG, "setPackageHidden: " + packageName + " hidden=" + hidden);
+     }
+ 
+@@ -325,16 +333,18 @@ public class AppControlController {
+             return;
+         }
+         int uid = getPackageUid(packageName);
++        boolean changed;
+         synchronized (this) {
+-            boolean changed = hidden ? mLauncherHiddenPackages.add(packageName)
+-                                     : mLauncherHiddenPackages.remove(packageName);
++            changed = hidden ? mLauncherHiddenPackages.add(packageName)
++                             : mLauncherHiddenPackages.remove(packageName);
+             if (changed) {
+                 saveConfigToSettings();
+-                if (uid >= 0) {
+-                    broadcastPackageChange(packageName, uid);
+-                }
+             }
+         }
++        // Broadcast outside sync block to avoid ABBA deadlock with AMS
++        if (changed && uid >= 0) {
++            broadcastPackageChange(packageName, uid);
++        }
+         Slog.d(TAG, "setPackageHiddenFromLauncher: " + packageName + " hidden=" + hidden);
+     }
+ 
