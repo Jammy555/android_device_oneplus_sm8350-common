@@ -744,3 +744,14 @@ service vendor.audio-hal /vendor/bin/hw/android.hardware.audio.service
     ioprio rt 4
     task_profiles ProcessCapacityHigh HighPerformance
     onrestart restart audioserver
+
+service vendor.camera-provider-2-4 /vendor/bin/hw/android.hardware.camera.provider@2.4-service_64
+    override
+    interface android.hardware.camera.provider@2.4::ICameraProvider legacy/0
+    class hal
+    user cameraserver
+    # oem_2907 owns the thermal-engine client sockets
+    group audio camera input drmrpc oem_2907
+    ioprio rt 4
+    capabilities SYS_NICE
+    task_profiles CameraServiceCapacity MaxPerformance
