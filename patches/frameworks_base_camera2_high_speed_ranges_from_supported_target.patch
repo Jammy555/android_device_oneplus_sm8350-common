@@ -1,0 +1,46 @@
+From: AxionOS <noreply@axionos>
+Subject: [PATCH] camera2: take high speed fps ranges from a supported target
+
+CameraConstrainedHighSpeedCaptureSessionImpl.createHighSpeedRequestList()
+looks up the fps ranges with the size of
+request.getTargets().iterator().next(). getTargets() is backed by an
+ArraySet, so with a preview and a recording target the first one is
+arbitrary. SurfaceUtils.checkConstrainedHighSpeedSurfaces() skips its
+size check for privileged apps, so a privileged camera app can hand in
+a recording surface that is larger than any advertised high speed size.
+When that surface happens to come first,
+StreamConfigurationMap.getHighSpeedVideoFpsRangesFor() throws:
+
+    IllegalArgumentException: Size 3840x2160 does not support high speed video recording
+
+and the recording never gets a repeating request (0 video samples,
+MediaRecorder stop failed -1007). When the preview comes first the same
+session records normally.
+
+Use the size of a target that is an advertised high speed size, falling
+back to the first target as before.
+---
+--- a/core/java/android/hardware/camera2/impl/CameraConstrainedHighSpeedCaptureSessionImpl.java
++++ b/core/java/android/hardware/camera2/impl/CameraConstrainedHighSpeedCaptureSessionImpl.java
+@@ -102,8 +102,19 @@
+ 
+         // Check the high speed video fps ranges for video size and find the min value from the list
+         // and assign it to previewFps which will be used to calculate the requestList size.
+-        Range<Integer>[] highSpeedFpsRanges = config.getHighSpeedVideoFpsRangesFor(
+-                SurfaceUtils.getSurfaceSize(outputSurfaces.iterator().next()));
++        // Privileged apps skip the surface size check above, so a target can be larger than
++        // any advertised high speed size. getTargets() has no stable order: take the fps
++        // ranges from a target whose size is a high speed size instead of whichever is first.
++        List<Size> highSpeedSizes = Arrays.asList(config.getHighSpeedVideoSizes());
++        Size highSpeedSize = SurfaceUtils.getSurfaceSize(outputSurfaces.iterator().next());
++        for (Surface surface : outputSurfaces) {
++            Size surfaceSize = SurfaceUtils.getSurfaceSize(surface);
++            if (highSpeedSizes.contains(surfaceSize)) {
++                highSpeedSize = surfaceSize;
++                break;
++            }
++        }
++        Range<Integer>[] highSpeedFpsRanges = config.getHighSpeedVideoFpsRangesFor(highSpeedSize);
+         Log.v(TAG, "High speed fps ranges: " + Arrays.toString(highSpeedFpsRanges));
+         int previewFps = Integer.MAX_VALUE;
+         for (Range<Integer> range : highSpeedFpsRanges) {
