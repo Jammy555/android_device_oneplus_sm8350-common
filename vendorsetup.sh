@@ -27,6 +27,4 @@ apply_patch() {
     fi
 }
 
-apply_patch "packages/apps/GameSpace" "../../../$PATCH_DIR/gamespace_sync.patch" "GameSpace Sync"
-apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_a0fed77.patch" "Oplus Framework Stubs"
-apply_patch "hardware/qcom-caf/sm8350/audio" "../../../../$PATCH_DIR/hardware_qcom_audio_lahaina_drop_hw_acc.patch" "Audio: Drop hw_acc effect"
+apply_patch "frameworks/base" "../../$PATCH_DIR/frameworks_base_camera2_high_speed_ranges_from_supported_target.patch" "camera2: createHighSpeedRequestList() takes the fps ranges from a target whose size is an advertised high speed size instead of whichever target getTargets() lists first, so a privileged camera app recording a larger surface in a constrained high speed session no longer fails at random"
