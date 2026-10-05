@@ -66,3 +66,6 @@ apply_patch() {
 apply_patch "frameworks/base" "0001-CachedAppOptimizer-Fix-out-of-bounds-exception-for-F.patch" "CachedAppOptimizer FULL Compaction Fix"
 apply_patch "frameworks/base" "frameworks_base_sandbox_abba_deadlock_fix.patch" "Sandbox AppControlController ABBA Deadlock & Non-Launcher App Fix"
 apply_patch "frameworks/base" "frameworks_base_camera2_high_speed_ranges_from_supported_target.patch" "camera2: take high speed fps ranges from a supported target"
+
+# Apply patches to frameworks/native
+apply_patch "frameworks/native" "frameworks_native_ahardwarebuffer_qti_p010_venus.patch" "libnativewindow: treat QTI YCbCr_420_P010_VENUS as YUV in lockPlanes"
