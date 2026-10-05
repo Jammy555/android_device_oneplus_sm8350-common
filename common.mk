@@ -220,6 +220,23 @@ PRODUCT_COPY_FILES += \
 
 $(call soong_config_set_bool,stagefright,target_disable_thumbnail_block_model,true)
 
+# Osense
+# hardware/oplus's own vendor.oplus.hardware.osense.client-service (AIDL,
+# IOsenseAidlHalReporter/default) has always had a complete init_rc/vintf
+# fragment/sepolicy domain (hal_oplus_osense_aidl.te) but was never added to
+# PRODUCT_PACKAGES anywhere, so the binary was never built or installed.
+# The closed-source fingerprint HAL blob links libosenseaidlhalclient
+# (proprietary_vendor_oneplus_lemonade) and looks up this exact service at
+# runtime -- with nothing listening, every enrollment/auth attempt logged
+# "osense_aidl_hal: Finding osense aidl service failed!" followed by
+# "fingerprint osense setAction fail". Packaging it is the actual fix.
+PRODUCT_PACKAGES += \
+    vendor.oplus.hardware.osense.client-service
+
+# Camera scene hints: the osense client libraries load this to pass the
+# provider's OSENSE_ACTION_CAMERA_* requests on to the power HAL.
+PRODUCT_PACKAGES += \
+    liboplus-uah-client
 # Overlays
 $(call inherit-product, hardware/oplus/overlay/generic/generic.mk)
 $(call inherit-product, hardware/oplus/overlay/qssi/qssi.mk)
