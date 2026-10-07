@@ -1,0 +1,93 @@
+From: AxionOS <noreply@axionos>
+Subject: [PATCH] camera2: remember a metadata key whose tag does not exist
+
+CameraMetadataNative.getBase() and setBase() resolve a key's tag with
+nativeGetTagFromKeyLocal() until the lookup succeeds once. For a vendor
+key the HAL does not define it never succeeds, so every get() and set()
+of that key repeats the native lookup, which logs
+
+    E VendorTagDescriptor: lookupTag: Tag name 'iris.aperture.switching' does not exist.
+
+and throws an IllegalArgumentException that both methods catch and turn
+into "no value" / "do nothing". A camera app that reads and sets a
+fixed list of vendor keys per frame pays that for every undefined key on
+every frame: OplusCamera 5.045.451 on lemonade asks for about 14 of them
+per preview frame.
+
+Keep, per key, the uptime until which a failed lookup is not repeated
+(5 s), and return what the catch block returned. A key that appears
+later (another camera device, vendor tags loaded after the first use)
+is found on the next retry.
+---
+--- a/core/java/android/hardware/camera2/impl/CameraMetadataNative.java
++++ b/core/java/android/hardware/camera2/impl/CameraMetadataNative.java
+@@ -76,6 +76,7 @@
+ import android.os.Parcel;
+ import android.os.Parcelable;
+ import android.os.ServiceSpecificException;
++import android.os.SystemClock;
+ import android.util.Log;
+ import android.util.Range;
+ import android.util.Size;
+@@ -294,6 +295,11 @@
+         }
+ 
+         /**
++         * Uptime until which a failed lookup of this key's tag is not repeated.
++         */
++        private long mTagMissingUntil;
++
++        /**
+          * Get the raw class backing the type {@code T} for this key.
+          *
+          * <p>The distinction is only important if {@code T} is a generic, e.g.
+@@ -604,6 +610,9 @@
+         return getBase(key.getNativeKey());
+     }
+ 
++    // How long a key whose tag lookup failed is treated as absent before it is looked up again.
++    private static final long TAG_MISSING_RETRY_MS = 5000;
++
+     private <T> T getBase(Key<T> key) {
+         try {
+             int tag, nativeType;
+@@ -612,7 +621,19 @@
+                 if (key.hasTag()) {
+                     tag = key.getTag();
+                 } else {
+-                    tag = nativeGetTagFromKeyLocal(mMetadataPtr, key.getName());
++                    // A key the HAL does not define stays undefined. Looking it up again for
++                    // every result costs a native lookup, an error log line and an exception
++                    // each time, so remember the miss for a while.
++                    final long now = SystemClock.uptimeMillis();
++                    if (now < key.mTagMissingUntil) {
++                        return null;
++                    }
++                    try {
++                        tag = nativeGetTagFromKeyLocal(mMetadataPtr, key.getName());
++                    } catch (IllegalArgumentException e) {
++                        key.mTagMissingUntil = now + TAG_MISSING_RETRY_MS;
++                        return null;
++                    }
+                     key.cacheTag(tag);
+                 }
+                 values = readValues(tag);
+@@ -2002,7 +2023,17 @@
+             if (key.hasTag()) {
+                 tag = key.getTag();
+             } else {
+-                tag = nativeGetTagFromKeyLocal(mMetadataPtr, key.getName());
++                // Same as in getBase(): do not repeat a failed lookup for every request.
++                final long now = SystemClock.uptimeMillis();
++                if (now < key.mTagMissingUntil) {
++                    return;
++                }
++                try {
++                    tag = nativeGetTagFromKeyLocal(mMetadataPtr, key.getName());
++                } catch (IllegalArgumentException e) {
++                    key.mTagMissingUntil = now + TAG_MISSING_RETRY_MS;
++                    return;
++                }
+                 key.cacheTag(tag);
+             }
+             if (value == null) {
