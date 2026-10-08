@@ -574,7 +574,10 @@ vendor/lib64/libqcodec2_hooks.so
 vendor/lib64/libqcodec2_platform.so
 vendor/lib64/libqcodec2_utils.so
 vendor/lib64/libqcodec2_v4l2codec.so
-vendor/lib64/libmmosal.so;MODULE_SUFFIX=_vendor
+
+# Media - from OnePlus 11 (CPH2449_16.0.5.1301(EX01))
+vendor/lib64/libmmosal_vendor.so|39661d66dea51877597089df126671f1f38f543b
+vendor/lib64/qti.video.utils.videobufferlayout.so|d0058bbf94a3723996257fddda5052059bd36182
 
 # Media (Codec2) - from OnePlus 11 (OOS 11.H.16)
 vendor/bin/hw/vendor.qti.media.c2@1.0-service|168bf531f35e73d451a5ac569e76620748da51a1
@@ -1420,39 +1423,40 @@ system_ext/lib64/vendor.qti.hardware.wifidisplaysession_aidl-V1-ndk.so|58cd9358d
 system_ext/priv-app/WfdService/WfdService.apk|b8a1d9f83804d274fab6e09e0607082801207f60
 
 # WiFi Display (vendor)
-vendor/bin/wfdhdcphalservice
-vendor/bin/wfdvndservice
-vendor/bin/wifidisplayhalservice
-vendor/etc/init/android.hardware.drm@1.1-service.wfdhdcp.rc
-vendor/etc/init/com.qualcomm.qti.wifidisplayhal@1.0-service.rc
-vendor/etc/init/wfdvndservice.rc
-vendor/etc/seccomp_policy/wfdhdcphalservice.policy
-vendor/etc/seccomp_policy/wfdvndservice.policy
-vendor/etc/seccomp_policy/wifidisplayhalservice.policy
 vendor/etc/wfdconfig.xml
-vendor/lib/libFileMux_proprietary.so
-vendor/lib/libmm-hdcpmgr.so
-vendor/lib/libmmrtpdecoder_proprietary.so
-vendor/lib/libmmrtpencoder_proprietary.so
-vendor/lib/libwfdcodecv4l2_proprietary.so
-vendor/lib/libwfdcommonutils_proprietary.so
-vendor/lib/libwfdconfigutils_proprietary.so
-vendor/lib/libwfddisplayconfig_proprietary.so
-vendor/lib/libwfdhdcpcp.so
-vendor/lib/libwfdhdcpservice_proprietary.so
-vendor/lib/libwfdmminterface_proprietary.so
-vendor/lib/libwfdmmservice_proprietary.so
-vendor/lib/libwfdmmsrc_proprietary.so
-vendor/lib/libwfdmodulehdcpsession.so
-vendor/lib/libwfdrtsp_proprietary.so
-vendor/lib/libwfdsessionmodule.so
-vendor/lib/libwfdsourcesession_proprietary.so
-vendor/lib/libwfdsourcesm_proprietary.so
-vendor/lib/libwfduibcinterface_proprietary.so
-vendor/lib/libwfduibcsink_proprietary.so
-vendor/lib/libwfduibcsinkinterface_proprietary.so
-vendor/lib/libwfduibcsrc_proprietary.so
-vendor/lib/libwfduibcsrcinterface_proprietary.so
-vendor/lib/libwfdutils_proprietary.so
-vendor/lib/vendor.qti.hardware.wifidisplaysession@1.0.so;MODULE_SUFFIX=_vendor
-vendor/lib/vendor.qti.hardware.wifidisplaysessionl@1.0-halimpl.so
+
+# WiFi Display (vendor) - from OnePlus 11 (CPH2449_16.0.5.1301(EX01))
+vendor/bin/wfdhdcphalservice|297dd2f2e6a88ca84a2bb2001c86a02fdceed1b2
+vendor/bin/wfdvndservice|1a3580b8310aa94009c26a053f8d0d7df59f769c
+vendor/bin/wifidisplayhalservice|01d75550702aa2c83b5e9fa890ee40e9bc2934e8
+vendor/etc/init/android.hardware.drm@1.1-service.wfdhdcp.rc|c266f08783a17f6583e3f22c85e55b0c200442ea
+vendor/etc/init/com.qualcomm.qti.wifidisplayhal@1.0-service.rc|576ce4393b7746b77a230745aa9e9ee3bd31b17d
+vendor/etc/init/wfdvndservice.rc|42e28fb8e0bf00620d7b9939b5bd3164ca671033
+vendor/etc/seccomp_policy/wfdhdcphalservice.policy|f7bb51d41ad6fbdfaa036e698b339e5134e0ef95
+vendor/etc/seccomp_policy/wfdvndservice.policy|0a65e2a2079a3ed9f2c56fe342ebfc08a38ba338
+vendor/etc/seccomp_policy/wifidisplayhalservice.policy|9787d71828c281a3c590c16b1bf707fb03a5a244
+vendor/lib64/libFileMux_proprietary.so|c5402266f0acb7636c2031b75df6b65af7666db1
+vendor/lib64/libmmrtpdecoder_vendor.so|cf5d4098727703cca3154865ae7780a60e8d63f3
+vendor/lib64/libmmrtpencoder_vendor.so|cee42cd8db7ee136bc72cf326ddab4a340e9e217
+vendor/lib64/libwfdcodecv4l2_proprietary.so|1b5f6e8b9473f1bb1ff65df6db8ca0df13bec27e
+vendor/lib64/libwfdcommonutils_proprietary.so|7333fb2c5410151a1a9e3852b830e514f7c49257
+vendor/lib64/libwfdconfigutils_proprietary.so|d3e30378195fec02f62674559b914f869db78f66
+vendor/lib64/libwfddisplayconfig_vendor.so|3dc248d023f11f9185e7355f3b0a6a5232fa3991
+vendor/lib64/libwfdhdcpcp.so|b229d031e1038ca3671718bd70c5c7296d368736
+vendor/lib64/libwfdhdcpservice_proprietary.so|72f0c17341a436f7f627f4ce92edfbf861b224de
+vendor/lib64/libwfdmminterface_proprietary.so|5c2f7ef42413b7ddb9078e54296dc30ec4256b7d
+vendor/lib64/libwfdmmservice_proprietary.so|c3300bbd13d54aa15241c741111d9a29ba854a88
+vendor/lib64/libwfdmmsrc_proprietary.so|eab92070e9dc62f3691c3c077d43e6a998557ffb
+vendor/lib64/libwfdmodulehdcpsession.so|66f206a7dd92ffea9d1858e28449d838b2cbd454
+vendor/lib64/libwfdrtsp_vendor.so|ea1e62ae990ee50eb60e1a5e7783d78ec722123c
+vendor/lib64/libwfdsessionmodule.so|d4c4665ed13fcc00efed35cad863d0b1be0365ee
+vendor/lib64/libwfdsourcesession_proprietary.so|1360617c2ef95e02704adc41170dda28199d303d
+vendor/lib64/libwfdsourcesm_proprietary.so|0ca78d74de1e31b0a1b4a7601eb02624a29aece8
+vendor/lib64/libwfduibcinterface_vendor.so|30b71a351a79b2adddeb2f0ea5731d71f91fd490
+vendor/lib64/libwfduibcsink_vendor.so|1bd266be5a459261881e684ec9f70b4e1aceeacf
+vendor/lib64/libwfduibcsinkinterface_vendor.so|23017dc1c122fef4ebdceefb4e6c9124f522a445
+vendor/lib64/libwfduibcsrc_vendor.so|06f211c938c0e997b3051dc083ab2b9c14b4392d
+vendor/lib64/libwfduibcsrcinterface_vendor.so|0db5f6783afea4461da3bd1b198fc8374a3f586c
+vendor/lib64/libwfdutils_proprietary.so|ecf91c87538ad513f70794fb1169322fe5757b7f
+vendor/lib64/vendor.qti.hardware.wifidisplaysession@1.0.so;MODULE_SUFFIX=_vendor|0bd561d87eb658ea8a1cc058b4f3878356632cfd
+vendor/lib64/vendor.qti.hardware.wifidisplaysessionl@1.0-halimpl.so|0fa4053593d3aeeb81176c8bf43c9b3789cdb8a5
