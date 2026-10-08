@@ -551,15 +551,12 @@ odm/lib64/libosie_process.so
 odm/lib64/libosie_stub.so
 system_ext/lib64/libmmosal.so
 system_ext/lib64/libmmparser_lite.so
-vendor/bin/hw/vendor.qti.media.c2@1.0-service
 vendor/bin/init.qti.media.sh
 vendor/etc/init/init.qti.media.rc
 vendor/etc/init/vendor.qti.media.c2@1.0-service.rc
 vendor/etc/media/video_system_specs.json
 vendor/etc/media_lahaina/video_system_specs.json
 vendor/etc/media_yupik_v1/video_system_specs.json
-vendor/etc/seccomp_policy/codec2.vendor.base-arm.policy
-vendor/etc/seccomp_policy/codec2.vendor.ext-arm.policy
 vendor/etc/vintf/manifest/c2_manifest_vendor.xml
 vendor/etc/media_profiles.xml
 vendor/etc/media_profiles_V1_0.xml
@@ -576,6 +573,11 @@ vendor/lib64/libqcodec2_platform.so
 vendor/lib64/libqcodec2_utils.so
 vendor/lib64/libqcodec2_v4l2codec.so
 vendor/lib64/libmmosal.so;MODULE_SUFFIX=_vendor
+
+# Media (Codec2) - from OnePlus 11 (OOS 11.H.16)
+vendor/bin/hw/vendor.qti.media.c2@1.0-service|168bf531f35e73d451a5ac569e76620748da51a1
+vendor/etc/seccomp_policy/codec2.vendor.base-arm64.policy|aa34f664cbc47b7fab9fa818b271b045ec0ee0ec
+vendor/etc/seccomp_policy/codec2.vendor.ext-arm64.policy|a134d3d5d74294ca8164056b42389b1c7dbb2b65
 
 # Native public libraries
 vendor/etc/public.libraries.txt
