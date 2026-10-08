@@ -69,6 +69,9 @@ blob_fixups: blob_fixups_user_type = {
         'vendor/lib64/libsnapdragoncolor-manager.so',
     ): blob_fixup()
         .replace_needed('libtinyxml2.so', 'libtinyxml2-v34.so'),
+    'vendor/lib64/libqcodec2_v4l2codec.so': blob_fixup()
+        .sig_replace('C8 02 08 EB E3 8C 00 54', 'C8 02 08 EB 1F 20 03 D5')
+        .sig_replace('C9 02 0A EB 43 86 00 54', 'C9 02 0A EB 1F 20 03 D5'),
 }  # fmt: skip
 
 module = ExtractUtilsModule(
