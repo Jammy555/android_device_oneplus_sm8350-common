@@ -70,13 +70,15 @@ vendor/lib64/libacdb-fts.so
 vendor/lib64/libacdbloader.so
 vendor/lib64/libacdbrtac.so
 vendor/lib64/libadiertac.so
-vendor/lib/libadm.so
 vendor/lib64/libaudcal.so
 vendor/lib64/libaudio_log_utils.so
 vendor/lib64/libaudioparsers.so
 vendor/lib64/libhdmipassthru.so
 vendor/lib64/libqtigef.so;MODULE_SUFFIX=_vendor
 vendor/lib64/libadsprpc.so
+
+# Audio libraries - from OnePlus 11 (CPH2449_16.0.5.1301(EX01))
+vendor/lib64/libadm.so|8e18e5b08c492c54415e0fa2a151d9463bb81dac
 
 # Bluetooth
 vendor/bin/hw/android.hardware.bluetooth@1.0-service-qti
