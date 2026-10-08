@@ -21,6 +21,23 @@
     
 
     <PreferenceCategory
+        android:key="video"
+        android:title="@string/video_title">
+
+        <SwitchPreferenceCompat
+            android:key="video_color"
+            android:defaultValue="false"
+            android:summary="@string/video_color_summary"
+            android:title="@string/video_color_title" />
+
+        <SwitchPreferenceCompat
+            android:key="video_sr"
+            android:defaultValue="false"
+            android:summary="@string/video_sr_summary"
+            android:title="@string/video_sr_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:key="touchpanel"
         android:title="@string/touchpanel_title">
 

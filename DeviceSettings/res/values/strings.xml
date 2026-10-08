@@ -21,6 +21,13 @@
 
     
 
+    <!-- Video enhancement (OPLUS decoder filter) -->
+    <string name="video_title">Video enhancement</string>
+    <string name="video_color_title">Vibrant color effect</string>
+    <string name="video_color_summary">Enhance color and contrast while a video plays. Applies to the next video you start</string>
+    <string name="video_sr_title">Ultra-high video resolution</string>
+    <string name="video_sr_summary">Upscale videos of 720p or lower, up to 40 fps, while they play. Uses more battery. Vibrant color effect is not applied to videos being upscaled</string>
+
     <!-- Vibration control -->
     <string name="category_vibrator">Vibrator</string>
     <string name="vib_strength_title_head">Strength</string>

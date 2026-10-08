@@ -52,6 +52,8 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
     private static final String KEY_EDGE_TOUCH = "edge_touch";
     private static final String KEY_USB2_SWITCH = "usb2_fast_charge";
     private static final String KEY_VIBSTRENGTH = "vib_strength";
+    private static final String KEY_VIDEO_COLOR = "video_color";
+    private static final String KEY_VIDEO_SR = "video_sr";
 
     private static final long[] TEST_VIB_PATTERN = { 0, 5 };
     private static final String DEFAULT_VIB_LEVEL = "3";
@@ -71,6 +73,17 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
 
         mVibrator = getContext().getSystemService(Vibrator.class);
         
+        Preference.OnPreferenceChangeListener videoListener = (pref, value) -> {
+            // The new value is stored after this returns.
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+            boolean isColor = KEY_VIDEO_COLOR.equals(pref.getKey());
+            applyVideoEnhance(isColor ? (Boolean) value : prefs.getBoolean(KEY_VIDEO_COLOR, false),
+                    isColor ? prefs.getBoolean(KEY_VIDEO_SR, false) : (Boolean) value);
+            return true;
+        };
+        findPreference(KEY_VIDEO_COLOR).setOnPreferenceChangeListener(videoListener);
+        findPreference(KEY_VIDEO_SR).setOnPreferenceChangeListener(videoListener);
+
         mGameModeSwitch = bindSwitchPref(KEY_GAME_SWITCH, FILE_GAME);
         mEdgeTouchSwitch = bindSwitchPref(KEY_EDGE_TOUCH, FILE_EDGE);
         mUSB2FastChargeModeSwitch = bindSwitchPref(KEY_USB2_SWITCH, FILE_FAST_CHARGE);
@@ -259,6 +272,18 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
     
 
     
+
+    // liboplusvppfilter.so reads these each time a video decoder starts.
+    private static void applyVideoEnhance(boolean color, boolean sr) {
+        SystemProperties.set("debug.oplus.filter.enable", color || sr ? "1" : "0");
+        SystemProperties.set("debug.osie.enable", color ? "1" : "0");
+        SystemProperties.set("debug.sr.enable", sr ? "1" : "0");
+    }
+
+    public static void restoreVideoEnhance(Context context) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        applyVideoEnhance(prefs.getBoolean(KEY_VIDEO_COLOR, false), prefs.getBoolean(KEY_VIDEO_SR, false));
+    }
 
     public static void restoreFastChargeSetting(Context context) {
         if (Utils.fileWritable(FILE_FAST_CHARGE)) {
