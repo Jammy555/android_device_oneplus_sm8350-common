@@ -1,0 +1,13 @@
+diff --git a/hal/audio_extn/spkr_protection.c b/hal/audio_extn/spkr_protection.c
+index c6ef80f..ef74f89 100644
+--- a/hal/audio_extn/spkr_protection.c
++++ b/hal/audio_extn/spkr_protection.c
+@@ -2325,7 +2325,7 @@ void spkr_prot_init(void *adev, spkr_prot_init_config_t spkr_prot_init_config_va
+     pthread_mutex_init(&handle.mutex_spkr_prot, NULL);
+     pthread_mutex_init(&handle.spkr_calib_cancelack_mutex, NULL);
+     pthread_mutex_init(&handle.spkr_prot_thermalsync_mutex, NULL);
+-    handle.thermal_handle = dlopen("/vendor/lib/libthermalclient.so",
++    handle.thermal_handle = dlopen("libthermalclient.so",
+             RTLD_NOW);
+     if (!handle.thermal_handle) {
+         ALOGE("%s: DLOPEN for thermal client failed", __func__);
