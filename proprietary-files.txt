@@ -607,7 +607,7 @@ vendor/lib64/qti.video.utils.videobufferlayout.so|d0058bbf94a3723996257fddda5052
 # Media (Codec2) - from OnePlus 11 (OOS 11.H.16)
 vendor/bin/hw/vendor.qti.media.c2@1.0-service|168bf531f35e73d451a5ac569e76620748da51a1
 vendor/etc/seccomp_policy/codec2.vendor.base-arm64.policy|aa34f664cbc47b7fab9fa818b271b045ec0ee0ec
-vendor/etc/seccomp_policy/codec2.vendor.ext-arm64.policy|a134d3d5d74294ca8164056b42389b1c7dbb2b65
+vendor/etc/seccomp_policy/codec2.vendor.ext-arm64.policy|a134d3d5d74294ca8164056b42389b1c7dbb2b65|4a4b210bfc93287e899d091ad91cd3e31b6aed19
 
 # Native public libraries
 vendor/etc/public.libraries.txt
