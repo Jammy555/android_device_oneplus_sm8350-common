@@ -13,6 +13,13 @@ soong_namespace {
 }
 
 install_symlink {
+    name: "libaiboost_QnnHtpStub_symlink",
+    device_specific: true,
+    installed_location: "lib64/libaiboost_QnnHtpStub.so",
+    symlink_target: "libQnnHtpStub.so",
+}
+
+install_symlink {
     name: "firmware_wlanmdsp.otaupdate_symlink",
     vendor: true,
     installed_location: "firmware/wlanmdsp.otaupdate",
