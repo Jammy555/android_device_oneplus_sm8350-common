@@ -346,8 +346,33 @@ vendor/lib64/libllvm-glnext.so
 vendor/lib64/libllvm-qcom.so
 vendor/lib64/vendor.qti.qspmhal@1.0.so
 
-# Graphics (Vulkan)
-vendor/lib64/hw/vulkan.adreno.so
+# Graphics (Adreno)
+vendor/lib64/libc2d30_bltlib.so
+
+# Graphics (Adreno) - from OnePlus sm8550 (V@0676.76.1)
+vendor/gpu/kbc/sequence_manifest.bin|d0569fdb8a2e659181a7c4369d8278cb99c92fca
+vendor/gpu/kbc/unified_kbcs_64.bin|300275c2b3d2d02d3703f24d444ca634240bbb5e
+vendor/gpu/kbc/unified_ksqs.bin|e1174f1692be432f5ceca8f85ea669dbe667a2e7
+vendor/lib64/egl/eglSubDriverAndroid.so|8a48c1876664f4ae4140135ceb230f8f71d9b52f
+vendor/lib64/egl/libEGL_adreno.so;SYMLINK=vendor/lib64/libEGL_adreno.so|ce33bcc13fc569de45b624cea75d25142710834a
+vendor/lib64/egl/libGLESv1_CM_adreno.so|f3b231b22c5a7f66e16937b873fbf260f730f1f7
+vendor/lib64/egl/libGLESv2_adreno.so;SYMLINK=vendor/lib64/libGLESv2_adreno.so|b9a51c56c81db5dc7f9d602bca3bf74915de541a
+vendor/lib64/egl/libq3dtools_adreno.so;SYMLINK=vendor/lib64/libq3dtools_adreno.so|2a15f0e18e769d67e7f320d7b70c672ba6b06a40
+vendor/lib64/egl/libq3dtools_esx.so|aaadfe1a0ed6da32766b88a832cf573f79558b23
+vendor/lib64/libCB.so|e4b1bb051dedc56bd55c3e7ad40f91fb6fa3056f
+vendor/lib64/libOpenCL.so|3a75415c2b091c55632d03ec993e29910f982ae4
+vendor/lib64/libadreno_app_profiles.so|d185b5101494271a1e43df01fb4322df4a0f7bbf
+vendor/lib64/libadreno_utils.so|c64f624adfc41cb9039b699bb7a6fcc0779637c4
+vendor/lib64/libgpudataproducer.so|e7c0f13f9ef830aaf103e937f4026121a3fc18cf
+vendor/lib64/libgsl.so|b255dbd31d86330d559db1b0ac71867e2197979d
+vendor/lib64/libkcl.so|653d8879f58a1fcb4838a4b53340cfc54b0362f5
+vendor/lib64/libkernelmanager.so|a4394427bda87b141908d2c85481e06674c968ce
+vendor/lib64/libllvm-glnext.so|28b92b02548dc97fe04bb7794a016144a54b7984
+vendor/lib64/libllvm-qcom.so|f4fb24118e4a287e76f18e87ac371bd8e59ed217
+vendor/lib64/libllvm-qgl.so|4c154a86e145182acfef094a394e18e89b43b696
+
+# Graphics (Vulkan) - from OnePlus sm8550 (V@0676.76.1)
+vendor/lib64/hw/vulkan.adreno.so|b861c8a4fe376815520c49e13cdab5833ed746f7
 
 # GNSS
 odm/etc/izat.conf
