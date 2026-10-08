@@ -1,0 +1,17 @@
+diff --git a/hal/audio_hw.c b/hal/audio_hw.c
+--- a/hal/audio_hw.c
++++ b/hal/audio_hw.c
+@@ -4677,6 +4677,13 @@ int start_output_stream(struct stream_out *out)
+         pcm_close(adev->haptic_pcm);
+         adev->haptic_pcm = NULL;
+     }
++    /* The stream stays in standby after a failed start, so out_standby()
++     * never closes this handle and the next start would open the device
++     * a second time. */
++    if (out->pcm) {
++        pcm_close(out->pcm);
++        out->pcm = NULL;
++    }
+     audio_streaming_hint_end();
+     audio_extn_perf_lock_release(&adev->perf_lock_handle);
+     stop_output_stream(out);
