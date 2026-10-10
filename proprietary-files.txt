@@ -321,33 +321,11 @@ vendor/etc/init/android.hardware.gatekeeper@1.0-service-qti.rc
 vendor/lib64/hw/android.hardware.gatekeeper@1.0-impl-qti.so
 
 # Graphics (Adreno)
-vendor/gpu/kbc/sequence_manifest.bin
-vendor/gpu/kbc/unified_kbcs_32.bin
-vendor/gpu/kbc/unified_kbcs_64.bin
-vendor/gpu/kbc/unified_ksqs.bin
-vendor/lib64/egl/eglSubDriverAndroid.so
-vendor/lib64/egl/libEGL_adreno.so;SYMLINK=vendor/lib64/libEGL_adreno.so
-vendor/lib64/egl/libGLESv1_CM_adreno.so
-vendor/lib64/egl/libGLESv2_adreno.so;SYMLINK=vendor/lib64/libGLESv2_adreno.so
-vendor/lib64/egl/libq3dtools_adreno.so;SYMLINK=vendor/lib64/libq3dtools_adreno.so
-vendor/lib64/egl/libq3dtools_esx.so
 vendor/lib64/libC2D2.so
-vendor/lib64/libCB.so
-vendor/lib64/libOpenCL.so
-vendor/lib64/libVkLayer_q3dtools.so
-vendor/lib64/libadreno_app_profiles.so
-vendor/lib64/libadreno_utils.so
-vendor/lib64/libc2d30_bltlib.so
-vendor/lib64/libgpudataproducer.so
-vendor/lib64/libgsl.so
-vendor/lib64/libkcl.so
-vendor/lib64/libkernelmanager.so
-vendor/lib64/libllvm-glnext.so
-vendor/lib64/libllvm-qcom.so
 vendor/lib64/vendor.qti.qspmhal@1.0.so
 
-# Graphics (Adreno)
-vendor/lib64/libc2d30_bltlib.so
+# Graphics (Adreno) - from Xiaomi redwood (OS2.0.17.0.UMSMIXM)
+vendor/lib64/libc2d30_bltlib.so|e330210916d482cdbf6fe942145a664679fa9c88
 
 # Graphics (Adreno) - from OnePlus sm8550 (V@0676.76.1)
 vendor/gpu/kbc/sequence_manifest.bin|d0569fdb8a2e659181a7c4369d8278cb99c92fca
@@ -585,11 +563,6 @@ vendor/etc/media/video_system_specs.json
 vendor/etc/media_lahaina/video_system_specs.json
 vendor/etc/media_yupik_v1/video_system_specs.json
 vendor/etc/vintf/manifest/c2_manifest_vendor.xml
-vendor/etc/media_profiles.xml
-vendor/etc/media_profiles_V1_0.xml
-vendor/etc/media_profiles_lahaina.xml
-vendor/etc/media_profiles_lahaina_vendor.xml
-vendor/etc/media_profiles_yupik_v1.xml
 vendor/etc/video_system_specs.json
 vendor/lib64/libqc2vppfilter.so
 vendor/lib64/libqcodec2_base.so
