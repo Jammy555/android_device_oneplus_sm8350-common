@@ -1,0 +1,21 @@
+diff --git a/hal/audio_hw.c b/hal/audio_hw.c
+index 3765bc8..b451c3a 100644
+--- a/hal/audio_hw.c
++++ b/hal/audio_hw.c
+@@ -8974,6 +8974,16 @@ int adev_open_output_stream(struct audio_hw_device *dev,
+             out->stream.stop = out_stop;
+             out->stream.create_mmap_buffer = out_create_mmap_buffer;
+             out->stream.get_mmap_position = out_get_mmap_position;
++        } else if ((out->flags & (AUDIO_OUTPUT_FLAG_FAST | AUDIO_OUTPUT_FLAG_DEEP_BUFFER)) ==
++                   (AUDIO_OUTPUT_FLAG_FAST | AUDIO_OUTPUT_FLAG_DEEP_BUFFER)) {
++            /* FAST|DEEP_BUFFER is what libaudiohal sends in place of
++             * AUDIO_OUTPUT_FLAG_SPATIALIZER to HALs below 7.1. Taken as FAST it
++             * would get the low-latency usecase of the primary output and be
++             * refused as a second primary output. */
++            out->usecase = USECASE_AUDIO_PLAYBACK_HIFI;
++            out->config = pcm_config_hifi;
++            out->config.rate = config->sample_rate;
++            out->config.channels = channels;
+         } else if (out->flags & AUDIO_OUTPUT_FLAG_FAST) {
+             out->usecase = USECASE_AUDIO_PLAYBACK_LOW_LATENCY;
+             out->hal_output_suspend_supported =
