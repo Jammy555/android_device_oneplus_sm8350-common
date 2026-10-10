@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="10dp"
+    android:minHeight="52dp">
+
+    <!-- Checkbox: band label, tap to toggle -->
+    <CheckBox
+        android:id="@+id/band_checkbox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary_color"
+        android:paddingStart="4dp" />
+
+    <!-- "PCell" / "SCell" / "ACTIVE" pill badge: shown when modem is live on this band -->
+    <TextView
+        android:id="@+id/band_active_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="PCell"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:textColor="#4ADE80"
+        android:background="@drawable/pill_pcell_badge"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="3dp"
+        android:layout_marginEnd="8dp"
+        android:visibility="gone" />
+
+    <!-- Frequency hint: right-aligned grey secondary text -->
+    <TextView
+        android:id="@+id/band_freq_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="11sp"
+        android:textColor="@color/text_secondary_color"
+        android:gravity="end" />
+
+</LinearLayout>

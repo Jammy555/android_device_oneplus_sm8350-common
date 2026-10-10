@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Transparent outer bounding frame -->
+    <item android:width="24dp" android:height="24dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+    <!-- Padded inner thumb circle -->
+    <item android:top="3dp" android:bottom="3dp" android:left="3dp" android:right="3dp">
+        <shape android:shape="oval">
+            <solid android:color="#1A1A1E" />
+            <size android:width="18dp" android:height="18dp" />
+        </shape>
+    </item>
+    <!-- Centered checkmark icon -->
+    <item android:top="6dp" android:bottom="6dp" android:left="6dp" android:right="6dp">
+        <vector android:width="12dp" android:height="12dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="?android:attr/colorAccent" android:pathData="M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41-1.41z" />
+        </vector>
+    </item>
+</layer-list>

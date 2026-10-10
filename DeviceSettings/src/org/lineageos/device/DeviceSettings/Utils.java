@@ -16,88 +16,112 @@
 
 package org.lineageos.device.DeviceSettings;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.FileReader;
+import android.util.Log;
 
-public class Utils {
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
+
+public final class Utils {
+
+    private static final String TAG = "DeviceSettingsUtils";
+
+    private Utils() {}
 
     /**
-     * Write a string value to the specified file.
-     * @param filename      The filename
-     * @param value         The value
+     * Write a string value to the specified file using fast NIO.
      */
     public static void writeValue(String filename, String value) {
-        if (filename == null) {
-            return;
-        }
+        if (filename == null || value == null) return;
+        
         try {
-            FileOutputStream fos = new FileOutputStream(new File(filename));
-            fos.write(value.getBytes());
-            fos.flush();
-            fos.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            Files.write(Paths.get(filename), value.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Failed to write value to " + filename, e);
         }
     }
 
+    /**
+     * Reads the first line of a file, automatically handling stream closures.
+     */
     public static String readLine(String filename) {
-        if (filename == null) {
-            return null;
-        }
-        BufferedReader br = null;
-        String line = null;
+        if (filename == null) return null;
+        
         try {
-            br = new BufferedReader(new FileReader(filename), 1024);
-            line = br.readLine();
+            List<String> lines = Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8);
+            return lines.isEmpty() ? null : lines.get(0).trim();
         } catch (IOException e) {
             return null;
-        } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (IOException e) {
-                    // ignore
-                }
-            }
         }
-        return line;
     }
 
     public static String getFileValue(String filename, String defValue) {
         String fileValue = readLine(filename);
-        if (fileValue != null) {
-            return fileValue;
-        }
-        return defValue;
+        return fileValue != null ? fileValue : defValue;
     }
 
     public static boolean getFileValueAsBoolean(String filename, boolean defValue) {
         String fileValue = readLine(filename);
         if (fileValue != null) {
-            return (fileValue.equals("0") ? false : true);
+            return !"0".equals(fileValue);
         }
         return defValue;
     }
 
-    /**
-     * Check if the specified file exists.
-     * @param filename      The filename
-     * @return              Whether the file exists or not
-     */
     public static boolean fileExists(String filename) {
-        if (filename == null) {
-            return false;
-        }
-        return new File(filename).exists();
+        return filename != null && new File(filename).exists();
     }
 
     public static boolean fileWritable(String filename) {
-        return fileExists(filename) && new File(filename).canWrite();
+        return filename != null && new File(filename).canWrite();
+    }
+
+    public static void applyAppTheme(android.app.Activity activity) {
+        if (activity == null) return;
+        android.content.SharedPreferences prefs = activity.getSharedPreferences("band_lock_prefs", android.content.Context.MODE_PRIVATE);
+        boolean useDynamic = prefs.getBoolean("use_dynamic_colors", true);
+        if (!useDynamic) {
+            activity.setTheme(R.style.Theme_DeviceSettings_WarmPeach);
+        } else {
+            activity.setTheme(R.style.Theme_DeviceSettings);
+        }
+    }
+
+    public static int getSystemAccentColor(android.content.Context context) {
+        if (context == null) return android.graphics.Color.parseColor("#E5A376");
+        android.content.SharedPreferences prefs = context.getSharedPreferences("band_lock_prefs", android.content.Context.MODE_PRIVATE);
+        boolean useDynamic = prefs.getBoolean("use_dynamic_colors", true);
+        boolean isNight = (context.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        if (!useDynamic) {
+            return isNight ? android.graphics.Color.parseColor("#E5A376") : android.graphics.Color.parseColor("#D97736");
+        }
+        int accent = 0;
+        if (isNight) {
+            try {
+                int resId = context.getResources().getIdentifier("system_accent1_300", "color", "android");
+                if (resId != 0) accent = context.getColor(resId);
+            } catch (Exception ignored) {}
+        } else {
+            try {
+                int resId = context.getResources().getIdentifier("system_accent1_600", "color", "android");
+                if (resId != 0) accent = context.getColor(resId);
+            } catch (Exception ignored) {}
+        }
+        if (accent == 0) {
+            try {
+                android.util.TypedValue typedValue = new android.util.TypedValue();
+                if (context.getTheme().resolveAttribute(android.R.attr.colorAccent, typedValue, true)) {
+                    if (typedValue.data != 0) accent = typedValue.data;
+                }
+            } catch (Exception ignored) {}
+        }
+        if (accent == 0) {
+            accent = isNight ? android.graphics.Color.parseColor("#E5A376") : android.graphics.Color.parseColor("#D97736");
+        }
+        return accent;
     }
 }

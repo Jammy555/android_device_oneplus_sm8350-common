@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:padding="20dp"
+    android:background="@color/page_bg_color">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- TITLE & SUBTITLE -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Radio Settings &amp; Network Glossary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary_color" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="20dp"
+            android:text="Advanced 5G Voice controls, hardware channel guide, and complete diagnostic metrics explanation"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary_color" />
+
+        <!-- 1. RADIO CONTROLS CARD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp"
+            android:padding="16dp"
+            android:background="@drawable/card_bg_dark">
+
+            <TextView
+                android:id="@+id/dialog_title_radio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Radio &amp; Voice Controls"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#E5A376" />
+
+            <!-- Vo5G Switch -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/dialog_switch_vonr"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Force Vo5G (Voice over 5G / VoNR)"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary_color" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Enables ultra-HD voice calls directly over 5G Standalone (SA) towers. Eliminates 4G VoLTE fallback during phone calls for faster call setup and lower latency."
+                        android:textSize="10sp"
+                        android:textColor="@color/text_secondary_color" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/dialog_switch_vonr"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:thumb="@drawable/m3_switch_thumb_drawable"
+                    android:track="@drawable/m3_switch_track_drawable" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="12dp"
+                android:background="@color/card_stroke_color" />
+
+            <!-- System Monet Dynamic Colors Switch -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_toStartOf="@+id/dialog_switch_dynamic_colors"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="System Monet Dynamic Colors"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary_color" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Adapt UI tab highlights, badges, and accent elements dynamically to your Android System Monet wallpaper theme colors."
+                        android:textSize="10sp"
+                        android:textColor="@color/text_secondary_color" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/dialog_switch_dynamic_colors"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:thumb="@drawable/m3_switch_thumb_drawable"
+                    android:track="@drawable/m3_switch_track_drawable" />
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- 2. RF & SIGNAL METRICS GLOSSARY CARD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp"
+            android:padding="16dp"
+            android:background="@drawable/card_bg_dark">
+
+            <TextView
+                android:id="@+id/dialog_title_rf"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RF &amp; Signal Metrics Glossary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#E5A376" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="• Signal Quality (Excellent / Good / Fair / Poor): Overall health rating calculated directly from RSRP levels.\n• RSRP (Reference Signal Received Power): Actual mathematical Signal Strength in dBm. Greater than -95 dBm is Excellent; lower than -115 dBm is Poor.\n• RSRQ (Reference Signal Received Quality): Measures signal cleanliness and RF interference in dB.\n• SINR / SNR (Signal-to-Interference-plus-Noise Ratio): Cleanliness of signal over background noise. Higher values mean faster speeds.\n• CQI (Channel Quality Indicator): Rating scale 1–15 telling the cell tower how fast it can transmit data to your SIM.\n• TA (Timing Advance): Measures approximate distance from cell tower (~0.5–1 km per step).\n• EARFCN / NR-ARFCN: Radio Frequency Channel Numbers uniquely identifying 4G LTE and 5G NR carrier frequencies.\n• PCI (Physical Cell ID): Hardware sector identifier (0–1007) of the active cell tower sector."
+                android:textSize="10sp"
+                android:textColor="@color/text_secondary_color"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <!-- 3. ANTENNA & HARDWARE GLOSSARY CARD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp"
+            android:padding="16dp"
+            android:background="@drawable/card_bg_dark">
+
+            <TextView
+                android:id="@+id/dialog_title_antenna"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Antenna &amp; Hardware Guide"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#E5A376" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="• PCell (Primary Cell): Primary anchor channel handling control signals &amp; baseline data connections.\n• SCell (Secondary Cell): Extra component carriers added dynamically (2CC–4CC) to boost download speed.\n• MIMO (Multiple-Input Multiple-Output): 4x4 or 2x2 parallel spatial antenna streams.\n• Rx Chain / Diversity: Active receiver antenna branches (Rx0–Rx3) filtering background noise.\n• Tx Power: Baseband transmit output power (Class 3 23 dBm standard).\n• Modem Temp: Real-time temperature of the Qualcomm SM8350 baseband RF transceiver."
+                android:textSize="10sp"
+                android:textColor="@color/text_secondary_color"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <!-- 4. SECURITY & SYSTEM GLOSSARY CARD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp"
+            android:padding="16dp"
+            android:background="@drawable/card_bg_dark">
+
+            <TextView
+                android:id="@+id/dialog_title_security"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Network Security &amp; System States"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#E5A376" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="• Active MBN: Qualcomm modem configuration profile binary loaded for your operator.\n• Carrier Config: System carrier overlay package providing operator parameters.\n• IMS VoLTE / VoWiFi / VoNR: Voice over LTE, Wi-Fi, and 5G IP multimedia subsystem status.\n• 5G SIM Privacy (SUCI): Elliptic curve (Curve25519) identity encryption protecting your SIM from IMSI catchers.\n• Air-Interface Ciphering: Active encryption protocol (AES-128 / ZUC EEA2/NEA2) securing over-the-air data.\n• ENDC: E-UTRA-NR Dual Connectivity allowing simultaneous 4G+5G connections in 5G NSA mode.\n• DCNR: Dual Connectivity Needed Restriction flag set by operator."
+                android:textSize="10sp"
+                android:textColor="@color/text_secondary_color"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <!-- 5. STATUS VALUES EXPLANATION CARD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="20dp"
+            android:padding="16dp"
+            android:background="@drawable/card_bg_dark">
+
+            <TextView
+                android:id="@+id/dialog_title_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status &amp; Unavailable States Meaning"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#E5A376" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="• Spectrum Deployment Note: Spectrum allocation varies by telecom circle and local cell tower infrastructure. Even within the same network operator (e.g. Jio/Airtel/Vi/BSNL or global SIMs), not all frequency bands are broadcast in every geographical area.\n• Unavailable / -- : The metric is not reported by the cell tower or modem RIL in the current state.\n• N/A (Not supported on 2G GSM): 2G (GERAN) networks do not measure CQI, SINR, or Timing Advance.\n• ▲ (Green Arrow): Metric value improved since last sample (higher RSRP/SINR/CQI).\n• ▼ (Red Arrow): Metric value degraded since last sample."
+                android:textSize="10sp"
+                android:textColor="@color/text_secondary_color"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <!-- CREDITS FOOTER -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/dialog_title_credits"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Made with ❤️ by SuperJammy"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#E5A376" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Special Credits to Gemini"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary_color" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

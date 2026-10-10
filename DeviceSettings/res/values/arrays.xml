@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2016-2022 crDroid Android Project
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+<resources>
+
+    
+
+    <!-- Powertools: Game packages list -->
+    <string-array name="game_packages">
+        <item>com.proximabeta.mf.uamo</item>
+        <item>com.dts.freefiremax</item>
+        <item>com.dts.freefireth</item>
+        <item>com.mobile.legends</item>
+        <item>com.tencent.KiHan</item>
+        <item>com.tencent.tmgp.cf</item>
+        <item>com.tencent.tmgp.cod</item>
+        <item>com.tencent.tmgp.gnyx</item>
+        <item>com.ea.gp.apexlegendsmobilefps</item>
+        <item>com.levelinfinite.hotta.gp</item>
+        <item>com.supercell.brawlstars</item>
+        <item>com.supercell.clashofclans</item>
+        <item>com.vng.mlbbvn</item>
+        <item>com.levelinfinite.sgameGlobal</item>
+        <item>com.tencent.tmgp.sgame</item>
+        <item>com.riotgames.league.wildrift</item>
+        <item>com.epicgames.fortnite</item>
+        <item>com.epigames.portal</item>
+        <item>com.tencent.lolm</item>
+        <item>com.pubg.imobile</item>
+        <item>com.pubg.krmobile</item>
+        <item>com.tencent.ig</item>
+        <item>com.tencent.tmgp.pubgmhd</item>
+        <item>com.vng.pubgmobile</item>
+        <item>com.activision.callofduty.shooter</item>
+        <item>com.garena.game.codm</item>
+        <item>com.miHoYo.GenshinImpact</item>
+        <item>com.kurogame.wutheringwaves</item>
+        <item>jp.konami.pesam</item>
+        <item>com.ea.gp.fifamobile</item>
+        <item>com.madfingergames.legends</item>
+        <item>com.riotgames.league.teamfighttactics</item>
+    </string-array>
+
+    <!-- Powertools: GPU (Adreno 660, SD888) -->
+    <string-array name="gpu_frequency_entries" translatable="false">
+        <item>315 MHz</item>
+        <item>379 MHz</item>
+        <item>443 MHz</item>
+        <item>491 MHz</item>
+        <item>540 MHz</item>
+        <item>579 MHz</item>
+        <item>608 MHz</item>
+        <item>676 MHz</item>
+        <item>738 MHz</item>
+        <item>778 MHz</item>
+        <item>840 MHz</item>
+    </string-array>
+    <string-array name="gpu_frequency_values" translatable="false">
+        <item>315000000</item>
+        <item>379000000</item>
+        <item>443000000</item>
+        <item>491000000</item>
+        <item>540000000</item>
+        <item>579000000</item>
+        <item>608000000</item>
+        <item>676000000</item>
+        <item>738000000</item>
+        <item>778000000</item>
+        <item>840000000</item>
+    </string-array>
+
+    <!-- Powertools: CPU Little (Cortex-A55, policy0) -->
+    <string-array name="cpu_little_freq_entries" translatable="false">
+        <item>300 MHz</item>
+        <item>403 MHz</item>
+        <item>499 MHz</item>
+        <item>595 MHz</item>
+        <item>691 MHz</item>
+        <item>806 MHz</item>
+        <item>902 MHz</item>
+        <item>998 MHz</item>
+        <item>1094 MHz</item>
+        <item>1209 MHz</item>
+        <item>1305 MHz</item>
+        <item>1401 MHz</item>
+        <item>1497 MHz</item>
+        <item>1612 MHz</item>
+        <item>1708 MHz</item>
+        <item>1804 MHz</item>
+    </string-array>
+    <string-array name="cpu_little_freq_values" translatable="false">
+        <item>300000</item>
+        <item>403200</item>
+        <item>499200</item>
+        <item>595200</item>
+        <item>691200</item>
+        <item>806400</item>
+        <item>902400</item>
+        <item>998400</item>
+        <item>1094400</item>
+        <item>1209600</item>
+        <item>1305600</item>
+        <item>1401600</item>
+        <item>1497600</item>
+        <item>1612800</item>
+        <item>1708800</item>
+        <item>1804800</item>
+    </string-array>
+
+    <!-- Powertools: CPU Big (Cortex-A78, policy4) -->
+    <string-array name="cpu_big_freq_entries" translatable="false">
+        <item>710 MHz</item>
+        <item>844 MHz</item>
+        <item>960 MHz</item>
+        <item>1075 MHz</item>
+        <item>1209 MHz</item>
+        <item>1324 MHz</item>
+        <item>1440 MHz</item>
+        <item>1555 MHz</item>
+        <item>1670 MHz</item>
+        <item>1766 MHz</item>
+        <item>1881 MHz</item>
+        <item>1996 MHz</item>
+        <item>2112 MHz</item>
+        <item>2227 MHz</item>
+        <item>2342 MHz</item>
+        <item>2419 MHz</item>
+    </string-array>
+    <string-array name="cpu_big_freq_values" translatable="false">
+        <item>710400</item>
+        <item>844800</item>
+        <item>960000</item>
+        <item>1075200</item>
+        <item>1209600</item>
+        <item>1324800</item>
+        <item>1440000</item>
+        <item>1555200</item>
+        <item>1670400</item>
+        <item>1766400</item>
+        <item>1881600</item>
+        <item>1996800</item>
+        <item>2112000</item>
+        <item>2227200</item>
+        <item>2342400</item>
+        <item>2419200</item>
+    </string-array>
+
+    <!-- Powertools: CPU Prime (Cortex-X1, policy7) -->
+    <string-array name="cpu_prime_freq_entries" translatable="false">
+        <item>844 MHz</item>
+        <item>960 MHz</item>
+        <item>1075 MHz</item>
+        <item>1190 MHz</item>
+        <item>1305 MHz</item>
+        <item>1420 MHz</item>
+        <item>1555 MHz</item>
+        <item>1670 MHz</item>
+        <item>1785 MHz</item>
+        <item>1900 MHz</item>
+        <item>2035 MHz</item>
+        <item>2150 MHz</item>
+        <item>2265 MHz</item>
+        <item>2380 MHz</item>
+        <item>2496 MHz</item>
+        <item>2592 MHz</item>
+        <item>2688 MHz</item>
+        <item>2764 MHz</item>
+        <item>2841 MHz</item>
+    </string-array>
+    <string-array name="cpu_prime_freq_values" translatable="false">
+        <item>844800</item>
+        <item>960000</item>
+        <item>1075200</item>
+        <item>1190400</item>
+        <item>1305600</item>
+        <item>1420800</item>
+        <item>1555200</item>
+        <item>1670400</item>
+        <item>1785600</item>
+        <item>1900800</item>
+        <item>2035200</item>
+        <item>2150400</item>
+        <item>2265600</item>
+        <item>2380800</item>
+        <item>2496000</item>
+        <item>2592000</item>
+        <item>2688000</item>
+        <item>2764800</item>
+        <item>2841600</item>
+    </string-array>
+
+    <!-- Powertools: CPU Governors (all options) -->
+    <string-array name="cpu_governor_entries" translatable="false">
+        <item>schedutil</item>
+        <item>performance</item>
+        <item>conservative</item>
+        <item>powersave</item>
+    </string-array>
+    <string-array name="cpu_governor_values" translatable="false">
+        <item>schedutil</item>
+        <item>performance</item>
+        <item>conservative</item>
+        <item>powersave</item>
+    </string-array>
+
+    <!-- Powertools: GPU Governors (Adreno 660 - all options) -->
+    <string-array name="gpu_governor_entries" translatable="false">
+        <item>Userspace</item>
+        <item>Powersave</item>
+        <item>Performance</item>
+        <item>Simple Ondemand</item>
+        <item>MSM Adreno TZ</item>
+    </string-array>
+    <string-array name="gpu_governor_values" translatable="false">
+        <item>userspace</item>
+        <item>powersave</item>
+        <item>performance</item>
+        <item>simple_ondemand</item>
+        <item>msm-adreno-tz</item>
+    </string-array>
+
+    <!-- Powertools: Power Profile Mode -->
+    <string-array name="power_profile_modes" translatable="false">
+        <item>Powersave</item>
+        <item>Normal</item>
+        <item>Performance</item>
+    </string-array>
+    <string-array name="power_profile_mode_values" translatable="false">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    
+<string-array name="io_scheduler_entries" translatable="false">
+    <item>BFQ</item>
+    <item>Kyber</item>
+    <item>MQ-Deadline</item>
+</string-array>
+
+<string-array name="io_scheduler_values" translatable="false">
+    <item>bfq</item>
+    <item>kyber</item>
+    <item>mq-deadline</item>
+</string-array>
+
+    <!-- Powertools: TCP Congestion Control -->
+    <string-array name="tcp_congestion_entries" translatable="false">
+        <item>BBR (Google RTT &amp; Low Latency)</item>
+        <item>CUBIC (Stock Default)</item>
+        <item>RENO (Standard TCP)</item>
+        <item>WESTWOOD (Wireless Loss Optimized)</item>
+    </string-array>
+    <string-array name="tcp_congestion_values" translatable="false">
+        <item>bbr</item>
+        <item>cubic</item>
+        <item>reno</item>
+        <item>westwood</item>
+    </string-array>
+
+</resources>

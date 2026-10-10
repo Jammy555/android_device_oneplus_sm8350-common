@@ -16,30 +16,72 @@
 
 package org.lineageos.device.DeviceSettings;
 
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.app.DialogFragment;
-import android.app.Fragment;
-import android.content.DialogInterface;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
-import androidx.preference.PreferenceFragment;
-import androidx.preference.PreferenceManager;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
 
 import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 
-public class DeviceSettingsActivity extends CollapsingToolbarBaseActivity {
+public final class DeviceSettingsActivity extends CollapsingToolbarBaseActivity
+        implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
-    private static final String TAG = "DeviceSettings";
+    private static final String TAG_MAIN = "main_prefs";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Utils.applyAppTheme(this);
         super.onCreate(savedInstanceState);
 
-        getFragmentManager().beginTransaction().replace(com.android.settingslib.collapsingtoolbar.R.id.content_frame,
-                new DeviceSettings(), TAG).commit();
+        if (getActionBar() != null) {
+            getActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+
+        if (savedInstanceState == null) {
+            getSupportFragmentManager().beginTransaction()
+                    .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+                    .replace(com.android.settingslib.collapsingtoolbar.R.id.content_frame,
+                            new DeviceSettings(), TAG_MAIN)
+                    .commit();
+        }
+
+    }
+
+    @Override
+    public boolean onPreferenceStartFragment(
+            @NonNull PreferenceFragmentCompat caller, @NonNull Preference pref) {
+        final String fragmentClass = pref.getFragment();
+        if (fragmentClass == null) return false;
+
+        final Fragment fragment = getSupportFragmentManager().getFragmentFactory()
+                .instantiate(getClassLoader(), fragmentClass);
+
+        fragment.setArguments(pref.getExtras());
+        fragment.setTargetFragment(caller, 0);
+
+        getSupportFragmentManager().beginTransaction()
+                .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                .replace(com.android.settingslib.collapsingtoolbar.R.id.content_frame, fragment)
+                .addToBackStack(null)
+                .commit();
+
+        if (pref.getTitle() != null) {
+            setTitle(pref.getTitle());
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 }

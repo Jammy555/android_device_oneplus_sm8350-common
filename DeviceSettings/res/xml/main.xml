@@ -15,13 +15,16 @@
      limitations under the License.
 -->
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:settings="http://schemas.android.com/apk/res/org.lineageos.device.DeviceSettings">
+	xmlns:settings="http://schemas.android.com/apk/res/org.lineageos.device.DeviceSettings"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    
 
     <PreferenceCategory
         android:key="touchpanel"
         android:title="@string/touchpanel_title">
 
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:key="edge_touch"
             android:icon="@drawable/ic_edge_touch"
             android:summary="@string/edge_touch_summary"
@@ -34,7 +37,7 @@
             android:persistent="false"
             android:selectable="false" />
 
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:key="game_mode"
             android:icon="@drawable/ic_game_mode"
             android:summary="@string/game_mode_summary"
@@ -51,7 +54,7 @@
         android:key="usb"
         android:title="@string/usb_title">
 
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:key="usb2_fast_charge"
             android:icon="@drawable/ic_usb2_fc"
             android:summary="@string/usb2_fc_summary"
@@ -71,6 +74,41 @@
             android:max="5"
             android:min="0"
             settings:units=""
+            settings:continuousUpdates="true"
             android:defaultValue="3" />
     </PreferenceCategory>
+
+    <!-- Powertools: Power profiles, CPU/GPU frequency tuning -->
+    <PreferenceCategory
+        android:key="powertools_category"
+        android:title="@string/Powertools_title">
+
+        <Preference
+            android:key="powertools_entry"
+            android:icon="@drawable/ic_thermal_balance"
+            android:title="@string/Powertools_title"
+            android:summary="@string/Powertools_summary"
+            android:fragment="org.lineageos.device.DeviceSettings.powertools.PowertoolsSettingsFragment" />
+
+    </PreferenceCategory>
+
+    <!-- Network: Selective Band Lock -->
+    <PreferenceCategory
+        android:key="network_category"
+        android:title="@string/network_category_title">
+
+        <Preference
+            android:key="network_bands_entry"
+            android:icon="@drawable/ic_network_band_lock"
+            android:title="@string/network_bands_title"
+            android:summary="@string/network_bands_summary">
+            <intent
+                android:action="android.intent.action.MAIN"
+                android:targetPackage="org.lineageos.device.DeviceSettings"
+                android:targetClass="org.lineageos.device.DeviceSettings.network.NetworkBandsActivity" />
+        </Preference>
+
+    </PreferenceCategory>
+
 </PreferenceScreen>
+
