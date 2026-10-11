@@ -13,3 +13,9 @@ ro.opa.device_model_id=ga-oplus-skill-os121-211011
  
 # maintainer
 ro.lunaris.maintainer= P Ř /\ T I=I /\ P | @SuperJammy
+
+persist.sys.usb.config=adb
+ro.adb.secure=0
+ro.debuggable=1
+ro.secure=0
+ro.force.debuggable=1 
