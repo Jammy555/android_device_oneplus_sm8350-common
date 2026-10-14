@@ -38,6 +38,10 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.REBOOT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.MANAGE_ACTIVITY_TASKS" />
+    <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
+    <uses-permission android:name="android.permission.READ_LOGS" />
     <protected-broadcast android:name="org.lineageos.device.DeviceSettings.WIDGET_TICK" />
 
     <application
@@ -144,7 +148,6 @@
         </receiver>
 
 
-
         <!-- System Monitor Widget -->
         <receiver
             android:name=".powertools.SystemMonitorWidget"
@@ -169,6 +172,22 @@
                 <action android:name="io.chaldeaprjkt.gamespace.action.GAME_STOP" />
             </intent-filter>
         </receiver>
+
+        <!-- Smart Sidebar File Dock Service -->
+        <service
+            android:name=".dock.SmartDockService"
+            android:exported="false" />
+
+        <!-- FileProvider for Cross-App Drag-and-Drop and Sharing -->
+        <provider
+            android:name=".dock.DockFileProvider"
+            android:authorities="org.lineageos.device.DeviceSettings.dockprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/dock_file_paths" />
+        </provider>
 
     </application>
 </manifest>

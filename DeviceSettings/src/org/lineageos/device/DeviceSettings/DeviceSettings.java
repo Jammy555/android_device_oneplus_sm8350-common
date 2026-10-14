@@ -36,7 +36,9 @@ import androidx.preference.SwitchPreferenceCompat;
 import com.android.settingslib.widget.SettingsBasePreferenceFragment;
 
 import android.util.ArrayMap;
+import android.util.Log;
 import java.util.Map;
+import org.lineageos.device.DeviceSettings.dock.SmartDockService;
 import org.lineageos.device.DeviceSettings.powertools.PowerProfileUtil;
 import org.lineageos.internal.util.FileUtils;
 
@@ -52,6 +54,7 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
     private static final String KEY_EDGE_TOUCH = "edge_touch";
     private static final String KEY_USB2_SWITCH = "usb2_fast_charge";
     private static final String KEY_VIBSTRENGTH = "vib_strength";
+    private static final String KEY_DOCK_SIDEBAR_ENABLE = SmartDockService.KEY_DOCK_ENABLE;
 
     private static final long[] TEST_VIB_PATTERN = { 0, 5 };
     private static final String DEFAULT_VIB_LEVEL = "3";
@@ -62,15 +65,18 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
     private SwitchPreferenceCompat mGameModeSwitch;
     private SwitchPreferenceCompat mEdgeTouchSwitch;
     private SwitchPreferenceCompat mUSB2FastChargeModeSwitch;
+    private SwitchPreferenceCompat mDockSidebarEnableSwitch;
     private CustomSeekBarPreference mVibratorStrengthPreference;
     private Vibrator mVibrator;
+
+    private final android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.main, rootKey);
 
         mVibrator = getContext().getSystemService(Vibrator.class);
-        
+
         mGameModeSwitch = bindSwitchPref(KEY_GAME_SWITCH, FILE_GAME);
         mEdgeTouchSwitch = bindSwitchPref(KEY_EDGE_TOUCH, FILE_EDGE);
         mUSB2FastChargeModeSwitch = bindSwitchPref(KEY_USB2_SWITCH, FILE_FAST_CHARGE);
@@ -84,7 +90,27 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
             mVibratorStrengthPreference.setEnabled(false);
         }
 
-        
+        // Smart Sidebar File Dock enable switch
+        mDockSidebarEnableSwitch = (SwitchPreferenceCompat) findPreference(KEY_DOCK_SIDEBAR_ENABLE);
+        if (mDockSidebarEnableSwitch != null) {
+            mDockSidebarEnableSwitch.setOnPreferenceChangeListener((pref, value) -> {
+                boolean enabled = (Boolean) value;
+                Context context = getContext();
+                if (context != null) {
+                    PreferenceManager.getDefaultSharedPreferences(context).edit()
+                            .putBoolean(KEY_DOCK_SIDEBAR_ENABLE, enabled)
+                            .apply();
+                    Intent intent = new Intent(context, SmartDockService.class);
+                    intent.putExtra("enable", enabled);
+                    if (enabled) {
+                        context.startService(intent);
+                    } else {
+                        context.stopService(intent);
+                    }
+                }
+                return true;
+            });
+        }
     }
 
     private SwitchPreferenceCompat bindSwitchPref(String key, String sysfsPath) {
@@ -259,6 +285,7 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
     
 
     
+
 
     public static void restoreFastChargeSetting(Context context) {
         if (Utils.fileWritable(FILE_FAST_CHARGE)) {

@@ -20,6 +20,26 @@
     <string name="device_summary">Adjust OnePlus specific device settings</string>
 
     
+    
+
+    <!-- Smart Sidebar File Dock -->
+    <string name="dock_title">File Dock</string>
+    <string name="dock_summary">Drag and drop text, photos, and files into the dock to stage them across apps</string>
+    <string name="dock_enable">Enable File Dock</string>
+    <string name="dock_enable_summary">Show a floating edge handle to quickly stage and drop content</string>
+    <string name="dock_empty_hint">Drag &amp; drop text, images, or files here to stage them\n\nHold any saved item to drag it into other apps</string>
+    <string name="dock_clear_all">Clear all</string>
+    <string name="dock_copied_toast">Copied to clipboard</string>
+    <string name="dock_deleted_toast">Item removed</string>
+    <string name="dock_saved_toast">Saved from %s</string>
+    <string name="dock_pasted_toast">Pasted to app</string>
+    <string name="dock_image_copied_toast">Image copied to clipboard \u2014 ready to paste</string>
+    <string name="dock_settings_title">File Dock Settings</string>
+    <string name="dock_handle_position">Handle Screen Edge</string>
+    <string name="dock_handle_position_summary">Place edge handle on the right or left edge</string>
+    <string name="dock_auto_fade">Auto-fade handle</string>
+    <string name="dock_auto_fade_summary">Dim the edge handle when idle to avoid screen distraction</string>
+
 
     <!-- Vibration control -->
     <string name="category_vibrator">Vibrator</string>
@@ -110,7 +130,6 @@
     <string name="powertools_min_freq">Minimum Frequency</string>
     <string name="powertools_max_freq">Maximum Frequency</string>
     <string name="powertools_governor">Governor</string>
-
 
 
     <string name="misc_category_title">Miscellaneous</string>

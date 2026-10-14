@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dock_pill_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:focusable="false">
+
+    <!-- Pill Background Container -->
+    <LinearLayout
+        android:id="@+id/dock_pill_body"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/dock_pill_handle_bg"
+        android:clipToOutline="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <!-- Idle Handle Grip Line -->
+        <View
+            android:id="@+id/dock_pill_grip"
+            android:layout_width="3.5dp"
+            android:layout_height="32dp"
+            android:background="@drawable/dock_pill_grip_bg" />
+
+        <!-- Expanded Drop Target Container (visible only during drag) -->
+        <LinearLayout
+            android:id="@+id/dock_pill_drop_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/dock_pill_drop_icon"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_dock_copy"
+                android:tint="#FFFFFFFF" />
+
+            <TextView
+                android:id="@+id/dock_pill_drop_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Drop\nhere"
+                android:gravity="center"
+                android:textColor="#FFFFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

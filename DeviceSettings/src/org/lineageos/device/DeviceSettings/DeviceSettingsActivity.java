@@ -57,8 +57,13 @@ public final class DeviceSettingsActivity extends CollapsingToolbarBaseActivity
         final String fragmentClass = pref.getFragment();
         if (fragmentClass == null) return false;
 
-        final Fragment fragment = getSupportFragmentManager().getFragmentFactory()
-                .instantiate(getClassLoader(), fragmentClass);
+        final Fragment fragment;
+        if ("org.lineageos.device.DeviceSettings.dock.SmartDockSettingsFragment".equals(fragmentClass)) {
+            fragment = new org.lineageos.device.DeviceSettings.dock.SmartDockSettingsFragment();
+        } else {
+            fragment = getSupportFragmentManager().getFragmentFactory()
+                    .instantiate(getClassLoader(), fragmentClass);
+        }
 
         fragment.setArguments(pref.getExtras());
         fragment.setTargetFragment(caller, 0);

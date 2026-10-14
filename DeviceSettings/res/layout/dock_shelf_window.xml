@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<org.lineageos.device.DeviceSettings.dock.DockShelfLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dock_shelf_root"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/dock_shelf_bg"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <!-- Window Header & Drag Bar -->
+    <LinearLayout
+        android:id="@+id/dock_shelf_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="10dp">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/dock_shelf_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/dock_title"
+            android:textColor="#FFFFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <!-- Count Badge -->
+        <TextView
+            android:id="@+id/dock_shelf_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/dock_badge_bg"
+            android:paddingHorizontal="7dp"
+            android:paddingVertical="2dp"
+            android:text="0"
+            android:textColor="#FF33A0FF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <!-- Clear All Button -->
+        <TextView
+            android:id="@+id/dock_shelf_btn_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="4dp"
+            android:text="@string/dock_clear_all"
+            android:textColor="#A0FFFFFF"
+            android:textSize="12sp" />
+
+        <!-- Close Button -->
+        <ImageView
+            android:id="@+id/dock_shelf_btn_close"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="3dp"
+            android:src="@drawable/ic_dock_delete"
+            android:tint="#80FFFFFF" />
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#20FFFFFF"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Day Navigation Bar (Daily Pages) -->
+    <LinearLayout
+        android:id="@+id/dock_day_nav_bar"
+        android:layout_width="match_parent"
+        android:layout_height="34dp"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/dock_day_bar_bg"
+        android:paddingHorizontal="6dp"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/dock_day_btn_prev"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@drawable/ic_dock_chevron_left"
+            android:tint="#D0FFFFFF" />
+
+        <TextView
+            android:id="@+id/dock_day_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Today"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/dock_day_btn_next"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@drawable/ic_dock_chevron_right"
+            android:tint="#D0FFFFFF" />
+
+    </LinearLayout>
+
+    <!-- Empty State View -->
+    <TextView
+        android:id="@+id/dock_shelf_empty"
+        android:layout_width="match_parent"
+        android:layout_height="140dp"
+        android:gravity="center"
+        android:lineSpacingExtra="4dp"
+        android:text="@string/dock_empty_hint"
+        android:textColor="#60FFFFFF"
+        android:textSize="13sp" />
+
+    <!-- Stored Items Container (Vertical Scrollable) -->
+    <ScrollView
+        android:id="@+id/dock_shelf_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="420dp"
+        android:scrollbars="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/dock_items_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
+
+</org.lineageos.device.DeviceSettings.dock.DockShelfLayout>

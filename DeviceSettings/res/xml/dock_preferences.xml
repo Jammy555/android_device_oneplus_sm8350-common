@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="@string/dock_settings_title">
+
+        <SwitchPreferenceCompat
+            android:key="dock_auto_fade"
+            android:title="@string/dock_auto_fade"
+            android:summary="@string/dock_auto_fade_summary"
+            android:defaultValue="true" />
+
+        <Preference
+            android:key="dock_clear_storage"
+            android:title="@string/dock_clear_all"
+            android:summary="Remove all saved text clips and downloaded photos" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

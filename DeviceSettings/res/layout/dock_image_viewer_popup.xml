@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<org.lineageos.device.DeviceSettings.dock.DockShelfLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dock_viewer_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E60A0D14"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical">
+
+    <!-- Top Action Bar -->
+    <LinearLayout
+        android:id="@+id/dock_viewer_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp">
+
+        <!-- Close Button (X) -->
+        <ImageView
+            android:id="@+id/dock_viewer_btn_close"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@drawable/ic_close"
+            android:tint="#FFFFFFFF" />
+
+        <!-- App Icon & Source Info -->
+        <ImageView
+            android:id="@+id/dock_viewer_app_icon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="12dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/dock_viewer_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/dock_title"
+                android:textColor="#FFFFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/dock_viewer_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#80FFFFFF"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+
+        <!-- Copy URI Button -->
+        <ImageView
+            android:id="@+id/dock_viewer_btn_copy"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="6dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@drawable/ic_dock_copy"
+            android:tint="#FFFFFFFF" />
+
+        <!-- Share Button -->
+        <ImageView
+            android:id="@+id/dock_viewer_btn_share"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@drawable/ic_dock_share"
+            android:tint="#FFFFFFFF" />
+
+    </LinearLayout>
+
+    <!-- Center High-Res Image Display -->
+    <FrameLayout
+        android:id="@+id/dock_viewer_backdrop"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="false"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/dock_viewer_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:adjustViewBounds="true"
+            android:background="@drawable/dock_card_bg"
+            android:clipToOutline="true"
+            android:scaleType="fitCenter" />
+
+    </FrameLayout>
+
+    <!-- Bottom Actions Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/dock_viewer_btn_paste"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:background="@drawable/dock_badge_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="20dp"
+            android:text="Copy &amp; Paste to app"
+            android:textColor="#FF33A0FF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</org.lineageos.device.DeviceSettings.dock.DockShelfLayout>

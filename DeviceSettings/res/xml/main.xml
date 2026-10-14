@@ -18,7 +18,26 @@
 	xmlns:settings="http://schemas.android.com/apk/res/org.lineageos.device.DeviceSettings"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    
+
+    <PreferenceCategory
+        android:key="smart_dock"
+        android:title="@string/dock_title">
+
+        <!-- Smart Sidebar File Dock -->
+        <SwitchPreferenceCompat
+            android:key="dock_sidebar_enable"
+            android:defaultValue="false"
+            android:summary="@string/dock_enable_summary"
+            android:title="@string/dock_enable" />
+
+        <Preference
+            android:key="dock_settings"
+            android:dependency="dock_sidebar_enable"
+            android:fragment="org.lineageos.device.DeviceSettings.dock.SmartDockSettingsFragment"
+            android:summary="@string/dock_summary"
+            android:title="@string/dock_settings_title" />
+
+    </PreferenceCategory>
 
     <PreferenceCategory
         android:key="touchpanel"
@@ -111,4 +130,3 @@
     </PreferenceCategory>
 
 </PreferenceScreen>
-

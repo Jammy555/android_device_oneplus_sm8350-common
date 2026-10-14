@@ -17,6 +17,7 @@
 <resources>
 
     
+    
 
     <!-- Powertools: Game packages list -->
     <string-array name="game_packages">
@@ -245,17 +246,17 @@
     </string-array>
 
     
-<string-array name="io_scheduler_entries" translatable="false">
-    <item>BFQ</item>
-    <item>Kyber</item>
-    <item>MQ-Deadline</item>
-</string-array>
+    <string-array name="io_scheduler_entries" translatable="false">
+        <item>BFQ</item>
+        <item>Kyber</item>
+        <item>MQ-Deadline</item>
+    </string-array>
 
-<string-array name="io_scheduler_values" translatable="false">
-    <item>bfq</item>
-    <item>kyber</item>
-    <item>mq-deadline</item>
-</string-array>
+    <string-array name="io_scheduler_values" translatable="false">
+        <item>bfq</item>
+        <item>kyber</item>
+        <item>mq-deadline</item>
+    </string-array>
 
     <!-- Powertools: TCP Congestion Control -->
     <string-array name="tcp_congestion_entries" translatable="false">
@@ -270,5 +271,16 @@
         <item>reno</item>
         <item>westwood</item>
     </string-array>
+
+    <!-- Smart Sidebar File Dock Arrays -->
+    <string-array name="dock_handle_position_entries">
+        <item>Right edge</item>
+        <item>Left edge</item>
+    </string-array>
+    <string-array name="dock_handle_position_values">
+        <item>right</item>
+        <item>left</item>
+    </string-array>
+
 
 </resources>
