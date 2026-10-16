@@ -1,0 +1,95 @@
+From 5b48de04d61902f26645ea8a122d0d0837dc08f1 Mon Sep 17 00:00:00 2001
+From: Eric Laurent <elaurent@google.com>
+Date: Mon, 20 Oct 2025 19:20:31 +0000
+Subject: [PATCH] audio policy manager: fix route dependent track
+ spatialization logic
+
+commit 4d898f8a introduced more dynamic track spatilization when the route
+changes. The criteria used to decide if a track must be spatialized must be
+the same when creating the track (in getOutputForDevices()) and when updating
+the route when the track starts (in checkSpatializedClientsReroute())
+
+Bug: 446572133
+Test: repro steps in bug
+Flag: EXEMPT BUGFIX
+Change-Id: I9bac00f87693fb8382d8a954e4a13b473cfcf87f
+---
+ .../managerdefault/AudioPolicyManager.cpp     | 32 ++++++++++++++-----
+ .../managerdefault/AudioPolicyManager.h       |  7 ++++
+ 2 files changed, 31 insertions(+), 8 deletions(-)
+
+diff --git a/services/audiopolicy/managerdefault/AudioPolicyManager.cpp b/services/audiopolicy/managerdefault/AudioPolicyManager.cpp
+index 5660c03f49b..94bab8683c4 100644
+--- a/services/audiopolicy/managerdefault/AudioPolicyManager.cpp
++++ b/services/audiopolicy/managerdefault/AudioPolicyManager.cpp
+@@ -1880,11 +1880,8 @@ audio_io_handle_t AudioPolicyManager::getOutputForDevices(
+     // was specified and offload or direct playback is not explicitly requested, and there is no
+     // haptic channel included in playback
+     *isSpatialized = false;
+-    if (mSpatializerOutput != nullptr &&
+-        canBeSpatializedInt(attr, config, devices.toTypeAddrVector()) &&
+-        prefMixerConfigInfo == nullptr &&
+-        ((*flags & (AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD | AUDIO_OUTPUT_FLAG_DIRECT)) == 0) &&
+-        checkHapticCompatibilityOnSpatializerOutput(config, session)) {
++    if (shouldBeSpatialized(attr, config, devices.toTypeAddrVector(),
++                            *flags, session, prefMixerConfigInfo)) {
+         *isSpatialized = true;
+         return mSpatializerOutput->mIoHandle;
+     }
+@@ -8408,9 +8405,11 @@ void AudioPolicyManager::checkSpatializedClientsReroute(
+         audio_attributes_t attr = client->attributes();
+         audio_config_base_t clientConfig = client->config();
+         audio_config_t config = audio_config_initializer(&clientConfig);
+-        AudioDeviceTypeAddrVector devicesTypeAddress = devices.toTypeAddrVector();
+-        if (client->isSpatialized() !=
+-                canBeSpatializedInt(&attr, &config, devicesTypeAddress)) {
++
++        if (client->isSpatialized() != shouldBeSpatialized(&attr, &config,
++                devices.toTypeAddrVector(), client->flags(), client->session(),
++                getPreferredMixerAttributesInfo(outputDesc->devices()[0]->getId(),
++                                                client->strategy()))) {
+             clientsToInvalidate.push_back(client->portId());
+         }
+     }
+@@ -8420,6 +8419,23 @@ void AudioPolicyManager::checkSpatializedClientsReroute(
+         mpClientInterface->invalidateTracks(clientsToInvalidate);
+     }
+ }
++
++bool AudioPolicyManager::shouldBeSpatialized(const audio_attributes_t *attr,
++                                             const audio_config_t *config,
++                                             const AudioDeviceTypeAddrVector &devices,
++                                             const audio_output_flags_t flags,
++                                             audio_session_t session,
++                                             const sp<PreferredMixerAttributesInfo>& mixConfInfo) {
++    if (mSpatializerOutput != nullptr && canBeSpatializedInt(attr, config, devices)
++            && ((flags & (AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD | AUDIO_OUTPUT_FLAG_DIRECT)) == 0)
++            && checkHapticCompatibilityOnSpatializerOutput(config, session)
++            && mixConfInfo == nullptr) {
++        return true;
++    }
++
++    return false;
++}
++
+ status_t AudioPolicyManager::resetOutputDevice(const sp<AudioOutputDescriptor>& outputDesc,
+                                                int delayMs,
+                                                audio_patch_handle_t *patchHandle)
+diff --git a/services/audiopolicy/managerdefault/AudioPolicyManager.h b/services/audiopolicy/managerdefault/AudioPolicyManager.h
+index db13b5011d5..20a8a74b8cd 100644
+--- a/services/audiopolicy/managerdefault/AudioPolicyManager.h
++++ b/services/audiopolicy/managerdefault/AudioPolicyManager.h
+@@ -1057,6 +1057,13 @@ class AudioPolicyManager : public AudioPolicyInterface, public AudioPolicyManage
+         void checkSpatializedClientsReroute(const sp<SwAudioOutputDescriptor>& outputDesc,
+                                             const DeviceVector &devices);
+ 
++        bool shouldBeSpatialized(const audio_attributes_t *attr,
++                                 const audio_config_t *config,
++                                 const AudioDeviceTypeAddrVector &devices,
++                                 const audio_output_flags_t flags,
++                                 audio_session_t session,
++                                 const sp<PreferredMixerAttributesInfo>& prefMixerConfigInfo);
++
+         const uid_t mUidCached;                         // AID_AUDIOSERVER
+         sp<const AudioPolicyConfig> mConfig;
+         EngineInstance mEngine;                         // Audio Policy Engine instance
