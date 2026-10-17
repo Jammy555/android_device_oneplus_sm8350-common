@@ -64,7 +64,6 @@ apply_patch() {
 
 # Apply patches to frameworks/base
 apply_patch "frameworks/base" "0001-CachedAppOptimizer-Fix-out-of-bounds-exception-for-F.patch" "CachedAppOptimizer FULL Compaction Fix"
-apply_patch "frameworks/base" "frameworks_base_sandbox_abba_deadlock_fix.patch" "Sandbox AppControlController ABBA Deadlock & Non-Launcher App Fix"
 apply_patch "frameworks/base" "frameworks_base_camera2_high_speed_ranges_from_supported_target.patch" "camera2: take high speed fps ranges from a supported target"
 apply_patch "frameworks/base" "frameworks_base_appwidget_no_state_load_while_locked.patch" "AppWidgetService: do not load or save widget state for a credential-locked user"
 apply_patch "frameworks/base" "frameworks_base_camera2_remember_missing_vendor_tags.patch" "camera2: remember a metadata key whose tag does not exist to eliminate lookup flooding"
