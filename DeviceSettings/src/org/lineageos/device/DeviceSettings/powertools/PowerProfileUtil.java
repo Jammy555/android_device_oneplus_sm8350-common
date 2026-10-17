@@ -24,6 +24,8 @@ public class PowerProfileUtil {
 
     private static final String TAG = "PowerProfileUtil";
     private static final String SYS_PROP = "sys.perf_mode_active";
+    private static final java.util.concurrent.ExecutorService sAsyncExecutor =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
 
     /**
      * KProfiles kernel sysfs node.
@@ -157,6 +159,7 @@ public class PowerProfileUtil {
 
         boolean success = setPerformanceModeActive(mode);
         syncUiToMode(mode);
+        applyHardwareDefaultsForMode(mode);
 
         applyUserTouchPanel();
         BlurUtils.setBlurDisabled(mContext, mode == MODE_BATTERY_SAVER);
@@ -175,11 +178,34 @@ public class PowerProfileUtil {
 
         boolean success = setPerformanceModeActive(mode);
         syncUiToMode(mode);
+        applyHardwareDefaultsForMode(mode);
 
         applyUserTouchPanel();
         // Intentionally skip BlurUtils — let Settings.Global persist naturally.
 
         return success;
+    }
+
+    public void applyHardwareDefaultsForMode(int mode) {
+        CPUUtils.setCPULittleFreq(
+            getValidatedStockValueForMode(mode, KEY_CPU_LITTLE_MIN_FREQ),
+            getValidatedStockValueForMode(mode, KEY_CPU_LITTLE_MAX_FREQ),
+            getValidatedStockValueForMode(mode, KEY_CPU_LITTLE_GOVERNOR)
+        );
+        CPUUtils.setCPUBigFreq(
+            getValidatedStockValueForMode(mode, KEY_CPU_BIG_MIN_FREQ),
+            getValidatedStockValueForMode(mode, KEY_CPU_BIG_MAX_FREQ),
+            getValidatedStockValueForMode(mode, KEY_CPU_BIG_GOVERNOR)
+        );
+        CPUUtils.setCPUPrimeFreq(
+            getValidatedStockValueForMode(mode, KEY_CPU_PRIME_MIN_FREQ),
+            getValidatedStockValueForMode(mode, KEY_CPU_PRIME_MAX_FREQ),
+            getValidatedStockValueForMode(mode, KEY_CPU_PRIME_GOVERNOR)
+        );
+        GPUUtils.setGPUMinFrequency(getValidatedStockValueForMode(mode, KEY_GPU_MIN_FREQ));
+        GPUUtils.setGPUMaxFrequency(getValidatedStockValueForMode(mode, KEY_GPU_MAX_FREQ));
+        GPUUtils.setGPUGovernor(getValidatedStockValueForMode(mode, KEY_GPU_GOVERNOR));
+        StorageUtils.setIoScheduler(getValidatedStockValueForMode(mode, KEY_IO_SCHEDULER));
     }
 
 
@@ -511,20 +537,20 @@ public class PowerProfileUtil {
         // --- Mirror: sys.perf_mode_active sysprop ---
         // Kept for compatibility with any userspace that reads the sysprop directly.
         // The -1 bounce forces observers to detect the change even if the new value
-        // equals the previous value.
-        try {
-            SystemProperties.set(SYS_PROP, "-1");
-            Thread.sleep(50);
-            SystemProperties.set(SYS_PROP, String.valueOf(mode));
-            SystemProperties.set("persist.sys.perf_mode_saved", String.valueOf(mode));
-            return true; // Full success: both sysfs and sysprop written
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            Log.e(TAG, "Interrupted while bouncing performance mode property", e);
-            return kpOk; // Acceptable if at least the sysfs write worked
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to set performance mode system properties", e);
-            return kpOk;
-        }
+        // equals the previous value. Run asynchronously so it never stalls the UI thread.
+        sAsyncExecutor.execute(() -> {
+            try {
+                SystemProperties.set(SYS_PROP, "-1");
+                Thread.sleep(50);
+                SystemProperties.set(SYS_PROP, String.valueOf(mode));
+                SystemProperties.set("persist.sys.perf_mode_saved", String.valueOf(mode));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Log.e(TAG, "Interrupted while bouncing performance mode property", e);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to set performance mode system properties", e);
+            }
+        });
+        return true;
     }
 }

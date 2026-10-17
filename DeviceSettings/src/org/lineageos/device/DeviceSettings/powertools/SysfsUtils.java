@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public final class SysfsUtils {
@@ -53,7 +54,7 @@ public final class SysfsUtils {
         if (value == null) return false;
         
         try {
-            Files.write(Paths.get(path), value.getBytes(StandardCharsets.UTF_8));
+            Files.write(Paths.get(path), value.getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
             return true;
         } catch (IOException e) {
             Log.w(TAG, "writeValue failed: " + path, e);

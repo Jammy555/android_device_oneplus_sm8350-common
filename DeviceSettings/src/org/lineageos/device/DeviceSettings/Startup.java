@@ -28,16 +28,24 @@ public final class Startup extends BroadcastReceiver {
 
     private static final String TAG = "DeviceSettingsStartup";
 
-    private static final String ACTION_INITIALIZE = "lineageos.content.Intent.ACTION_INITIALIZE_LINEAGE_HARDWARE";
+    private static final String ACTION_INITIALIZE = "lineageos.intent.action.INITIALIZE_LINEAGE_HARDWARE";
 
     private static final ExecutorService sExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent == null || !ACTION_INITIALIZE.equals(intent.getAction())) {
+        if (intent == null) {
             return;
         }
 
+        final String action = intent.getAction();
+        if (!Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
+                && !Intent.ACTION_BOOT_COMPLETED.equals(action)
+                && !ACTION_INITIALIZE.equals(action)) {
+            return;
+        }
+
+        Log.i(TAG, "Startup broadcast received: " + action);
         final PendingResult pendingResult = goAsync();
 
         sExecutor.execute(() -> {
@@ -45,7 +53,11 @@ public final class Startup extends BroadcastReceiver {
                 DeviceSettings.restoreFastChargeSetting(context);
                 DeviceSettings.restoreVibStrengthSetting(context);
                 org.lineageos.device.DeviceSettings.network.NetworkBandsFragment.restoreNrModeSettings(context);
-                org.lineageos.device.DeviceSettings.dock.SmartDockService.restoreState(context);
+
+                android.os.UserManager userManager = context.getSystemService(android.os.UserManager.class);
+                if (userManager == null || userManager.isUserUnlocked()) {
+                    org.lineageos.device.DeviceSettings.dock.SmartDockService.restoreState(context);
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to restore hardware settings during startup", e);
             } finally {

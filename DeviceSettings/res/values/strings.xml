@@ -24,10 +24,11 @@
 
     <!-- Smart Sidebar File Dock -->
     <string name="dock_title">File Dock</string>
-    <string name="dock_summary">Drag and drop text, photos, and files into the dock to stage them across apps</string>
+    <string name="dock_summary">Drag and drop images, text, and links into the dock to stage them across apps</string>
     <string name="dock_enable">Enable File Dock</string>
     <string name="dock_enable_summary">Show a floating edge handle to quickly stage and drop content</string>
-    <string name="dock_empty_hint">Drag &amp; drop text, images, or files here to stage them\n\nHold any saved item to drag it into other apps</string>
+    <string name="dock_empty_hint">Drag &amp; drop images, text, or links here to stage them\n\nHold any saved item to drag it into other apps</string>
+    <string name="dock_unsupported_format">Unsupported format. Only images (PNG, JPG, GIF, HEIC), text, and links are supported.</string>
     <string name="dock_clear_all">Clear all</string>
     <string name="dock_copied_toast">Copied to clipboard</string>
     <string name="dock_deleted_toast">Item removed</string>

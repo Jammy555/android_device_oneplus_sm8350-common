@@ -297,9 +297,18 @@ public class DeviceSettings extends SettingsBasePreferenceFragment
 
     public static void restoreVibStrengthSetting(Context context) {
         if (Utils.fileWritable(FILE_LEVEL)) {
-            int value = PreferenceManager.getDefaultSharedPreferences(context)
-                    .getInt(KEY_VIBSTRENGTH, Integer.parseInt(Utils.getFileValue(FILE_LEVEL, DEFAULT_VIB_LEVEL)));
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+            int defVal = 3;
+            try {
+                defVal = Integer.parseInt(Utils.getFileValue(FILE_LEVEL, DEFAULT_VIB_LEVEL));
+            } catch (Exception ignored) {}
+            int value = prefs.getInt(KEY_VIBSTRENGTH, defVal);
+            boolean isPowersave = SystemProperties.getInt("persist.sys.perf_mode_saved", 1) == 0;
+            if (isPowersave && value > 2) {
+                value = 2;
+            }
             Utils.writeValue(FILE_LEVEL, String.valueOf(value));
+            Log.i("DeviceSettings", "Restored vibrator level to sysfs: " + value);
         }
     }
 }

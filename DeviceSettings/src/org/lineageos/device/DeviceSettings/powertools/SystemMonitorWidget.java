@@ -17,6 +17,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.StatFs;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -136,17 +138,42 @@ public class SystemMonitorWidget extends AppWidgetProvider {
     }
 
 
-    private static void scheduleNextUpdate(Context ctx) {
-        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) {
-            am.setExact(AlarmManager.ELAPSED_REALTIME,
-                    SystemClock.elapsedRealtime() + UPDATE_INTERVAL_MS, getTickPI(ctx));
+    private static final Handler sHandler = new Handler(Looper.getMainLooper());
+    private static volatile boolean sScreenOn = true;
+    private static Context sAppContext;
+
+    private static final Runnable sUpdateRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!sScreenOn) return;
+            Context ctx = sAppContext;
+            if (ctx == null) return;
+            AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
+            int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, SystemMonitorWidget.class));
+            if (ids != null && ids.length > 0) {
+                sBackgroundExecutor.execute(() -> {
+                    try {
+                        buildAndApplyViews(ctx, mgr, ids);
+                    } finally {
+                        if (sScreenOn) {
+                            sHandler.postDelayed(sUpdateRunnable, UPDATE_INTERVAL_MS);
+                        }
+                    }
+                });
+            }
         }
+    };
+
+    private static void scheduleNextUpdate(Context ctx) {
+        if (ctx != null) sAppContext = ctx.getApplicationContext();
+        sScreenOn = true;
+        sHandler.removeCallbacks(sUpdateRunnable);
+        sHandler.post(sUpdateRunnable);
     }
 
     private static void cancelUpdates(Context ctx) {
-        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) am.cancel(getTickPI(ctx));
+        sScreenOn = false;
+        sHandler.removeCallbacks(sUpdateRunnable);
     }
 
     private static PendingIntent getTickPI(Context ctx) {
@@ -203,12 +230,16 @@ public class SystemMonitorWidget extends AppWidgetProvider {
 
 
     private void processUpdateAsync(Context ctx, AppWidgetManager mgr, int[] ids) {
+        if (ctx != null) sAppContext = ctx.getApplicationContext();
         final PendingResult pendingResult = goAsync();
         sBackgroundExecutor.execute(() -> {
             try {
                 // Always update when called — sleeping is handled solely by SCREEN_OFF
                 buildAndApplyViews(ctx, mgr, ids);
-                scheduleNextUpdate(ctx);
+                if (sScreenOn) {
+                    sHandler.removeCallbacks(sUpdateRunnable);
+                    sHandler.postDelayed(sUpdateRunnable, UPDATE_INTERVAL_MS);
+                }
             } finally {
                 pendingResult.finish();
             }
@@ -216,7 +247,7 @@ public class SystemMonitorWidget extends AppWidgetProvider {
     }
 
 
-    private void buildAndApplyViews(Context ctx, AppWidgetManager mgr, int[] ids) {
+    private static void buildAndApplyViews(Context ctx, AppWidgetManager mgr, int[] ids) {
         int cpuPct  = getCpuUsage();
         int[] gpu   = getGpuInfo();
         int[] mem   = getMemoryInfo(ctx);
@@ -271,12 +302,12 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         mgr.updateAppWidget(ids, v);
     }
 
-    private int barTint(int pct, int normalColor) {
+    private static int barTint(int pct, int normalColor) {
         return pct >= 85 ? 0xFFEF5350 : normalColor;
     }
 
 
-    private int getCpuUsage() {
+    private static int getCpuUsage() {
         try (RandomAccessFile r = new RandomAccessFile("/proc/stat", "r")) {
             String line = r.readLine();
             if (line == null) return 0;
@@ -296,7 +327,7 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         } catch (Exception e) { return 0; }
     }
 
-    private int[] getGpuInfo() {
+    private static int[] getGpuInfo() {
         try {
             String busyStr = readSysfs("/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage");
             int pct = 0;
@@ -308,7 +339,7 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         } catch (Exception e) { return new int[]{0, 0}; }
     }
 
-    private int[] getMemoryInfo(Context ctx) {
+    private static int[] getMemoryInfo(Context ctx) {
         try {
             ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
             if (am == null) return new int[]{0};
@@ -320,7 +351,7 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         } catch (Exception e) { return new int[]{0}; }
     }
 
-    private int[] getSwapInfo() {
+    private static int[] getSwapInfo() {
         try (BufferedReader br = new BufferedReader(new FileReader("/proc/meminfo"))) {
             long swapTotal = 0, swapFree = 0;
             String line;
@@ -333,19 +364,19 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         } catch (Exception e) { return new int[]{0}; }
     }
 
-    private long parseMemLine(String line) {
+    private static long parseMemLine(String line) {
         String[] parts = line.split("\\s+");
         return parts.length >= 2 ? Long.parseLong(parts[1]) : 0;
     }
 
-    private int getBatteryLevel(Context ctx) {
+    private static int getBatteryLevel(Context ctx) {
         try {
             BatteryManager bm = (BatteryManager) ctx.getSystemService(Context.BATTERY_SERVICE);
             return bm != null ? bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) : 0;
         } catch (Exception e) { return 0; }
     }
 
-    private String[] getStorageInfo() {
+    private static String[] getStorageInfo() {
         try {
             StatFs stat  = new StatFs(Environment.getExternalStorageDirectory().getPath());
             long total   = stat.getTotalBytes();
@@ -357,14 +388,14 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         } catch (Exception e) { return new String[]{"?", "?", "0"}; }
     }
 
-    private int getMode() {
+    private static int getMode() {
         try {
             return SystemProperties.getInt("sys.perf_mode_active", PowerProfileUtil.MODE_BALANCE);
         } catch (Exception ignored) {}
         return PowerProfileUtil.MODE_BALANCE;
     }
 
-    private String getModeLabel(Context ctx, int mode) {
+    private static String getModeLabel(Context ctx, int mode) {
         switch (mode) {
             case PowerProfileUtil.MODE_BATTERY_SAVER:
                 return ctx.getString(R.string.powerprofile_mode_battery_saver);
@@ -377,7 +408,7 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         }
     }
 
-    private int getModeColor(int mode) {
+    private static int getModeColor(int mode) {
         switch (mode) {
             case PowerProfileUtil.MODE_BATTERY_SAVER:
                 return 0xFF29B6F6;
@@ -388,12 +419,12 @@ public class SystemMonitorWidget extends AppWidgetProvider {
         }
     }
 
-    private float readTempC(String path, float divisor) {
+    private static float readTempC(String path, float divisor) {
         try { return Integer.parseInt(readSysfs(path)) / divisor; }
         catch (Exception e) { return 0f; }
     }
 
-    private String readSysfs(String path) {
+    private static String readSysfs(String path) {
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
             String line = br.readLine();
             return line != null ? line.trim() : "0";

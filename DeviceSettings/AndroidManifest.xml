@@ -25,6 +25,7 @@
     <uses-permission android:name="android.permission.INJECT_EVENTS"/>
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="lineageos.permission.HARDWARE_ABSTRACTION_ACCESS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -80,7 +81,9 @@
 
         <receiver android:name=".Startup"
             android:exported="false">
-            <intent-filter>
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="lineageos.intent.action.INITIALIZE_LINEAGE_HARDWARE" />
             </intent-filter>
         </receiver>
@@ -162,16 +165,6 @@
                 android:resource="@xml/widget_system_monitor_info" />
         </receiver>
 
-        <!-- GameSpace Sync Engine -->
-        <receiver
-            android:name=".powertools.GameSpaceSyncReceiver"
-            android:exported="true"
-            android:permission="android.permission.MANAGE_GAME_MODE">
-            <intent-filter>
-                <action android:name="io.chaldeaprjkt.gamespace.action.GAME_START" />
-                <action android:name="io.chaldeaprjkt.gamespace.action.GAME_STOP" />
-            </intent-filter>
-        </receiver>
 
         <!-- Smart Sidebar File Dock Service -->
         <service

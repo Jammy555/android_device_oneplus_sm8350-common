@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public final class Utils {
@@ -38,7 +39,7 @@ public final class Utils {
         if (filename == null || value == null) return;
         
         try {
-            Files.write(Paths.get(filename), value.getBytes(StandardCharsets.UTF_8));
+            Files.write(Paths.get(filename), value.getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
         } catch (IOException e) {
             Log.e(TAG, "Failed to write value to " + filename, e);
         }

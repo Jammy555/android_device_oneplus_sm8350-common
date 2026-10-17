@@ -35,15 +35,20 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.util.Log;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
 import android.view.DragAndDropPermissions;
 import android.view.DragEvent;
 import android.widget.Toast;
 
 import org.lineageos.device.DeviceSettings.R;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -113,6 +118,9 @@ public class DockContentManager {
                 if (anySaved) {
                     playSuccessHaptic();
                     showSavedToast(sourceApp.label);
+                } else {
+                    playErrorHaptic();
+                    showUnsupportedToast();
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error ingesting drop payload", e);
@@ -145,18 +153,47 @@ public class DockContentManager {
     }
 
     private boolean processUriItem(Uri uri, ClipDescription description, SourceAppInfo sourceApp) {
+        if (uri == null) return false;
+
+        String scheme = uri.getScheme();
+        if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme) || "ftp".equalsIgnoreCase(scheme)) {
+            return processTextItem(uri.toString(), sourceApp);
+        }
+
         ContentResolver cr = mContext.getContentResolver();
-        String mime = cr.getType(uri);
+        String mime = null;
+        try {
+            mime = cr.getType(uri);
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to get MIME type for: " + uri, t);
+        }
         if (mime == null && description != null && description.getMimeTypeCount() > 0) {
             mime = description.getMimeType(0);
         }
-        if (mime == null) mime = "application/octet-stream";
 
-        boolean isImage = mime.startsWith("image/");
-        String ext = isImage ? ".jpg" : ".bin";
-        if (mime.contains("png")) ext = ".png";
-        else if (mime.contains("webp")) ext = ".webp";
-        else if (mime.contains("gif")) ext = ".gif";
+        String displayName = queryDisplayName(cr, uri);
+        String ext = resolveImageExtension(displayName, mime);
+
+        if (ext == null) {
+            // Check if it's text content via URI
+            boolean isTextMime = mime != null && (mime.startsWith("text/") || mime.equals("application/json"));
+            boolean isTextExt = displayName != null && (
+                    displayName.toLowerCase().endsWith(".txt") ||
+                    displayName.toLowerCase().endsWith(".json") ||
+                    displayName.toLowerCase().endsWith(".md") ||
+                    displayName.toLowerCase().endsWith(".log") ||
+                    displayName.toLowerCase().endsWith(".csv")
+            );
+            if (isTextMime || isTextExt) {
+                String textContent = readTextFromUri(cr, uri);
+                if (textContent != null && !textContent.trim().isEmpty()) {
+                    return processTextItem(textContent, sourceApp);
+                }
+            }
+            // Strictly reject all other file types (music, audio, video, archives, binaries, etc.)
+            Log.w(TAG, "Rejected unsupported drop format: " + uri + " (mime=" + mime + ", name=" + displayName + ")");
+            return false;
+        }
 
         File storageDir = new File(mContext.getFilesDir(), DOCK_DIR);
         if (!storageDir.exists()) storageDir.mkdirs();
@@ -177,22 +214,81 @@ public class DockContentManager {
             return false;
         }
 
-        String thumbPath = null;
-        if (isImage) {
-            thumbPath = generateThumbnail(destFile, storageDir);
-        }
+        String normalizedMime = getMimeForExtension(ext);
+        String thumbPath = generateThumbnail(destFile, storageDir);
 
         DockItem dockItem = new DockItem(
-                isImage ? DockItem.TYPE_IMAGE : DockItem.TYPE_FILE,
+                DockItem.TYPE_IMAGE,
                 null,
                 destFile.getAbsolutePath(),
                 thumbPath != null ? thumbPath : destFile.getAbsolutePath(),
                 sourceApp.packageName,
                 sourceApp.label,
-                mime
+                normalizedMime
         );
         mDatabase.insertItem(dockItem);
         return true;
+    }
+
+    private String queryDisplayName(ContentResolver cr, Uri uri) {
+        if (uri == null) return null;
+        try (Cursor cursor = cr.query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0) {
+                    return cursor.getString(idx);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return uri.getLastPathSegment();
+    }
+
+    private String resolveImageExtension(String fileName, String mime) {
+        if (fileName != null) {
+            String lower = fileName.toLowerCase();
+            if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return ".jpg";
+            if (lower.endsWith(".png")) return ".png";
+            if (lower.endsWith(".gif")) return ".gif";
+            if (lower.endsWith(".heic") || lower.endsWith(".heif")) return ".heic";
+            if (lower.endsWith(".webp")) return ".webp";
+        }
+        if (mime != null) {
+            String lowerMime = mime.toLowerCase();
+            if (lowerMime.equals("image/jpeg") || lowerMime.equals("image/jpg")) return ".jpg";
+            if (lowerMime.equals("image/png")) return ".png";
+            if (lowerMime.equals("image/gif")) return ".gif";
+            if (lowerMime.contains("heic") || lowerMime.contains("heif")) return ".heic";
+            if (lowerMime.equals("image/webp")) return ".webp";
+            if (lowerMime.startsWith("image/")) return ".jpg";
+        }
+        return null;
+    }
+
+    private String getMimeForExtension(String ext) {
+        if (ext == null) return "image/jpeg";
+        switch (ext) {
+            case ".png": return "image/png";
+            case ".gif": return "image/gif";
+            case ".heic": return "image/heic";
+            case ".webp": return "image/webp";
+            default: return "image/jpeg";
+        }
+    }
+
+    private String readTextFromUri(ContentResolver cr, Uri uri) {
+        try (InputStream in = cr.openInputStream(uri);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (sb.length() > 50000) break;
+                sb.append(line).append('\n');
+            }
+            return sb.toString().trim();
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private String generateThumbnail(File sourceImage, File storageDir) {
@@ -308,6 +404,22 @@ public class DockContentManager {
         mMainHandler.post(() -> {
             String msg = mContext.getString(R.string.dock_saved_toast, appLabel);
             Toast.makeText(mContext, msg, Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void playErrorHaptic() {
+        try {
+            Vibrator vibrator = mContext.getSystemService(Vibrator.class);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK));
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void showUnsupportedToast() {
+        mMainHandler.post(() -> {
+            Toast.makeText(mContext, R.string.dock_unsupported_format, Toast.LENGTH_SHORT).show();
         });
     }
 }

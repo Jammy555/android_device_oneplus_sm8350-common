@@ -23,12 +23,13 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.view.ContextThemeWrapper;
 import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PixelFormat;
@@ -45,6 +46,8 @@ import android.os.Vibrator;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.LruCache;
+import android.util.Patterns;
+import android.view.ContextThemeWrapper;
 import android.view.DragEvent;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -68,6 +71,7 @@ import org.lineageos.device.DeviceSettings.DeviceSettingsActivity;
 import org.lineageos.device.DeviceSettings.R;
 
 import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -133,13 +137,17 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
     public static void restoreState(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean enabled = prefs.getBoolean(KEY_DOCK_ENABLE, false);
-        Intent intent = new Intent(context, SmartDockService.class);
         if (enabled) {
+            Intent intent = new Intent(context, SmartDockService.class);
+            intent.putExtra("enable", true);
             try {
                 context.startService(intent);
+                Log.i(TAG, "SmartDockService restored and started on boot");
             } catch (Exception e) {
                 Log.e(TAG, "Failed to start SmartDockService on boot", e);
             }
+        } else {
+            Log.d(TAG, "SmartDockService disabled in settings, skipping start on boot");
         }
     }
 
@@ -202,6 +210,29 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
                 populateShelfItems();
             }
         });
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        DisplayMetrics metrics = new DisplayMetrics();
+        mWindowManager.getDefaultDisplay().getRealMetrics(metrics);
+        mScreenWidth = metrics.widthPixels;
+        mScreenHeight = metrics.heightPixels;
+
+        if (mPillHandle != null) {
+            WindowManager.LayoutParams pillParams = getPillParams();
+            if (pillParams != null) {
+                mPillCurrentY = Math.max(100, Math.min(mScreenHeight - 300, mPillCurrentY));
+                pillParams.y = mPillCurrentY;
+                pillParams.gravity = (mIsRightEdge ? Gravity.END : Gravity.START) | Gravity.TOP;
+                mWindowManager.updateViewLayout(mPillHandle, pillParams);
+            }
+        }
+
+        if (mShelfWindow != null && mIsShelfExpanded) {
+            populateShelfItems();
+        }
     }
 
     private void dismissLegacyNotification() {
@@ -476,9 +507,8 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         mShelfWindow = inflater.inflate(R.layout.dock_shelf_window, null);
 
         float density = getResources().getDisplayMetrics().density;
-        int shelfWidth = (int) (310 * density);
+        int shelfWidth = (int) (180 * density);
 
-        // Omit FLAG_NOT_FOCUSABLE so that Back button / back gesture events are dispatched to the window
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 shelfWidth,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -489,11 +519,11 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
                 PixelFormat.TRANSLUCENT);
 
         params.gravity = (mIsRightEdge ? Gravity.END : Gravity.START) | Gravity.TOP;
-        params.x = (int) (12 * density);
+        params.x = (int) (6 * density);
 
         int pillY = (mPillHandle != null) ? getPillParams().y : (mScreenHeight / 3);
-        int shelfY = pillY - (int) (20 * density);
-        int maxShelfY = Math.max(0, mScreenHeight - (int) (480 * density));
+        int shelfY = pillY - (int) (40 * density);
+        int maxShelfY = Math.max(0, mScreenHeight - (int) (420 * density));
         params.y = Math.max((int) (20 * density), Math.min(maxShelfY, shelfY));
 
         setupShelfViews();
@@ -542,7 +572,7 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         if (mShelfWindow == null) return;
 
         View btnClose = mShelfWindow.findViewById(R.id.dock_shelf_btn_close);
-        TextView btnClear = mShelfWindow.findViewById(R.id.dock_shelf_btn_clear);
+        View btnClear = mShelfWindow.findViewById(R.id.dock_shelf_btn_clear);
         View header = mShelfWindow.findViewById(R.id.dock_shelf_header);
         ImageView btnPrev = mShelfWindow.findViewById(R.id.dock_day_btn_prev);
         ImageView btnNext = mShelfWindow.findViewById(R.id.dock_day_btn_next);
@@ -580,21 +610,24 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
     }
 
     private void showClearConfirmationDialog() {
+        DockDatabase.DayPage page = (!mDayPages.isEmpty() && mCurrentPageIndex < mDayPages.size())
+                ? mDayPages.get(mCurrentPageIndex) : null;
+        List<DockItem> items = mDatabase.getItemsForPage(page);
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+
         Context themedContext = new ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
         AlertDialog.Builder builder = new AlertDialog.Builder(themedContext);
         builder.setTitle(R.string.dock_clear_all);
 
-        String message;
-        if (!mDayPages.isEmpty() && mCurrentPageIndex < mDayPages.size()) {
-            DockDatabase.DayPage page = mDayPages.get(mCurrentPageIndex);
-            message = "Clear all items for " + page.label + "?";
-        } else {
-            message = "Clear all items from File Dock?";
-        }
+        String message = (page != null)
+                ? "Clear all items for " + page.label + "?"
+                : "Clear all items from File Dock?";
         builder.setMessage(message);
         builder.setPositiveButton(R.string.dock_clear_all, (dialog, which) -> {
-            if (!mDayPages.isEmpty() && mCurrentPageIndex < mDayPages.size()) {
-                mDatabase.clearPage(mDayPages.get(mCurrentPageIndex));
+            if (page != null) {
+                mDatabase.clearPage(page);
             } else {
                 mDatabase.clearAll();
             }
@@ -652,12 +685,147 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         });
     }
 
+    public static boolean isWebUrl(String text) {
+        if (text == null) return false;
+        String trimmed = text.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("ftp://")) {
+            return true;
+        }
+        if (trimmed.startsWith("www.") && trimmed.length() > 5) {
+            return true;
+        }
+        return Patterns.WEB_URL.matcher(trimmed).matches();
+    }
+
+    public static String extractDomain(String text) {
+        if (text == null) return "Web link";
+        try {
+            String trimmed = text.trim();
+            if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://") && !trimmed.startsWith("ftp://")) {
+                trimmed = "https://" + trimmed;
+            }
+            URI uri = new URI(trimmed);
+            String host = uri.getHost();
+            if (host != null) {
+                return host.startsWith("www.") ? host.substring(4) : host;
+            }
+        } catch (Exception ignored) {}
+        return "Web link";
+    }
+
+    private void openWebLink(String url) {
+        if (url == null || url.trim().isEmpty()) return;
+        try {
+            String target = url.trim();
+            if (!target.startsWith("http://") && !target.startsWith("https://") && !target.startsWith("ftp://")) {
+                target = "https://" + target;
+            }
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            collapseShelfWindow();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open link", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void calculateAndApplyShelfDimensions(List<DockItem> items) {
+        if (mShelfWindow == null) return;
+
+        float density = getResources().getDisplayMetrics().density;
+        int count = (items != null) ? items.size() : 0;
+
+        int imageCount = 0;
+        int linkCount = 0;
+        int textCount = 0;
+
+        if (items != null) {
+            for (DockItem item : items) {
+                if (item.type == DockItem.TYPE_IMAGE) {
+                    imageCount++;
+                } else if (item.type == DockItem.TYPE_TEXT && isWebUrl(item.textContent)) {
+                    linkCount++;
+                } else {
+                    textCount++;
+                }
+            }
+        }
+
+        int targetWidthDp;
+        int minHeightDp;
+        boolean isTallEmpty = false;
+
+        if (count == 0) {
+            // OnePlus Smart Sidebar empty state: tall, slender vertical profile
+            targetWidthDp = 180;
+            minHeightDp = 380;
+            isTallEmpty = true;
+        } else if (count == 1) {
+            // 1 item: slender vertical bar with comfortable height
+            targetWidthDp = (imageCount > 0) ? 200 : 190;
+            minHeightDp = 300;
+        } else if (count == 2) {
+            // 2 items: slender vertical bar
+            if (imageCount == 2) {
+                targetWidthDp = 205;
+            } else if (imageCount == 1) {
+                targetWidthDp = 200;
+            } else {
+                targetWidthDp = 190;
+            }
+            minHeightDp = 350;
+        } else {
+            // 3+ items
+            if (imageCount >= 2) {
+                // Multi-image gallery: widen to 250dp for 2-column grid layout
+                targetWidthDp = 250;
+                minHeightDp = 340;
+            } else if (linkCount == count) {
+                // All links: compact vertical list
+                targetWidthDp = 195;
+                minHeightDp = 320;
+            } else {
+                // Mixed text / notes
+                targetWidthDp = 210;
+                minHeightDp = 330;
+            }
+        }
+
+        int targetWidthPx = (int) (targetWidthDp * density);
+        int minHeightPx = (int) (minHeightDp * density);
+
+        View root = mShelfWindow.findViewById(R.id.dock_shelf_root);
+        if (root != null) {
+            root.setMinimumHeight(minHeightPx);
+        }
+
+        WindowManager.LayoutParams params = (WindowManager.LayoutParams) mShelfWindow.getLayoutParams();
+        if (params != null) {
+            params.width = targetWidthPx;
+            params.height = isTallEmpty ? minHeightPx : WindowManager.LayoutParams.WRAP_CONTENT;
+            params.x = (int) (6 * density);
+
+            int pillY = (mPillHandle != null) ? getPillParams().y : (mScreenHeight / 3);
+            int shelfY = pillY - (int) (40 * density);
+            int estimatedHeight = isTallEmpty ? minHeightPx : Math.min(minHeightPx + (int) (80 * density), (int) (mScreenHeight * 0.70f));
+            int maxShelfY = Math.max(20, mScreenHeight - estimatedHeight - (int) (40 * density));
+            params.y = Math.max((int) (24 * density), Math.min(maxShelfY, shelfY));
+
+            if (mShelfWindow.getParent() != null) {
+                mWindowManager.updateViewLayout(mShelfWindow, params);
+            }
+        }
+    }
+
     private void populateShelfItems() {
         if (mShelfWindow == null) return;
 
         LinearLayout container = mShelfWindow.findViewById(R.id.dock_items_container);
         ScrollView scrollView = mShelfWindow.findViewById(R.id.dock_shelf_scroll);
-        TextView emptyView = mShelfWindow.findViewById(R.id.dock_shelf_empty);
+        View emptyLayout = mShelfWindow.findViewById(R.id.dock_shelf_empty);
+        TextView emptyTitle = mShelfWindow.findViewById(R.id.dock_shelf_empty_title);
+        TextView emptyText = mShelfWindow.findViewById(R.id.dock_shelf_empty_text);
+        View btnClear = mShelfWindow.findViewById(R.id.dock_shelf_btn_clear);
         TextView badgeView = mShelfWindow.findViewById(R.id.dock_shelf_badge);
         TextView dayLabel = mShelfWindow.findViewById(R.id.dock_day_label);
         ImageView btnPrev = mShelfWindow.findViewById(R.id.dock_day_btn_prev);
@@ -692,74 +860,123 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         List<DockItem> items = mDatabase.getItemsForPage(currentPage);
         int count = items.size();
 
-        if (badgeView != null) {
-            badgeView.setText(String.valueOf(count));
+        if (btnClear != null) {
+            btnClear.setVisibility(count > 0 ? View.VISIBLE : View.GONE);
         }
 
+        if (badgeView != null) {
+            if (count > 0) {
+                badgeView.setVisibility(View.VISIBLE);
+                badgeView.setText(String.valueOf(count));
+            } else {
+                badgeView.setVisibility(View.GONE);
+            }
+        }
+
+        calculateAndApplyShelfDimensions(items);
+
         if (count == 0) {
-            if (emptyView != null) {
+            if (emptyLayout != null) {
                 if (currentPage != null && "Today".equals(currentPage.label)) {
-                    emptyView.setText(R.string.dock_empty_hint);
+                    if (emptyTitle != null) emptyTitle.setText("File Dock Empty");
+                    if (emptyText != null) emptyText.setText(R.string.dock_empty_hint);
                 } else if (currentPage != null) {
-                    emptyView.setText("No items for " + currentPage.label);
+                    if (emptyTitle != null) emptyTitle.setText("No items for " + currentPage.label);
+                    if (emptyText != null) emptyText.setText("No content was staged on this day");
                 } else {
-                    emptyView.setText(R.string.dock_empty_hint);
+                    if (emptyTitle != null) emptyTitle.setText("File Dock Empty");
+                    if (emptyText != null) emptyText.setText(R.string.dock_empty_hint);
                 }
-                emptyView.setVisibility(View.VISIBLE);
+                emptyLayout.setVisibility(View.VISIBLE);
             }
             if (scrollView != null) scrollView.setVisibility(View.GONE);
             return;
         }
 
-        if (emptyView != null) emptyView.setVisibility(View.GONE);
+        if (emptyLayout != null) emptyLayout.setVisibility(View.GONE);
         if (scrollView != null) scrollView.setVisibility(View.VISIBLE);
 
         Context themedContext = new android.view.ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_DayNight);
         LayoutInflater inflater = LayoutInflater.from(themedContext);
         float density = getResources().getDisplayMetrics().density;
 
+        int imageCount = 0;
+        for (DockItem item : items) {
+            if (item.type == DockItem.TYPE_IMAGE) {
+                imageCount++;
+            }
+        }
+        boolean isMultiColumnImages = (count >= 3 && imageCount >= 2);
+
         int i = 0;
         while (i < items.size()) {
             DockItem item = items.get(i);
+            if (item.type != DockItem.TYPE_IMAGE && (item.textContent == null || item.textContent.trim().isEmpty())) {
+                i++;
+                continue;
+            }
             if (item.type == DockItem.TYPE_IMAGE) {
-                DockItem nextItem = (i + 1 < items.size() && items.get(i + 1).type == DockItem.TYPE_IMAGE)
-                        ? items.get(i + 1) : null;
+                if (isMultiColumnImages) {
+                    DockItem nextItem = (i + 1 < items.size() && items.get(i + 1).type == DockItem.TYPE_IMAGE)
+                            ? items.get(i + 1) : null;
 
-                LinearLayout row = new LinearLayout(themedContext);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                rowParams.bottomMargin = (int) (8 * density);
-                row.setLayoutParams(rowParams);
+                    LinearLayout row = new LinearLayout(themedContext);
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    rowParams.bottomMargin = (int) (8 * density);
+                    row.setLayoutParams(rowParams);
 
-                View tile1 = inflater.inflate(R.layout.dock_item_image_tile, row, false);
-                LinearLayout.LayoutParams p1 = (LinearLayout.LayoutParams) tile1.getLayoutParams();
-                p1.width = 0;
-                p1.weight = 1f;
-                p1.setMarginEnd((int) (4 * density));
-                tile1.setLayoutParams(p1);
-                bindImageTile(tile1, item);
-                row.addView(tile1);
+                    View tile1 = inflater.inflate(R.layout.dock_item_image_tile, row, false);
+                    LinearLayout.LayoutParams p1 = (LinearLayout.LayoutParams) tile1.getLayoutParams();
+                    p1.width = 0;
+                    p1.weight = 1f;
+                    p1.setMarginEnd((int) (4 * density));
+                    tile1.setLayoutParams(p1);
+                    bindImageTile(tile1, item, false);
+                    row.addView(tile1);
 
-                if (nextItem != null) {
-                    View tile2 = inflater.inflate(R.layout.dock_item_image_tile, row, false);
-                    LinearLayout.LayoutParams p2 = (LinearLayout.LayoutParams) tile2.getLayoutParams();
-                    p2.width = 0;
-                    p2.weight = 1f;
-                    p2.setMarginStart((int) (4 * density));
-                    tile2.setLayoutParams(p2);
-                    bindImageTile(tile2, nextItem);
-                    row.addView(tile2);
-                    i += 2;
+                    if (nextItem != null) {
+                        View tile2 = inflater.inflate(R.layout.dock_item_image_tile, row, false);
+                        LinearLayout.LayoutParams p2 = (LinearLayout.LayoutParams) tile2.getLayoutParams();
+                        p2.width = 0;
+                        p2.weight = 1f;
+                        p2.setMarginStart((int) (4 * density));
+                        tile2.setLayoutParams(p2);
+                        bindImageTile(tile2, nextItem, false);
+                        row.addView(tile2);
+                        i += 2;
+                    } else {
+                        View spacer = new View(themedContext);
+                        LinearLayout.LayoutParams pSpacer = new LinearLayout.LayoutParams(0, 0, 1f);
+                        pSpacer.setMarginStart((int) (4 * density));
+                        spacer.setLayoutParams(pSpacer);
+                        row.addView(spacer);
+                        i += 1;
+                    }
+                    container.addView(row);
                 } else {
-                    View spacer = new View(themedContext);
-                    LinearLayout.LayoutParams pSpacer = new LinearLayout.LayoutParams(0, 0, 1f);
-                    pSpacer.setMarginStart((int) (4 * density));
-                    spacer.setLayoutParams(pSpacer);
-                    row.addView(spacer);
-                    i += 1;
+                    View tile = inflater.inflate(R.layout.dock_item_image_tile, container, false);
+                    LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tile.getLayoutParams();
+                    lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                    lp.bottomMargin = (int) (8 * density);
+                    tile.setLayoutParams(lp);
+                    bindImageTile(tile, item, true);
+                    container.addView(tile);
+                    i++;
                 }
-                container.addView(row);
+            } else if (item.type == DockItem.TYPE_TEXT && isWebUrl(item.textContent)) {
+                View linkCard = inflater.inflate(R.layout.dock_item_link, container, false);
+                LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) linkCard.getLayoutParams();
+                lp.bottomMargin = (int) (8 * density);
+                linkCard.setLayoutParams(lp);
+                bindLinkCard(linkCard, item);
+                linkCard.setOnLongClickListener(v -> {
+                    startDragOut(v, item);
+                    return true;
+                });
+                container.addView(linkCard);
+                i++;
             } else {
                 View card = inflater.inflate(R.layout.dock_item_text, container, false);
                 LinearLayout.LayoutParams cp = (LinearLayout.LayoutParams) card.getLayoutParams();
@@ -800,6 +1017,46 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         }
     }
 
+    private void bindLinkCard(View card, DockItem item) {
+        bindCommonCardHeader(card, item);
+
+        TextView domainView = card.findViewById(R.id.dock_item_link_domain);
+        TextView urlView = card.findViewById(R.id.dock_item_link_url);
+        ImageView btnOpen = card.findViewById(R.id.dock_item_btn_open);
+        ImageView btnCopy = card.findViewById(R.id.dock_item_btn_copy);
+        ImageView btnShare = card.findViewById(R.id.dock_item_btn_share);
+        ImageView btnDelete = card.findViewById(R.id.dock_item_btn_delete);
+
+        String domain = extractDomain(item.textContent);
+        if (domainView != null) {
+            domainView.setText(domain);
+        }
+        if (urlView != null) {
+            urlView.setText(item.textContent);
+        }
+
+        card.setOnClickListener(v -> openWebLink(item.textContent));
+
+        if (btnOpen != null) {
+            btnOpen.setOnClickListener(v -> openWebLink(item.textContent));
+        }
+
+        if (btnCopy != null) {
+            btnCopy.setOnClickListener(v -> copyTextToClipboard(item.textContent));
+        }
+
+        if (btnShare != null) {
+            btnShare.setOnClickListener(v -> shareText(item.textContent));
+        }
+
+        if (btnDelete != null) {
+            btnDelete.setOnClickListener(v -> {
+                mDatabase.deleteItem(item.id);
+                Toast.makeText(this, R.string.dock_deleted_toast, Toast.LENGTH_SHORT).show();
+            });
+        }
+    }
+
     private void bindTextCard(View card, DockItem item) {
         bindCommonCardHeader(card, item);
 
@@ -831,12 +1088,17 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         }
     }
 
-    private void bindImageTile(View tile, DockItem item) {
+    private void bindImageTile(View tile, DockItem item, boolean isFullWidth) {
         ImageView appIcon = tile.findViewById(R.id.dock_item_app_icon);
         TextView appName = tile.findViewById(R.id.dock_item_app_name);
         ImageView ivPreview = tile.findViewById(R.id.dock_item_image_preview);
         ImageView btnCopy = tile.findViewById(R.id.dock_item_btn_copy);
         ImageView btnDelete = tile.findViewById(R.id.dock_item_btn_delete);
+
+        float density = getResources().getDisplayMetrics().density;
+        if (ivPreview != null && isFullWidth) {
+            ivPreview.getLayoutParams().height = (int) (105 * density);
+        }
 
         if (appIcon != null) {
             Drawable ic = mContentManager.getAppIcon(item.sourcePackage);
@@ -946,7 +1208,11 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         Uri contentUri = FileProvider.getUriForFile(this, DockFileProvider.AUTHORITY, f);
         ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         if (cm != null) {
-            cm.setPrimaryClip(ClipData.newUri(getContentResolver(), "dock_image", contentUri));
+            String mime = item.mimeType != null ? item.mimeType : getContentResolver().getType(contentUri);
+            if (mime == null) mime = "image/jpeg";
+            ClipDescription desc = new ClipDescription(f.getName(), new String[]{mime, "image/*"});
+            ClipData.Item clipItem = new ClipData.Item(contentUri);
+            cm.setPrimaryClip(new ClipData(desc, clipItem));
         }
         collapseShelfWindow();
         playHapticTick();
@@ -987,10 +1253,27 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
             File f = new File(item.filePath);
             if (!f.exists()) return;
             Uri contentUri = FileProvider.getUriForFile(this, DockFileProvider.AUTHORITY, f);
-            clipData = ClipData.newUri(getContentResolver(), "dock_image", contentUri);
+            String mime = item.mimeType != null ? item.mimeType : getContentResolver().getType(contentUri);
+            if (mime == null) mime = "image/jpeg";
+            ClipDescription desc = new ClipDescription(f.getName(), new String[]{mime, "image/*"});
+            ClipData.Item clipItem = new ClipData.Item(contentUri);
+            clipData = new ClipData(desc, clipItem);
         } else {
             if (item.textContent == null) return;
-            clipData = ClipData.newPlainText("dock_text", item.textContent);
+            if (isWebUrl(item.textContent)) {
+                ClipDescription desc = new ClipDescription("dock_link", new String[]{
+                        ClipDescription.MIMETYPE_TEXT_PLAIN,
+                        ClipDescription.MIMETYPE_TEXT_URILIST
+                });
+                ClipData.Item clipItem = new ClipData.Item(
+                        item.textContent,
+                        null,
+                        Uri.parse(item.textContent)
+                );
+                clipData = new ClipData(desc, clipItem);
+            } else {
+                clipData = ClipData.newPlainText("dock_text", item.textContent);
+            }
         }
 
         View.DragShadowBuilder shadow = new View.DragShadowBuilder(view) {
@@ -1031,7 +1314,11 @@ public class SmartDockService extends Service implements DockDatabase.OnDataChan
         Uri contentUri = FileProvider.getUriForFile(this, DockFileProvider.AUTHORITY, f);
         ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         if (cm != null) {
-            cm.setPrimaryClip(ClipData.newUri(getContentResolver(), "dock_image", contentUri));
+            String mime = item.mimeType != null ? item.mimeType : getContentResolver().getType(contentUri);
+            if (mime == null) mime = "image/jpeg";
+            ClipDescription desc = new ClipDescription(f.getName(), new String[]{mime, "image/*"});
+            ClipData.Item clipItem = new ClipData.Item(contentUri);
+            cm.setPrimaryClip(new ClipData(desc, clipItem));
             Toast.makeText(this, R.string.dock_copied_toast, Toast.LENGTH_SHORT).show();
             playHapticTick();
         }

@@ -1555,6 +1555,19 @@ public class NetworkBandsFragment extends Fragment {
 
     private static void setOplusNrModeStatic(int slotId, int mode) {
         try {
+            android.os.IBinder binder = android.os.ServiceManager.getService("vendor.oplus.hardware.radio.IOplusRadio/slot" + slotId);
+            if (binder != null) {
+                vendor.oplus.hardware.radio.IOplusRadio service = vendor.oplus.hardware.radio.IOplusRadio.Stub.asInterface(binder);
+                if (service != null) {
+                    service.setNrMode(0, mode);
+                    return;
+                }
+            }
+        } catch (Throwable t) {
+            Log.d(TAG, "AIDL IOplusRadio setNrMode unavailable: " + t.getMessage());
+        }
+
+        try {
             Class<?> clazz = Class.forName("vendor.oplus.hardware.radio.V2_0.IOplusRadio");
             Object service = clazz.getMethod("getService", String.class).invoke(null, "slot" + slotId);
             if (service != null) {
