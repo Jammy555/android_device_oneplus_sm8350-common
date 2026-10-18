@@ -112,7 +112,9 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             if (device != null && mSecondaryDevice != null
                     && device.getAddress().equalsIgnoreCase(mSecondaryDevice.getAddress())
                     && mSecondaryVolumePref != null) {
-                mSecondaryVolumePref.setValue(volume);
+                // Convert incoming AVRCP absolute volume (0 - 127) to percentage (0 - 100)
+                int percent = Math.max(0, Math.min(100, Math.round((float) volume * 100.0f / 127.0f)));
+                mSecondaryVolumePref.setValue(percent);
             }
         });
     };
@@ -121,6 +123,16 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
+            if ("android.media.VOLUME_CHANGED_ACTION".equals(action)) {
+                if (mPrimaryVolumePref != null && mAudioManager != null) {
+                    int curVol = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                    int maxVol = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                    int percent = (maxVol > 0) ? (curVol * 100 / maxVol) : 80;
+                    mPrimaryVolumePref.setValue(percent);
+                }
+                return;
+            }
+
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)
                     || BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)
                     || BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED.equals(action)
@@ -190,6 +202,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         filter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_ACTIVE_DEVICE_CHANGED);
+        filter.addAction("android.media.VOLUME_CHANGED_ACTION");
         context.registerReceiver(mReceiver, filter);
 
         if (mSharingManager != null) {
@@ -411,9 +424,11 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             }
             return true;
         } else if (preference == mSecondaryVolumePref) {
-            int volume = (Integer) newValue;
+            int percent = (Integer) newValue;
             if (mSecondaryDevice != null && mSharingManager != null) {
-                mSharingManager.setSharingDeviceAbsoluteVolume(mSecondaryDevice, volume);
+                // Convert percentage (0 - 100) to AVRCP absolute volume (0 - 127)
+                int avrcpVolume = Math.max(0, Math.min(127, Math.round((float) percent * 127.0f / 100.0f)));
+                mSharingManager.setSharingDeviceAbsoluteVolume(mSecondaryDevice, avrcpVolume);
             }
             return true;
         }
