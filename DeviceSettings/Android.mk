@@ -42,6 +42,9 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
     org.lineageos.platform.internal \
     vendor.oplus.hardware.radio-V2-java
 
+LOCAL_JAVA_LIBRARIES := \
+    oplus-fwk
+
 LOCAL_RESOURCE_DIR := \
     $(LOCAL_PATH)/res
 

@@ -189,4 +189,27 @@
     <string name="carrier_preset_airtel">Airtel 4CA + 5G NSA/SA Pack (LTE B1, B3, B8, B40 + NR n1, n3, n28, n40, n78)</string>
     <string name="carrier_preset_vi">Vi 3CA + 5G Pack (LTE B1, B3, B8, B40 + NR n78)</string>
     <string name="carrier_preset_bsnl">BSNL 4G/5G Pack (LTE B1, B3, B5, B28 + NR n28, n78)</string>
+
+    <!-- Bluetooth Audio Sharing -->
+    <string name="audio_share_category_title">Bluetooth &amp; Audio</string>
+    <string name="audio_share_title">Audio Sharing</string>
+    <string name="audio_share_summary">Stream audio to two Bluetooth headphones simultaneously</string>
+    <string name="audio_share_enable">Enable Audio Sharing</string>
+    <string name="audio_share_enable_summary">Allows dual Bluetooth A2DP audio output to two connected devices</string>
+    <string name="audio_share_desc_info">Play music, videos, and media to two Bluetooth headphones or speakers at the same time with synchronized playback and independent volume control.</string>
+    <string name="audio_share_primary_category">Primary Audio Output</string>
+    <string name="audio_share_primary_device">Primary Headset</string>
+    <string name="audio_share_no_primary_device">No Bluetooth audio device connected</string>
+    <string name="audio_share_primary_volume">Primary Volume</string>
+    <string name="audio_share_secondary_category">Shared Audio Output (Secondary)</string>
+    <string name="audio_share_secondary_device">Sharing Device</string>
+    <string name="audio_share_secondary_device_summary">Select a secondary paired device to broadcast audio to</string>
+    <string name="audio_share_no_secondary_device">No second paired device selected</string>
+    <string name="audio_share_start_action">Start Sharing Audio</string>
+    <string name="audio_share_stop_action">Stop Sharing Audio</string>
+    <string name="audio_share_active_status">Sharing active — Dual A2DP synchronized</string>
+    <string name="audio_share_idle_status">Ready to share audio</string>
+    <string name="audio_share_secondary_volume">Secondary Volume</string>
+    <string name="audio_share_hardware_category">Hardware &amp; Audio Engine</string>
+    <string name="audio_share_hardware_desc">Snapdragon 888 (SM8350) + WCN6855 Bluetooth Fluoride dual-A2DP software stream engine.</string>
 </resources>

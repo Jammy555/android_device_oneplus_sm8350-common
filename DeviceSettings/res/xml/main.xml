@@ -129,4 +129,18 @@
 
     </PreferenceCategory>
 
+    <!-- Bluetooth: Dual Audio Sharing -->
+    <PreferenceCategory
+        android:key="bluetooth_audio_category"
+        android:title="@string/audio_share_category_title">
+
+        <Preference
+            android:key="audio_share_entry"
+            android:icon="@drawable/ic_audio_share"
+            android:title="@string/audio_share_title"
+            android:summary="@string/audio_share_summary"
+            android:fragment="org.lineageos.device.DeviceSettings.audioshare.AudioShareSettingsFragment" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

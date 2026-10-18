@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 LunarisOS
+     OnePlus 9 (SM8350) Dual Bluetooth Audio Sharing Preferences
+-->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:settings="http://schemas.android.com/apk/res/org.lineageos.device.DeviceSettings"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        android:key="audio_share_master_switch"
+        android:title="@string/audio_share_enable"
+        android:summary="@string/audio_share_enable_summary"
+        android:defaultValue="false" />
+
+    <Preference
+        android:key="audio_share_info"
+        android:icon="@drawable/ic_info_outline"
+        android:summary="@string/audio_share_desc_info"
+        android:selectable="false" />
+
+    <!-- Primary Audio Output Category -->
+    <PreferenceCategory
+        android:key="category_primary_device"
+        android:title="@string/audio_share_primary_category">
+
+        <Preference
+            android:key="primary_device_info"
+            android:title="@string/audio_share_primary_device"
+            android:summary="@string/audio_share_no_primary_device"
+            android:selectable="false" />
+
+        <org.lineageos.device.DeviceSettings.CustomSeekBarPreference
+            android:key="primary_device_volume"
+            android:title="@string/audio_share_primary_volume"
+            android:persistent="false"
+            android:max="100"
+            android:min="0"
+            settings:units="%"
+            settings:continuousUpdates="true"
+            android:defaultValue="80" />
+
+    </PreferenceCategory>
+
+    <!-- Secondary Audio Output Category -->
+    <PreferenceCategory
+        android:key="category_secondary_device"
+        android:title="@string/audio_share_secondary_category">
+
+        <ListPreference
+            android:key="secondary_device_select"
+            android:title="@string/audio_share_secondary_device"
+            android:summary="@string/audio_share_secondary_device_summary"
+            android:persistent="false" />
+
+        <Preference
+            android:key="secondary_share_action"
+            android:title="@string/audio_share_start_action"
+            android:summary="@string/audio_share_idle_status"
+            android:persistent="false" />
+
+        <org.lineageos.device.DeviceSettings.CustomSeekBarPreference
+            android:key="secondary_device_volume"
+            android:title="@string/audio_share_secondary_volume"
+            android:persistent="false"
+            android:max="100"
+            android:min="0"
+            settings:units="%"
+            settings:continuousUpdates="true"
+            android:defaultValue="80" />
+
+    </PreferenceCategory>
+
+    <!-- Hardware / Codec Engine Info -->
+    <PreferenceCategory
+        android:key="category_hardware_info"
+        android:title="@string/audio_share_hardware_category">
+
+        <Preference
+            android:key="hardware_engine_info"
+            android:icon="@drawable/ic_cpu_chip"
+            android:summary="@string/audio_share_hardware_desc"
+            android:selectable="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

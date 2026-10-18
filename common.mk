@@ -430,3 +430,6 @@ PRODUCT_PACKAGES += \
 
 # Inherit from the proprietary files makefile.
 $(call inherit-product, vendor/oneplus/sm8350-common/sm8350-common-vendor.mk)
+
+# Inherit Media Assets
+$(call inherit-product-if-exists, vendor/oplus/media/oplus-media.mk)
