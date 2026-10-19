@@ -212,4 +212,8 @@
     <string name="audio_share_secondary_volume">Secondary Volume</string>
     <string name="audio_share_hardware_category">Hardware &amp; Audio Engine</string>
     <string name="audio_share_hardware_desc">Snapdragon 888 (SM8350) + WCN6855 Bluetooth Fluoride dual-A2DP software stream engine.</string>
+    <string name="audio_share_codec_info_title">Active Codec</string>
+    <string name="audio_share_codec_info_summary">Detecting…</string>
+    <string name="audio_share_sbc_enforced">HD audio disabled, SBC enforced for sharing compatibility</string>
+    <string name="audio_share_secondary_not_connected">Secondary device not connected — connect it first</string>
 </resources>

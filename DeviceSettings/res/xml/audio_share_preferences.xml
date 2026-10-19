@@ -15,6 +15,7 @@
 
     <Preference
         android:key="audio_share_info"
+        android:dependency="audio_share_master_switch"
         android:icon="@drawable/ic_info_outline"
         android:summary="@string/audio_share_desc_info"
         android:selectable="false" />
@@ -22,12 +23,19 @@
     <!-- Primary Audio Output Category -->
     <PreferenceCategory
         android:key="category_primary_device"
+        android:dependency="audio_share_master_switch"
         android:title="@string/audio_share_primary_category">
 
         <Preference
             android:key="primary_device_info"
             android:title="@string/audio_share_primary_device"
             android:summary="@string/audio_share_no_primary_device"
+            android:selectable="true" />
+
+        <Preference
+            android:key="codec_info"
+            android:title="@string/audio_share_codec_info_title"
+            android:summary="@string/audio_share_codec_info_summary"
             android:selectable="false" />
 
         <org.lineageos.device.DeviceSettings.CustomSeekBarPreference
@@ -45,6 +53,7 @@
     <!-- Secondary Audio Output Category -->
     <PreferenceCategory
         android:key="category_secondary_device"
+        android:dependency="audio_share_master_switch"
         android:title="@string/audio_share_secondary_category">
 
         <ListPreference
@@ -74,6 +83,7 @@
     <!-- Hardware / Codec Engine Info -->
     <PreferenceCategory
         android:key="category_hardware_info"
+        android:dependency="audio_share_master_switch"
         android:title="@string/audio_share_hardware_category">
 
         <Preference

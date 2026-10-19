@@ -7,6 +7,8 @@ package org.lineageos.device.DeviceSettings.audioshare;
 
 import android.bluetooth.BluetoothA2dp;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothCodecConfig;
+import android.bluetooth.BluetoothCodecStatus;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
@@ -43,6 +45,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
 
     private static final String KEY_MASTER_SWITCH = "audio_share_master_switch";
     private static final String KEY_PRIMARY_DEVICE_INFO = "primary_device_info";
+    private static final String KEY_CODEC_INFO = "codec_info";
     private static final String KEY_PRIMARY_VOLUME = "primary_device_volume";
     private static final String KEY_SECONDARY_SELECT = "secondary_device_select";
     private static final String KEY_SECONDARY_ACTION = "secondary_share_action";
@@ -50,6 +53,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
 
     private SwitchPreferenceCompat mMasterSwitch;
     private Preference mPrimaryDeviceInfo;
+    private Preference mCodecInfoPref;
     private CustomSeekBarPreference mPrimaryVolumePref;
     private ListPreference mSecondarySelectPref;
     private Preference mSecondaryActionPref;
@@ -63,6 +67,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
     private BluetoothDevice mPrimaryDevice;
     private BluetoothDevice mSecondaryDevice;
     private boolean mIsSharingActive = false;
+    private int mLastPrimaryPercent = 80;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
@@ -72,6 +77,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             if (profile == BluetoothProfile.A2DP) {
                 mBluetoothA2dp = proxy;
                 refreshBluetoothDevices();
+                mHandler.postDelayed(() -> refreshCodecInfo(), 400);
             }
         }
 
@@ -80,6 +86,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             if (profile == BluetoothProfile.A2DP) {
                 mBluetoothA2dp = null;
                 refreshBluetoothDevices();
+                mHandler.post(() -> refreshCodecInfo());
             }
         }
     };
@@ -124,11 +131,31 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             if ("android.media.VOLUME_CHANGED_ACTION".equals(action)) {
-                if (mPrimaryVolumePref != null && mAudioManager != null) {
+                if (mAudioManager != null) {
                     int curVol = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
                     int maxVol = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
                     int percent = (maxVol > 0) ? (curVol * 100 / maxVol) : 80;
-                    mPrimaryVolumePref.setValue(percent);
+                    if (mPrimaryVolumePref != null) {
+                        mPrimaryVolumePref.setValue(percent);
+                    }
+                    if (mIsSharingActive && mSecondaryDevice != null && mSecondaryVolumePref != null) {
+                        int delta = percent - mLastPrimaryPercent;
+                        int curSec = mSecondaryVolumePref.getValue();
+                        int newSec;
+                        if (percent == 0) {
+                            newSec = 0;
+                        } else if (mLastPrimaryPercent == 0 && percent > 0) {
+                            newSec = percent;
+                        } else {
+                            newSec = Math.max(0, Math.min(100, curSec + delta));
+                        }
+                        mSecondaryVolumePref.setValue(newSec);
+                        if (mSharingManager != null) {
+                            int avrcpVol = Math.max(0, Math.min(127, Math.round((float) newSec * 127.0f / 100.0f)));
+                            mSharingManager.setSharingDeviceAbsoluteVolume(mSecondaryDevice, avrcpVol);
+                        }
+                    }
+                    mLastPrimaryPercent = percent;
                 }
                 return;
             }
@@ -151,6 +178,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                             }
                         }
                     }
+                    mHandler.postDelayed(() -> refreshCodecInfo(), 500);
                 }
                 refreshBluetoothDevices();
             }
@@ -168,6 +196,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
 
         mMasterSwitch = findPreference(KEY_MASTER_SWITCH);
         mPrimaryDeviceInfo = findPreference(KEY_PRIMARY_DEVICE_INFO);
+        mCodecInfoPref = findPreference(KEY_CODEC_INFO);
         mPrimaryVolumePref = findPreference(KEY_PRIMARY_VOLUME);
         mSecondarySelectPref = findPreference(KEY_SECONDARY_SELECT);
         mSecondaryActionPref = findPreference(KEY_SECONDARY_ACTION);
@@ -176,11 +205,15 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         if (mMasterSwitch != null) {
             mMasterSwitch.setOnPreferenceChangeListener(this);
         }
+        if (mPrimaryDeviceInfo != null) {
+            mPrimaryDeviceInfo.setOnPreferenceClickListener(this);
+        }
         if (mPrimaryVolumePref != null) {
             mPrimaryVolumePref.setOnPreferenceChangeListener(this);
             int curVol = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
             int maxVol = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
             int percent = (maxVol > 0) ? (curVol * 100 / maxVol) : 80;
+            mLastPrimaryPercent = percent;
             mPrimaryVolumePref.setValue(percent);
         }
         if (mSecondarySelectPref != null) {
@@ -285,7 +318,9 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             }
         }
 
-        // Build list of potential secondary devices
+        // Build list of potential secondary devices — ONLY actively connected A2DP devices.
+        // Paired-but-disconnected devices are intentionally excluded: selecting one causes
+        // startSharing() to fail silently and confuses the user.
         List<CharSequence> entries = new ArrayList<>();
         List<CharSequence> values = new ArrayList<>();
         Set<String> addedAddresses = new HashSet<>();
@@ -294,7 +329,6 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             addedAddresses.add(mPrimaryDevice.getAddress().toUpperCase(Locale.ROOT));
         }
 
-        // 1. Connected A2DP devices (ready for immediate sharing)
         for (BluetoothDevice dev : connectedA2dpDevices) {
             if (dev == null) continue;
             String addr = dev.getAddress().toUpperCase(Locale.ROOT);
@@ -305,16 +339,22 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             }
         }
 
-        // 2. Bonded devices (not currently connected)
-        Set<BluetoothDevice> bonded = mBluetoothAdapter.getBondedDevices();
-        if (bonded != null) {
-            for (BluetoothDevice dev : bonded) {
-                if (dev == null) continue;
-                String addr = dev.getAddress().toUpperCase(Locale.ROOT);
-                if (!addedAddresses.contains(addr)) {
-                    addedAddresses.add(addr);
-                    entries.add(getDeviceDisplayName(dev) + " (Paired)");
-                    values.add(dev.getAddress());
+        // Auto-clear secondary selection if its device has since disconnected
+        if (mSecondaryDevice != null) {
+            String secAddr = mSecondaryDevice.getAddress().toUpperCase(Locale.ROOT);
+            boolean secStillConnected = false;
+            for (BluetoothDevice dev : connectedA2dpDevices) {
+                if (dev != null && dev.getAddress().toUpperCase(Locale.ROOT).equals(secAddr)) {
+                    secStillConnected = true;
+                    break;
+                }
+            }
+            if (!secStillConnected) {
+                Log.w(TAG, "Secondary device disconnected, clearing: " + mSecondaryDevice.getAddress());
+                mSecondaryDevice = null;
+                if (mSecondarySelectPref != null) {
+                    mSecondarySelectPref.setValue(null);
+                    mSecondarySelectPref.setSummary(null);
                 }
             }
         }
@@ -346,27 +386,36 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             return;
         }
 
+        boolean masterEnabled = mMasterSwitch != null && mMasterSwitch.isChecked();
+        boolean btOk = mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
+
+        if (mPrimaryDeviceInfo != null) {
+            mPrimaryDeviceInfo.setEnabled(masterEnabled && btOk);
+        }
+        if (mPrimaryVolumePref != null) {
+            mPrimaryVolumePref.setEnabled(masterEnabled && btOk && mPrimaryDevice != null);
+        }
+        if (mSecondarySelectPref != null) {
+            mSecondarySelectPref.setEnabled(masterEnabled && btOk && !mIsSharingActive);
+        }
+
         if (mSecondaryActionPref != null) {
             if (mIsSharingActive) {
                 mSecondaryActionPref.setTitle(R.string.audio_share_stop_action);
                 String secName = (mSecondaryDevice != null) ? getDeviceDisplayName(mSecondaryDevice) : "Secondary";
                 mSecondaryActionPref.setSummary(getString(R.string.audio_share_active_status) + " (" + secName + ")");
-                mSecondaryActionPref.setEnabled(true);
+                mSecondaryActionPref.setEnabled(masterEnabled && btOk);
                 if (mSecondaryVolumePref != null) {
-                    mSecondaryVolumePref.setEnabled(true);
+                    mSecondaryVolumePref.setEnabled(masterEnabled && btOk);
                 }
             } else {
                 mSecondaryActionPref.setTitle(R.string.audio_share_start_action);
                 mSecondaryActionPref.setSummary(R.string.audio_share_idle_status);
-                // Keep clickable so clicks always fire and give feedback/diagnostics
-                mSecondaryActionPref.setEnabled(true);
+                mSecondaryActionPref.setEnabled(masterEnabled && btOk);
                 if (mSecondaryVolumePref != null) {
                     mSecondaryVolumePref.setEnabled(false);
                 }
             }
-        }
-        if (mMasterSwitch != null) {
-            mMasterSwitch.setChecked(mIsSharingActive);
         }
     }
 
@@ -406,18 +455,54 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             boolean enabled = (Boolean) newValue;
             if (!enabled && mIsSharingActive && mSharingManager != null) {
                 mSharingManager.stopSharing();
+                mIsSharingActive = false;
             }
+            if (enabled) {
+                // Force SBC + disable HD audio on master switch ON for sharing compatibility.
+                mHandler.postDelayed(() -> enforceSbcOnPrimaryDevice(), 300);
+            }
+            if (mMasterSwitch != null) {
+                mMasterSwitch.setChecked(enabled);
+            }
+            updateUiState();
             return true;
         } else if (preference == mPrimaryVolumePref) {
             int percent = (Integer) newValue;
             int maxVol = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
             int newVol = (percent * maxVol) / 100;
             mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0);
+
+            if (mIsSharingActive && mSecondaryDevice != null && mSecondaryVolumePref != null) {
+                int delta = percent - mLastPrimaryPercent;
+                int curSec = mSecondaryVolumePref.getValue();
+                int newSec;
+                if (percent == 0) {
+                    newSec = 0;
+                } else if (mLastPrimaryPercent == 0 && percent > 0) {
+                    newSec = percent;
+                } else {
+                    newSec = Math.max(0, Math.min(100, curSec + delta));
+                }
+                mSecondaryVolumePref.setValue(newSec);
+                if (mSharingManager != null) {
+                    int avrcpVol = Math.max(0, Math.min(127, Math.round((float) newSec * 127.0f / 100.0f)));
+                    mSharingManager.setSharingDeviceAbsoluteVolume(mSecondaryDevice, avrcpVol);
+                }
+            }
+            mLastPrimaryPercent = percent;
             return true;
         } else if (preference == mSecondarySelectPref) {
             String address = (String) newValue;
             if (!TextUtils.isEmpty(address) && mBluetoothAdapter != null) {
-                mSecondaryDevice = mBluetoothAdapter.getRemoteDevice(address);
+                BluetoothDevice candidate = mBluetoothAdapter.getRemoteDevice(address);
+                if (!isA2dpConnected(candidate)) {
+                    Toast.makeText(getContext(),
+                            R.string.audio_share_secondary_not_connected, Toast.LENGTH_SHORT).show();
+                    mSecondarySelectPref.setValue(
+                            mSecondaryDevice != null ? mSecondaryDevice.getAddress() : null);
+                    return true;
+                }
+                mSecondaryDevice = candidate;
                 mSecondarySelectPref.setValue(address);
                 mSecondarySelectPref.setSummary(getDeviceDisplayName(mSecondaryDevice));
                 updateUiState();
@@ -461,6 +546,18 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                     Toast.makeText(getContext(), "Please select a secondary sharing device above first.", Toast.LENGTH_LONG).show();
                     return true;
                 }
+                // Guard: secondary must be actively connected at the moment sharing starts
+                if (!isA2dpConnected(mSecondaryDevice)) {
+                    Toast.makeText(getContext(),
+                            R.string.audio_share_secondary_not_connected, Toast.LENGTH_LONG).show();
+                    mSecondaryDevice = null;
+                    if (mSecondarySelectPref != null) {
+                        mSecondarySelectPref.setValue(null);
+                        mSecondarySelectPref.setSummary(null);
+                    }
+                    refreshBluetoothDevices();
+                    return true;
+                }
                 if (mSecondaryDevice.getAddress().equalsIgnoreCase(mPrimaryDevice.getAddress())) {
                     Toast.makeText(getContext(), "Primary and secondary device cannot be the same", Toast.LENGTH_SHORT).show();
                     return true;
@@ -477,7 +574,136 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 }
             }
             return true;
+        } else if (preference == mPrimaryDeviceInfo) {
+            showSelectPrimaryDeviceDialog();
+            return true;
         }
         return false;
+    }
+
+    private void showSelectPrimaryDeviceDialog() {
+        if (mBluetoothA2dp == null || getContext() == null) return;
+        List<BluetoothDevice> connected = mBluetoothA2dp.getConnectedDevices();
+        if (connected == null || connected.isEmpty()) {
+            Toast.makeText(getContext(), R.string.audio_share_no_primary_device, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (connected.size() == 1) {
+            Toast.makeText(getContext(), "Only one Bluetooth audio device connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        CharSequence[] names = new CharSequence[connected.size()];
+        int selectedIndex = 0;
+        for (int i = 0; i < connected.size(); i++) {
+            BluetoothDevice dev = connected.get(i);
+            names[i] = getDeviceDisplayName(dev) + " (" + dev.getAddress() + ")";
+            if (mPrimaryDevice != null && dev.getAddress().equalsIgnoreCase(mPrimaryDevice.getAddress())) {
+                selectedIndex = i;
+            }
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.audio_share_primary_device)
+                .setSingleChoiceItems(names, selectedIndex, (dialog, which) -> {
+                    BluetoothDevice target = connected.get(which);
+                    if (mBluetoothAdapter != null) {
+                        try {
+                            mBluetoothAdapter.setActiveDevice(target, BluetoothAdapter.ACTIVE_DEVICE_AUDIO);
+                            mPrimaryDevice = target;
+                            refreshBluetoothDevices();
+                        } catch (Throwable t) {
+                            Log.e(TAG, "Failed to switch active A2DP device", t);
+                        }
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+
+    /** True when the given device has an active A2DP connection (not just paired). */
+    private boolean isA2dpConnected(BluetoothDevice device) {
+        if (device == null || mBluetoothA2dp == null) return false;
+        return mBluetoothA2dp.getConnectionState(device) == BluetoothProfile.STATE_CONNECTED;
+    }
+
+    /**
+     * Reads the current A2DP codec from the stack for mPrimaryDevice and updates
+     * the codec_info preference summary so the user sees the live negotiated codec.
+     */
+    private void refreshCodecInfo() {
+        if (mCodecInfoPref == null) return;
+        if (!(mBluetoothA2dp instanceof BluetoothA2dp) || mPrimaryDevice == null) {
+            mCodecInfoPref.setSummary(R.string.audio_share_codec_info_summary);
+            return;
+        }
+        try {
+            BluetoothCodecStatus status =
+                    ((BluetoothA2dp) mBluetoothA2dp).getCodecStatus(mPrimaryDevice);
+            if (status != null && status.getCodecConfig() != null) {
+                BluetoothCodecConfig cfg = status.getCodecConfig();
+                String name = codecTypeName(cfg.getCodecType());
+                int sr = cfg.getSampleRate();
+                int bits = cfg.getBitsPerSample();
+                mCodecInfoPref.setSummary(
+                        name
+                        + (sr > 0 ? "  \u00b7  " + (sr / 1000) + " kHz" : "")
+                        + (bits > 0 ? "  \u00b7  " + bits + "-bit" : ""));
+            } else {
+                mCodecInfoPref.setSummary("Unknown");
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "refreshCodecInfo: " + t.getMessage());
+            mCodecInfoPref.setSummary("N/A");
+        }
+    }
+
+    private static String codecTypeName(int type) {
+        switch (type) {
+            case BluetoothCodecConfig.SOURCE_CODEC_TYPE_SBC:     return "SBC";
+            case BluetoothCodecConfig.SOURCE_CODEC_TYPE_AAC:     return "AAC";
+            case BluetoothCodecConfig.SOURCE_CODEC_TYPE_APTX:    return "aptX";
+            case BluetoothCodecConfig.SOURCE_CODEC_TYPE_APTX_HD: return "aptX HD";
+            case BluetoothCodecConfig.SOURCE_CODEC_TYPE_LDAC:    return "LDAC";
+            case BluetoothCodecConfig.SOURCE_CODEC_TYPE_LC3:     return "LC3";
+            case BluetoothCodecConfig.SOURCE_CODEC_TYPE_OPUS:    return "Opus";
+            default:                                              return "Unknown";
+        }
+    }
+
+    /**
+     * When Audio Sharing master switch is turned ON, force the primary A2DP device
+     * to SBC and disable HD optional codecs. Dual-A2DP split-encode is most stable
+     * over SBC; LDAC/aptX-HD causes codec mismatch audio drops on the secondary stream.
+     */
+    private void enforceSbcOnPrimaryDevice() {
+        if (!(mBluetoothA2dp instanceof BluetoothA2dp) || mPrimaryDevice == null) return;
+        BluetoothA2dp a2dp = (BluetoothA2dp) mBluetoothA2dp;
+        try {
+            // Step 1 \u2014 disable HD optional codecs
+            a2dp.setOptionalCodecsEnabled(mPrimaryDevice,
+                    BluetoothA2dp.OPTIONAL_CODECS_PREF_DISABLED);
+
+            // Step 2 \u2014 force SBC at highest priority
+            BluetoothCodecConfig sbcConfig = new BluetoothCodecConfig.Builder()
+                    .setCodecType(BluetoothCodecConfig.SOURCE_CODEC_TYPE_SBC)
+                    .setCodecPriority(BluetoothCodecConfig.CODEC_PRIORITY_HIGHEST)
+                    .setSampleRate(BluetoothCodecConfig.SAMPLE_RATE_44100)
+                    .setBitsPerSample(BluetoothCodecConfig.BITS_PER_SAMPLE_16)
+                    .setChannelMode(BluetoothCodecConfig.CHANNEL_MODE_STEREO)
+                    .build();
+            a2dp.setCodecConfigPreference(mPrimaryDevice, sbcConfig);
+
+            Log.i(TAG, "enforceSbcOnPrimaryDevice: SBC enforced on " + mPrimaryDevice.getAddress());
+            mHandler.postDelayed(() -> refreshCodecInfo(), 1200);
+            if (getContext() != null) {
+                Toast.makeText(getContext(),
+                        R.string.audio_share_sbc_enforced, Toast.LENGTH_SHORT).show();
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "enforceSbcOnPrimaryDevice failed: " + t.getMessage());
+        }
     }
 }
