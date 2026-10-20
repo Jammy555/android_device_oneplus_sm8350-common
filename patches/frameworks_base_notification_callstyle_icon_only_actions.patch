@@ -1,0 +1,103 @@
+diff --git a/core/java/android/app/Notification.java b/core/java/android/app/Notification.java
+index 74f6a743c0338..a1de54fbfcd15 100644
+--- a/core/java/android/app/Notification.java
++++ b/core/java/android/app/Notification.java
+@@ -11381,14 +11381,17 @@ public class Notification implements Parcelable
+ 
+         @NonNull
+         private Action makeNegativeAction() {
++            boolean iconOnly = mBuilder.mN.extras.getBoolean("android.callNotification.iconOnlyActions", false);
++            Icon customIcon = mBuilder.mN.extras.getParcelable("android.callNotification.declineIcon", Icon.class);
++            Icon icon = customIcon != null ? customIcon : Icon.createWithResource("", R.drawable.ic_call_decline);
+             if (mDeclineIntent == null) {
+-                return makeAction(R.drawable.ic_call_decline,
+-                        R.string.call_notification_hang_up_action,
++                return makeAction(icon,
++                        iconOnly ? "" : mBuilder.mContext.getString(R.string.call_notification_hang_up_action),
+                         mDeclineButtonColor, R.color.call_notification_decline_color,
+                         mHangUpIntent);
+             } else {
+-                return makeAction(R.drawable.ic_call_decline,
+-                        R.string.call_notification_decline_action,
++                return makeAction(icon,
++                        iconOnly ? "" : mBuilder.mContext.getString(R.string.call_notification_decline_action),
+                         mDeclineButtonColor, R.color.call_notification_decline_color,
+                         mDeclineIntent);
+             }
+@@ -11396,10 +11399,17 @@ public class Notification implements Parcelable
+ 
+         @Nullable
+         private Action makeAnswerAction() {
+-            return mAnswerIntent == null ? null : makeAction(
+-                    mIsVideo ? R.drawable.ic_call_answer_video : R.drawable.ic_call_answer,
+-                    mIsVideo ? R.string.call_notification_answer_video_action
+-                            : R.string.call_notification_answer_action,
++            if (mAnswerIntent == null) {
++                return null;
++            }
++            boolean iconOnly = mBuilder.mN.extras.getBoolean("android.callNotification.iconOnlyActions", false);
++            Icon customIcon = mBuilder.mN.extras.getParcelable("android.callNotification.answerIcon", Icon.class);
++            int defaultRes = mIsVideo ? R.drawable.ic_call_answer_video : R.drawable.ic_call_answer;
++            Icon icon = customIcon != null ? customIcon : Icon.createWithResource("", defaultRes);
++            int titleRes = mIsVideo ? R.string.call_notification_answer_video_action
++                    : R.string.call_notification_answer_action;
++            return makeAction(icon,
++                    iconOnly ? "" : mBuilder.mContext.getString(titleRes),
+                     mAnswerButtonColor, R.color.call_notification_answer_color,
+                     mAnswerIntent);
+         }
+@@ -11407,14 +11417,25 @@ public class Notification implements Parcelable
+         @NonNull
+         private Action makeAction(@DrawableRes int icon, @StringRes int title,
+                 @ColorInt Integer colorInt, @ColorRes int defaultColorRes, PendingIntent intent) {
++            return makeAction(Icon.createWithResource("", icon), mBuilder.mContext.getString(title),
++                    colorInt, defaultColorRes, intent);
++        }
++
++        @NonNull
++        private Action makeAction(@NonNull Icon icon, @NonNull CharSequence title,
++                @ColorInt Integer colorInt, @ColorRes int defaultColorRes, PendingIntent intent) {
+             if (colorInt == null || !mBuilder.isCallActionColorCustomizable()) {
+                 colorInt = mBuilder.mContext.getColor(defaultColorRes);
+             }
+-            Action action = new Action.Builder(Icon.createWithResource("", icon),
+-                    new SpannableStringBuilder().append(mBuilder.mContext.getString(title),
+-                            new ForegroundColorSpan(colorInt),
+-                            SpannableStringBuilder.SPAN_INCLUSIVE_INCLUSIVE),
+-                    intent).build();
++            CharSequence formattedTitle;
++            if (TextUtils.isEmpty(title)) {
++                formattedTitle = "";
++            } else {
++                formattedTitle = new SpannableStringBuilder().append(title,
++                        new ForegroundColorSpan(colorInt),
++                        SpannableStringBuilder.SPAN_INCLUSIVE_INCLUSIVE);
++            }
++            Action action = new Action.Builder(icon, formattedTitle, intent).build();
+             action.getExtras().putBoolean(KEY_ACTION_PRIORITY, true);
+             return action;
+         }
+diff --git a/core/java/com/android/internal/widget/EmphasizedNotificationButton.java b/core/java/com/android/internal/widget/EmphasizedNotificationButton.java
+index 13f1d7a3da627..c0ac04fe8bc03 100644
+--- a/core/java/com/android/internal/widget/EmphasizedNotificationButton.java
++++ b/core/java/com/android/internal/widget/EmphasizedNotificationButton.java
+@@ -33,6 +33,7 @@ import android.graphics.drawable.GradientDrawable;
+ import android.graphics.drawable.Icon;
+ import android.graphics.drawable.RippleDrawable;
+ import android.text.SpannableStringBuilder;
++import android.text.TextUtils;
+ import android.text.TextPaint;
+ import android.text.style.ImageSpan;
+ import android.text.style.MetricAffectingSpan;
+@@ -291,9 +292,9 @@ public class EmphasizedNotificationButton extends Button {
+             }
+             setText(mLabelToGlue);
+             return;
+-        } else if (mLabelToGlue == null) {
++        } else if (mLabelToGlue == null || TextUtils.isEmpty(mLabelToGlue.toString().trim())) {
+             if (DEBUG_NEW_ACTION_LAYOUT) {
+-                Log.d(TAG, "glueIconAndLabel: null label, setting text to ImageSpan with icon");
++                Log.d(TAG, "glueIconAndLabel: null or empty label, setting text to ImageSpan with icon");
+             }
+             final SpannableStringBuilder builder = new SpannableStringBuilder();
+             appendSpan(builder, IMAGE_SPAN_TEXT, new ImageSpan(mIconToGlue, ALIGN_CENTER));
