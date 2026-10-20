@@ -235,4 +235,7 @@
     <string name="separate_app_sound_device_title">Output Device</string>
     <string name="separate_app_sound_device_speaker">Phone Speaker</string>
     <string name="separate_app_sound_device_bt">Shared Bluetooth Headsets</string>
+
+    <!-- WallpaperPicker Partner Customization -->
+    <string name="system_wallpaper_directory" translatable="false">/product/media/wallpaper</string>
 </resources>

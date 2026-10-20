@@ -191,6 +191,14 @@
             android:enabled="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+        </receiver>
+
+        <!-- Launcher / WallpaperPicker Partner Customization Provider -->
+        <receiver
+            android:name=".PartnerReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.launcher3.action.PARTNER_CUSTOMIZATION" />
             </intent-filter>
         </receiver>
 
