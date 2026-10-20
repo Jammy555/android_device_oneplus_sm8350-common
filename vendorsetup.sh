@@ -81,3 +81,8 @@ apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_clo
 apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_spatializer_stream_hifi_usecase.patch" "audio HAL adev_open_output_stream(): an output opened FAST|DEEP_BUFFER (what libaudiohal sends for the spatializer stream to HALs below 7.1) takes the hifi usecase instead of the low-latency one the primary output holds"
 
 
+
+# Apply vendor media & debloat patches
+if [ -f "${TOP_DIR}/vendor/oplus/media/vendorscript.sh" ]; then
+    bash "${TOP_DIR}/vendor/oplus/media/vendorscript.sh"
+fi
