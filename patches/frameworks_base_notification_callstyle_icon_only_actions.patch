@@ -1,30 +1,80 @@
 diff --git a/core/java/android/app/Notification.java b/core/java/android/app/Notification.java
-index 74f6a743c0338..a1de54fbfcd15 100644
+index 74f6a743c0338..037eaab290fb3 100644
 --- a/core/java/android/app/Notification.java
 +++ b/core/java/android/app/Notification.java
-@@ -11381,14 +11381,17 @@ public class Notification implements Parcelable
+@@ -7447,7 +7447,11 @@ public class Notification implements Parcelable
+             if (!tombstone) {
+                 button.setOnClickPendingIntent(R.id.action0, action.actionIntent);
+             }
+-            button.setContentDescription(R.id.action0, action.title);
++            CharSequence contentDescription = action.title;
++            if (TextUtils.isEmpty(contentDescription)) {
++                contentDescription = action.getExtras().getCharSequence("android.callNotification.actionDescription");
++            }
++            button.setContentDescription(R.id.action0, contentDescription);
+             if (action.mRemoteInputs != null) {
+                 button.setRemoteInputs(R.id.action0, action.mRemoteInputs);
+             }
+@@ -11379,27 +11383,66 @@ public class Notification implements Parcelable
+             return makeCallLayout(StandardTemplateParams.VIEW_TYPE_EXPANDED);
+         }
  
++        private boolean isIconOnlyActions() {
++            if (mBuilder == null) {
++                return false;
++            }
++            if (mBuilder.mN != null && mBuilder.mN.extras != null
++                    && mBuilder.mN.extras.getBoolean("android.callNotification.iconOnlyActions", false)) {
++                return true;
++            }
++            if (mBuilder.mUserExtras != null
++                    && mBuilder.mUserExtras.getBoolean("android.callNotification.iconOnlyActions", false)) {
++                return true;
++            }
++            return false;
++        }
++
++        @Nullable
++        private Icon getCustomCallIcon(String key) {
++            if (mBuilder == null) {
++                return null;
++            }
++            if (mBuilder.mN != null && mBuilder.mN.extras != null) {
++                Icon icon = mBuilder.mN.extras.getParcelable(key, Icon.class);
++                if (icon != null) {
++                    return icon;
++                }
++            }
++            if (mBuilder.mUserExtras != null) {
++                return mBuilder.mUserExtras.getParcelable(key, Icon.class);
++            }
++            return null;
++        }
++
          @NonNull
          private Action makeNegativeAction() {
-+            boolean iconOnly = mBuilder.mN.extras.getBoolean("android.callNotification.iconOnlyActions", false);
-+            Icon customIcon = mBuilder.mN.extras.getParcelable("android.callNotification.declineIcon", Icon.class);
-+            Icon icon = customIcon != null ? customIcon : Icon.createWithResource("", R.drawable.ic_call_decline);
-             if (mDeclineIntent == null) {
+-            if (mDeclineIntent == null) {
 -                return makeAction(R.drawable.ic_call_decline,
 -                        R.string.call_notification_hang_up_action,
-+                return makeAction(icon,
-+                        iconOnly ? "" : mBuilder.mContext.getString(R.string.call_notification_hang_up_action),
-                         mDeclineButtonColor, R.color.call_notification_decline_color,
-                         mHangUpIntent);
-             } else {
+-                        mDeclineButtonColor, R.color.call_notification_decline_color,
+-                        mHangUpIntent);
+-            } else {
 -                return makeAction(R.drawable.ic_call_decline,
 -                        R.string.call_notification_decline_action,
-+                return makeAction(icon,
-+                        iconOnly ? "" : mBuilder.mContext.getString(R.string.call_notification_decline_action),
-                         mDeclineButtonColor, R.color.call_notification_decline_color,
-                         mDeclineIntent);
-             }
-@@ -11396,10 +11399,17 @@ public class Notification implements Parcelable
+-                        mDeclineButtonColor, R.color.call_notification_decline_color,
+-                        mDeclineIntent);
+-            }
++            boolean iconOnly = isIconOnlyActions();
++            Icon customIcon = getCustomCallIcon("android.callNotification.declineIcon");
++            Icon icon = customIcon != null ? customIcon : Icon.createWithResource("", R.drawable.ic_call_decline);
++            CharSequence contentDesc = mDeclineIntent == null
++                    ? mBuilder.mContext.getString(R.string.call_notification_hang_up_action)
++                    : mBuilder.mContext.getString(R.string.call_notification_decline_action);
++            CharSequence title = iconOnly ? "" : contentDesc;
++            return makeAction(icon, title, contentDesc,
++                    mDeclineButtonColor, R.color.call_notification_decline_color,
++                    mDeclineIntent == null ? mHangUpIntent : mDeclineIntent);
+         }
  
          @Nullable
          private Action makeAnswerAction() {
@@ -35,27 +85,36 @@ index 74f6a743c0338..a1de54fbfcd15 100644
 +            if (mAnswerIntent == null) {
 +                return null;
 +            }
-+            boolean iconOnly = mBuilder.mN.extras.getBoolean("android.callNotification.iconOnlyActions", false);
-+            Icon customIcon = mBuilder.mN.extras.getParcelable("android.callNotification.answerIcon", Icon.class);
++            boolean iconOnly = isIconOnlyActions();
++            Icon customIcon = getCustomCallIcon("android.callNotification.answerIcon");
 +            int defaultRes = mIsVideo ? R.drawable.ic_call_answer_video : R.drawable.ic_call_answer;
 +            Icon icon = customIcon != null ? customIcon : Icon.createWithResource("", defaultRes);
 +            int titleRes = mIsVideo ? R.string.call_notification_answer_video_action
 +                    : R.string.call_notification_answer_action;
-+            return makeAction(icon,
-+                    iconOnly ? "" : mBuilder.mContext.getString(titleRes),
++            CharSequence contentDesc = mBuilder.mContext.getString(titleRes);
++            CharSequence title = iconOnly ? "" : contentDesc;
++            return makeAction(icon, title, contentDesc,
                      mAnswerButtonColor, R.color.call_notification_answer_color,
                      mAnswerIntent);
          }
-@@ -11407,14 +11417,25 @@ public class Notification implements Parcelable
+@@ -11407,14 +11450,38 @@ public class Notification implements Parcelable
          @NonNull
          private Action makeAction(@DrawableRes int icon, @StringRes int title,
                  @ColorInt Integer colorInt, @ColorRes int defaultColorRes, PendingIntent intent) {
-+            return makeAction(Icon.createWithResource("", icon), mBuilder.mContext.getString(title),
++            String titleStr = mBuilder.mContext.getString(title);
++            return makeAction(Icon.createWithResource("", icon), titleStr, titleStr,
 +                    colorInt, defaultColorRes, intent);
 +        }
 +
 +        @NonNull
 +        private Action makeAction(@NonNull Icon icon, @NonNull CharSequence title,
++                @ColorInt Integer colorInt, @ColorRes int defaultColorRes, PendingIntent intent) {
++            return makeAction(icon, title, title, colorInt, defaultColorRes, intent);
++        }
++
++        @NonNull
++        private Action makeAction(@NonNull Icon icon, @NonNull CharSequence title,
++                @Nullable CharSequence contentDescription,
 +                @ColorInt Integer colorInt, @ColorRes int defaultColorRes, PendingIntent intent) {
              if (colorInt == null || !mBuilder.isCallActionColorCustomizable()) {
                  colorInt = mBuilder.mContext.getColor(defaultColorRes);
@@ -73,7 +132,12 @@ index 74f6a743c0338..a1de54fbfcd15 100644
 +                        new ForegroundColorSpan(colorInt),
 +                        SpannableStringBuilder.SPAN_INCLUSIVE_INCLUSIVE);
 +            }
-+            Action action = new Action.Builder(icon, formattedTitle, intent).build();
++            Action.Builder actionBuilder = new Action.Builder(icon, formattedTitle, intent);
++            if (!TextUtils.isEmpty(contentDescription)) {
++                actionBuilder.getExtras().putCharSequence("android.callNotification.actionDescription",
++                        contentDescription);
++            }
++            Action action = actionBuilder.build();
              action.getExtras().putBoolean(KEY_ACTION_PRIORITY, true);
              return action;
          }
