@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 LunarisOS
+     Separate App Sound Preferences
+-->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        android:key="separate_app_sound_enable"
+        android:title="@string/separate_app_sound_enable"
+        android:summary="@string/separate_app_sound_enable_summary"
+        android:defaultValue="false" />
+
+    <ListPreference
+        android:key="separate_app_sound_device"
+        android:dependency="separate_app_sound_enable"
+        android:title="@string/separate_app_sound_device_title"
+        android:entries="@array/separate_app_sound_device_entries"
+        android:entryValues="@array/separate_app_sound_device_values"
+        android:defaultValue="speaker" />
+
+    <PreferenceCategory
+        android:key="separate_app_sound_category_apps"
+        android:dependency="separate_app_sound_enable"
+        android:title="@string/separate_app_sound_apps_title" />
+
+</PreferenceScreen>

@@ -282,5 +282,14 @@
         <item>left</item>
     </string-array>
 
+    <!-- Separate App Sound Output Device Arrays -->
+    <string-array name="separate_app_sound_device_entries">
+        <item>@string/separate_app_sound_device_speaker</item>
+        <item>@string/separate_app_sound_device_bt</item>
+    </string-array>
+    <string-array name="separate_app_sound_device_values" translatable="false">
+        <item>speaker</item>
+        <item>bluetooth</item>
+    </string-array>
 
 </resources>

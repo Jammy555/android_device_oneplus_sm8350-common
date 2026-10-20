@@ -48,6 +48,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_ROUTING" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <protected-broadcast android:name="org.lineageos.device.DeviceSettings.WIDGET_TICK" />
 
     <application
@@ -143,6 +145,29 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Separate App Sound Routing sub-screen -->
+        <activity
+            android:name=".audioshare.SeparateAppSoundActivity"
+            android:label="@string/separate_app_sound_title"
+            android:theme="@style/Theme.DeviceSettings"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false" />
+
+        <!-- Audio Sharing Quick Settings Tile -->
+        <service
+            android:name=".audioshare.AudioShareTileService"
+            android:label="@string/audio_share_tile_label"
+            android:icon="@drawable/ic_audio_share"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
 
         <!-- Power Profile Quick Settings Tile -->
         <service

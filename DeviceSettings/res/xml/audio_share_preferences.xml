@@ -30,22 +30,20 @@
             android:key="primary_device_info"
             android:title="@string/audio_share_primary_device"
             android:summary="@string/audio_share_no_primary_device"
+            android:icon="@drawable/ic_audio_share"
             android:selectable="true" />
 
         <Preference
             android:key="codec_info"
             android:title="@string/audio_share_codec_info_title"
             android:summary="@string/audio_share_codec_info_summary"
+            android:icon="@drawable/ic_cpu_chip"
             android:selectable="false" />
 
-        <org.lineageos.device.DeviceSettings.CustomSeekBarPreference
+        <org.lineageos.device.DeviceSettings.audioshare.AudioVolumePreference
             android:key="primary_device_volume"
             android:title="@string/audio_share_primary_volume"
             android:persistent="false"
-            android:max="100"
-            android:min="0"
-            settings:units="%"
-            settings:continuousUpdates="true"
             android:defaultValue="80" />
 
     </PreferenceCategory>
@@ -60,23 +58,56 @@
             android:key="secondary_device_select"
             android:title="@string/audio_share_secondary_device"
             android:summary="@string/audio_share_secondary_device_summary"
+            android:icon="@drawable/ic_audio_share"
             android:persistent="false" />
+
+        <Preference
+            android:key="secondary_codec_info"
+            android:title="@string/audio_share_secondary_codec_title"
+            android:summary="@string/audio_share_secondary_codec_not_connected"
+            android:icon="@drawable/ic_cpu_chip"
+            android:selectable="false" />
 
         <Preference
             android:key="secondary_share_action"
             android:title="@string/audio_share_start_action"
             android:summary="@string/audio_share_idle_status"
+            android:icon="@drawable/ic_dock_share"
             android:persistent="false" />
 
-        <org.lineageos.device.DeviceSettings.CustomSeekBarPreference
+        <org.lineageos.device.DeviceSettings.audioshare.AudioVolumePreference
             android:key="secondary_device_volume"
             android:title="@string/audio_share_secondary_volume"
             android:persistent="false"
-            android:max="100"
-            android:min="0"
-            settings:units="%"
-            settings:continuousUpdates="true"
             android:defaultValue="80" />
+
+        <Preference
+            android:key="audio_share_swap_roles"
+            android:title="@string/audio_share_swap_roles"
+            android:summary="@string/audio_share_swap_roles_summary"
+            android:icon="@drawable/ic_swap"
+            android:persistent="false" />
+
+    </PreferenceCategory>
+
+    <!-- Volume Synchronization & Controls -->
+    <PreferenceCategory
+        android:key="category_volume_controls"
+        android:dependency="audio_share_master_switch"
+        android:title="Controls &amp; Synchronization">
+
+        <SwitchPreferenceCompat
+            android:key="audio_share_sync_volumes"
+            android:title="@string/audio_share_sync_volumes"
+            android:summary="@string/audio_share_sync_volumes_summary"
+            android:icon="@drawable/ic_dock_link"
+            android:defaultValue="false" />
+
+        <Preference
+            android:key="separate_app_sound_pref"
+            android:title="@string/separate_app_sound_title"
+            android:summary="@string/separate_app_sound_summary"
+            android:icon="@drawable/ic_audio_share" />
 
     </PreferenceCategory>
 

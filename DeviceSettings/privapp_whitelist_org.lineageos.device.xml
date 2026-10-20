@@ -14,5 +14,7 @@
         <permission name="android.permission.REBOOT" />
         <permission name="android.permission.WRITE_SECURE_SETTINGS" />
         <permission name="android.permission.BLUETOOTH_PRIVILEGED" />
+        <permission name="android.permission.MODIFY_AUDIO_ROUTING" />
+        <permission name="android.permission.MODIFY_AUDIO_SETTINGS" />
     </privapp-permissions>
 </permissions>

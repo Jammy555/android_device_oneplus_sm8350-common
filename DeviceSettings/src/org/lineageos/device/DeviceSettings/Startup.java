@@ -57,6 +57,7 @@ public final class Startup extends BroadcastReceiver {
                 android.os.UserManager userManager = context.getSystemService(android.os.UserManager.class);
                 if (userManager == null || userManager.isUserUnlocked()) {
                     org.lineageos.device.DeviceSettings.dock.SmartDockService.restoreState(context);
+                    org.lineageos.device.DeviceSettings.audioshare.SeparateAppSoundManager.getInstance(context).updateRouting();
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to restore hardware settings during startup", e);
