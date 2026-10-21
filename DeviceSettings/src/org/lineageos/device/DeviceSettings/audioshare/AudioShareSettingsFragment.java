@@ -322,7 +322,9 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         if (getContext() != null) {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
             prefs.registerOnSharedPreferenceChangeListener(mPrefListener);
-            boolean shouldBeChecked = mIsSharingActive || prefs.getBoolean(KEY_MASTER_SWITCH, false);
+            boolean shouldBeChecked = mIsSharingActive
+                    || (mSharingManager != null && mSharingManager.isA2dpSharingEnabled())
+                    || prefs.getBoolean(KEY_MASTER_SWITCH, false);
             if (mMasterSwitch != null && mMasterSwitch.isChecked() != shouldBeChecked) {
                 mMasterSwitch.setChecked(shouldBeChecked);
             }
@@ -598,15 +600,18 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (preference == mMasterSwitch) {
             boolean enabled = (Boolean) newValue;
-            if (!enabled) {
-                if (mIsSharingActive && mSharingManager != null) {
-                    mSharingManager.stopSharing();
-                    mIsSharingActive = false;
-                }
+            if (mSharingManager != null) {
+                mSharingManager.setA2dpSharingEnabled(enabled);
             }
             if (mMasterSwitch != null) {
                 mMasterSwitch.setChecked(enabled);
             }
+            if (getContext() != null) {
+                PreferenceManager.getDefaultSharedPreferences(requireContext())
+                        .edit().putBoolean(KEY_MASTER_SWITCH, enabled).apply();
+            }
+            refreshBluetoothDevices();
+            mHandler.postDelayed(this::refreshCodecInfo, 400);
             updateUiState();
             return true;
         } else if (preference == mPrimaryVolumePref) {
