@@ -721,42 +721,56 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 Toast.makeText(requireContext(), R.string.bluetooth_a2dp_hw_offload_toast, Toast.LENGTH_SHORT).show();
             }
 
+            final Context appContext = (getContext() != null) ? getContext().getApplicationContext() : null;
             sOffloadExecutor.execute(() -> {
                 boolean disabled = !enableOffload;
-                boolean suSuccess = false;
                 try {
-                    Process p = Runtime.getRuntime().exec(new String[]{
-                        "su", "-c",
-                        "setprop persist.bluetooth.a2dp_offload.disabled " + disabled
-                        + " && killall -9 audioserver"
-                        + " && cmd bluetooth_manager disable && sleep 1 && cmd bluetooth_manager enable"
-                    });
-                    suSuccess = (p.waitFor() == 0);
+                    android.os.SystemProperties.set("persist.bluetooth.a2dp_offload.disabled", Boolean.toString(disabled));
                 } catch (Throwable t) {
-                    Log.w(TAG, "Root execution failed, falling back to native Java/property triggers", t);
+                    Log.e(TAG, "Failed to set persist.bluetooth.a2dp_offload.disabled", t);
                 }
-
-                if (!suSuccess) {
-                    try {
-                        android.os.SystemProperties.set("persist.bluetooth.a2dp_offload.disabled", Boolean.toString(disabled));
-                    } catch (Throwable t) {
-                        Log.e(TAG, "Failed to set persist.bluetooth.a2dp_offload.disabled", t);
-                    }
-                    try {
-                        android.os.SystemProperties.set("ctl.restart", "audioserver");
-                    } catch (Throwable t) {
-                        Log.w(TAG, "Failed ctl.restart audioserver", t);
-                    }
-                    try {
-                        BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
-                        if (bt != null && bt.isEnabled()) {
-                            bt.disable();
-                            Thread.sleep(1200);
-                            bt.enable();
+                try {
+                    android.os.SystemProperties.set("ctl.restart", "audioserver");
+                } catch (Throwable t) {
+                    Log.w(TAG, "Failed ctl.restart audioserver", t);
+                }
+                try {
+                    BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
+                    if (bt != null && bt.isEnabled()) {
+                        if (appContext != null) {
+                            final BroadcastReceiver[] cycleReceiverHolder = new BroadcastReceiver[1];
+                            cycleReceiverHolder[0] = new BroadcastReceiver() {
+                                @Override
+                                public void onReceive(Context context, Intent intent) {
+                                    if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(intent.getAction())) {
+                                        int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                                        if (state == BluetoothAdapter.STATE_OFF) {
+                                            try {
+                                                context.unregisterReceiver(this);
+                                            } catch (Exception ignored) {}
+                                            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                                            if (adapter != null) {
+                                                adapter.enable();
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+                            appContext.registerReceiver(cycleReceiverHolder[0],
+                                    new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+                            // Safety guard: unregister after 5 seconds if state change didn't fire
+                            mHandler.postDelayed(() -> {
+                                try {
+                                    if (cycleReceiverHolder[0] != null) {
+                                        appContext.unregisterReceiver(cycleReceiverHolder[0]);
+                                    }
+                                } catch (Exception ignored) {}
+                            }, 5000);
                         }
-                    } catch (Throwable t) {
-                        Log.w(TAG, "Failed to cycle BluetoothAdapter", t);
+                        bt.disable();
                     }
+                } catch (Throwable t) {
+                    Log.w(TAG, "Failed to cycle BluetoothAdapter", t);
                 }
 
                 mHandler.postDelayed(() -> {
