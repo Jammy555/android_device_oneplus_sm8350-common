@@ -211,10 +211,12 @@
     <string name="audio_share_idle_status">Ready to share audio</string>
     <string name="audio_share_secondary_volume">Secondary Volume</string>
     <string name="audio_share_hardware_category">Hardware &amp; Audio Engine</string>
-    <string name="bluetooth_a2dp_hw_offload_title">Bluetooth A2DP Hardware Offload</string>
+    <string name="bluetooth_a2dp_hw_offload_title">Hardware Offload</string>
     <string name="bluetooth_a2dp_hw_offload_summary_on">Qualcomm Hexagon DSP offload active (single device only, battery optimized)</string>
     <string name="bluetooth_a2dp_hw_offload_summary_off">Fluoride software encoding active (dual audio sharing ready, low latency)</string>
     <string name="bluetooth_a2dp_hw_offload_toast">Switching Bluetooth audio engine (restarting audioserver &amp; cycling Bluetooth)...</string>
+    <string name="bluetooth_a2dp_hw_offload_already_sw">Already using Software Encoding</string>
+    <string name="bluetooth_a2dp_hw_offload_already_hw">Already using Hardware Offload</string>
     <string name="audio_share_hardware_desc">Snapdragon 888 (SM8350) + WCN6855 Bluetooth Fluoride dual-A2DP software stream engine.</string>
     <string name="audio_share_codec_info_title">Primary Codec</string>
     <string name="audio_share_codec_info_summary">No headset connected</string>

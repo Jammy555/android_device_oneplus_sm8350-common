@@ -59,12 +59,15 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
     private static final String KEY_SWAP_ROLES = "audio_share_swap_roles";
     private static final String KEY_SEPARATE_APP_SOUND = "separate_app_sound_pref";
     private static final String KEY_A2DP_HW_OFFLOAD = "bluetooth_a2dp_hw_offload";
+    private static final String KEY_HARDWARE_ENGINE_INFO = "hardware_engine_info";
 
     private static final java.util.concurrent.ExecutorService sOffloadExecutor =
             java.util.concurrent.Executors.newSingleThreadExecutor();
 
     private SwitchPreferenceCompat mMasterSwitch;
     private SwitchPreferenceCompat mHwOffloadSwitch;
+    private Preference mHardwareEngineInfoPref;
+    private volatile boolean mIsOffloadSwitching = false;
     private Preference mPrimaryDeviceInfo;
     private Preference mCodecInfoPref;
     private AudioVolumePreference mPrimaryVolumePref;
@@ -249,6 +252,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         mSwapRolesPref = findPreference(KEY_SWAP_ROLES);
         mSeparateAppSoundPref = findPreference(KEY_SEPARATE_APP_SOUND);
         mHwOffloadSwitch = findPreference(KEY_A2DP_HW_OFFLOAD);
+        mHardwareEngineInfoPref = findPreference(KEY_HARDWARE_ENGINE_INFO);
 
         if (mHwOffloadSwitch != null) {
             mHwOffloadSwitch.setOnPreferenceChangeListener(this);
@@ -339,6 +343,13 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             }
             updateUiState();
         }
+        refreshHardwareOffloadSwitch();
+        refreshBluetoothDevices();
+        refreshCodecInfo();
+        updateHardwareEngineDebugInfo();
+    }
+
+    private void refreshHardwareOffloadSwitch() {
         if (mHwOffloadSwitch != null) {
             boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
             mHwOffloadSwitch.setChecked(!offloadDisabled);
@@ -346,8 +357,6 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                     ? R.string.bluetooth_a2dp_hw_offload_summary_on
                     : R.string.bluetooth_a2dp_hw_offload_summary_off);
         }
-        refreshBluetoothDevices();
-        refreshCodecInfo();
     }
 
     @Override
@@ -536,6 +545,10 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         boolean masterEnabled = mMasterSwitch != null && mMasterSwitch.isChecked();
         boolean btOk = mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
 
+        if (mHwOffloadSwitch != null) {
+            mHwOffloadSwitch.setEnabled(masterEnabled && !mIsOffloadSwitching);
+        }
+
         if (mPrimaryDeviceInfo != null) {
             mPrimaryDeviceInfo.setEnabled(masterEnabled && btOk);
         }
@@ -629,6 +642,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             refreshBluetoothDevices();
             mHandler.postDelayed(this::refreshCodecInfo, 400);
             updateUiState();
+            updateHardwareEngineDebugInfo();
             return true;
         } else if (preference == mPrimaryVolumePref) {
             int percent = (Integer) newValue;
@@ -686,6 +700,18 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             }
         } else if (preference == mHwOffloadSwitch) {
             boolean enableOffload = (Boolean) newValue;
+            boolean currentOffload = !android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+            if (enableOffload == currentOffload) {
+                if (getContext() != null) {
+                    Toast.makeText(requireContext(),
+                            enableOffload ? R.string.bluetooth_a2dp_hw_offload_already_hw
+                                          : R.string.bluetooth_a2dp_hw_offload_already_sw,
+                            Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            }
+
+            mIsOffloadSwitching = true;
             mHwOffloadSwitch.setEnabled(false);
             mHwOffloadSwitch.setChecked(enableOffload);
             mHwOffloadSwitch.setSummary(enableOffload
@@ -734,10 +760,13 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 }
 
                 mHandler.postDelayed(() -> {
-                    if (mHwOffloadSwitch != null && isAdded()) {
-                        mHwOffloadSwitch.setEnabled(true);
+                    mIsOffloadSwitching = false;
+                    if (isAdded()) {
+                        refreshHardwareOffloadSwitch();
+                        updateUiState();
                         refreshBluetoothDevices();
                         refreshCodecInfo();
+                        updateHardwareEngineDebugInfo();
                     }
                 }, 2500);
             });
@@ -967,6 +996,32 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 mSecondaryCodecInfoPref.setSummary(R.string.audio_share_secondary_codec_idle);
             }
         }
+
+        updateHardwareEngineDebugInfo();
+    }
+
+    private void updateHardwareEngineDebugInfo() {
+        if (mHardwareEngineInfoPref == null || !isAdded()) return;
+        boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+        boolean masterOn = mMasterSwitch != null && mMasterSwitch.isChecked();
+        String engine = offloadDisabled
+                ? "Fluoride Software Encoding (Dual-A2DP ready)"
+                : "Qualcomm Hexagon DSP Offload";
+        String primCodec = (mCodecInfoPref != null && mCodecInfoPref.getSummary() != null)
+                ? mCodecInfoPref.getSummary().toString()
+                : "None";
+        String secCodec = (mSecondaryCodecInfoPref != null && mSecondaryCodecInfoPref.getSummary() != null)
+                ? mSecondaryCodecInfoPref.getSummary().toString()
+                : "None";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("• Engine: ").append(engine).append("\n");
+        sb.append("• Prop: persist.bluetooth.a2dp_offload.disabled=").append(offloadDisabled).append("\n");
+        sb.append("• Master Switch: ").append(masterOn ? "Enabled (SBC enforced)" : "Disabled").append("\n");
+        sb.append("• Sharing: ").append(mIsSharingActive ? "Active (Dual Stream)" : "Standby").append("\n");
+        sb.append("• Primary: ").append(primCodec).append("\n");
+        sb.append("• Secondary: ").append(secCodec);
+        mHardwareEngineInfoPref.setSummary(sb.toString());
     }
 
     private static String sampleRateString(int sampleRate) {

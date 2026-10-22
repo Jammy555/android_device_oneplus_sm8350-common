@@ -114,10 +114,12 @@
     <!-- Hardware / Codec Engine Info -->
     <PreferenceCategory
         android:key="category_hardware_info"
+        android:dependency="audio_share_master_switch"
         android:title="@string/audio_share_hardware_category">
 
         <SwitchPreferenceCompat
             android:key="bluetooth_a2dp_hw_offload"
+            android:dependency="audio_share_master_switch"
             android:title="@string/bluetooth_a2dp_hw_offload_title"
             android:summary="@string/bluetooth_a2dp_hw_offload_summary_on"
             android:icon="@drawable/ic_cpu_chip"
