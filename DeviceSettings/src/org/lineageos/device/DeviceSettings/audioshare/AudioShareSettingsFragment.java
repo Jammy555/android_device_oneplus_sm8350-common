@@ -58,8 +58,13 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
     private static final String KEY_SYNC_VOLUMES = "audio_share_sync_volumes";
     private static final String KEY_SWAP_ROLES = "audio_share_swap_roles";
     private static final String KEY_SEPARATE_APP_SOUND = "separate_app_sound_pref";
+    private static final String KEY_A2DP_HW_OFFLOAD = "bluetooth_a2dp_hw_offload";
+
+    private static final java.util.concurrent.ExecutorService sOffloadExecutor =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
 
     private SwitchPreferenceCompat mMasterSwitch;
+    private SwitchPreferenceCompat mHwOffloadSwitch;
     private Preference mPrimaryDeviceInfo;
     private Preference mCodecInfoPref;
     private AudioVolumePreference mPrimaryVolumePref;
@@ -243,7 +248,11 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         mSyncVolumesSwitch = findPreference(KEY_SYNC_VOLUMES);
         mSwapRolesPref = findPreference(KEY_SWAP_ROLES);
         mSeparateAppSoundPref = findPreference(KEY_SEPARATE_APP_SOUND);
+        mHwOffloadSwitch = findPreference(KEY_A2DP_HW_OFFLOAD);
 
+        if (mHwOffloadSwitch != null) {
+            mHwOffloadSwitch.setOnPreferenceChangeListener(this);
+        }
         if (mMasterSwitch != null) {
             mMasterSwitch.setOnPreferenceChangeListener(this);
         }
@@ -329,6 +338,13 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 mMasterSwitch.setChecked(shouldBeChecked);
             }
             updateUiState();
+        }
+        if (mHwOffloadSwitch != null) {
+            boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+            mHwOffloadSwitch.setChecked(!offloadDisabled);
+            mHwOffloadSwitch.setSummary(!offloadDisabled
+                    ? R.string.bluetooth_a2dp_hw_offload_summary_on
+                    : R.string.bluetooth_a2dp_hw_offload_summary_off);
         }
         refreshBluetoothDevices();
         refreshCodecInfo();
@@ -668,6 +684,63 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 int avrcpVolume = Math.max(0, Math.min(127, Math.round((float) percent * 127.0f / 100.0f)));
                 mSharingManager.setSharingDeviceAbsoluteVolume(mSecondaryDevice, avrcpVolume);
             }
+        } else if (preference == mHwOffloadSwitch) {
+            boolean enableOffload = (Boolean) newValue;
+            mHwOffloadSwitch.setEnabled(false);
+            mHwOffloadSwitch.setChecked(enableOffload);
+            mHwOffloadSwitch.setSummary(enableOffload
+                    ? R.string.bluetooth_a2dp_hw_offload_summary_on
+                    : R.string.bluetooth_a2dp_hw_offload_summary_off);
+            if (getContext() != null) {
+                Toast.makeText(requireContext(), R.string.bluetooth_a2dp_hw_offload_toast, Toast.LENGTH_SHORT).show();
+            }
+
+            sOffloadExecutor.execute(() -> {
+                boolean disabled = !enableOffload;
+                boolean suSuccess = false;
+                try {
+                    Process p = Runtime.getRuntime().exec(new String[]{
+                        "su", "-c",
+                        "setprop persist.bluetooth.a2dp_offload.disabled " + disabled
+                        + " && killall -9 audioserver"
+                        + " && cmd bluetooth_manager disable && sleep 1 && cmd bluetooth_manager enable"
+                    });
+                    suSuccess = (p.waitFor() == 0);
+                } catch (Throwable t) {
+                    Log.w(TAG, "Root execution failed, falling back to native Java/property triggers", t);
+                }
+
+                if (!suSuccess) {
+                    try {
+                        android.os.SystemProperties.set("persist.bluetooth.a2dp_offload.disabled", Boolean.toString(disabled));
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Failed to set persist.bluetooth.a2dp_offload.disabled", t);
+                    }
+                    try {
+                        android.os.SystemProperties.set("ctl.restart", "audioserver");
+                    } catch (Throwable t) {
+                        Log.w(TAG, "Failed ctl.restart audioserver", t);
+                    }
+                    try {
+                        BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
+                        if (bt != null && bt.isEnabled()) {
+                            bt.disable();
+                            Thread.sleep(1200);
+                            bt.enable();
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "Failed to cycle BluetoothAdapter", t);
+                    }
+                }
+
+                mHandler.postDelayed(() -> {
+                    if (mHwOffloadSwitch != null && isAdded()) {
+                        mHwOffloadSwitch.setEnabled(true);
+                        refreshBluetoothDevices();
+                        refreshCodecInfo();
+                    }
+                }, 2500);
+            });
             return true;
         }
         return false;
