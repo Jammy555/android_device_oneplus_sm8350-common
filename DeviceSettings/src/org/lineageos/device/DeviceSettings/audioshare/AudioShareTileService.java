@@ -71,15 +71,11 @@ public class AudioShareTileService extends TileService {
     private final OplusA2dpSharingManager.StateCallback mStateCallback = new OplusA2dpSharingManager.StateCallback() {
         @Override
         public void onSharingStarted(int role, int type, int reason, BluetoothDevice primary, BluetoothDevice secondary) {
-            PreferenceManager.getDefaultSharedPreferences(AudioShareTileService.this)
-                    .edit().putBoolean(PREF_MASTER_SWITCH, true).apply();
             mHandler.post(() -> updateTile());
         }
 
         @Override
         public void onSharingStopped(int role, int type, int reason, BluetoothDevice primary, BluetoothDevice secondary) {
-            PreferenceManager.getDefaultSharedPreferences(AudioShareTileService.this)
-                    .edit().putBoolean(PREF_MASTER_SWITCH, false).apply();
             mHandler.post(() -> updateTile());
         }
     };
@@ -149,6 +145,13 @@ public class AudioShareTileService extends TileService {
             return;
         }
 
+        boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+        if (!offloadDisabled) {
+            Toast.makeText(this, R.string.audio_share_hw_offload_must_be_disabled, Toast.LENGTH_LONG).show();
+            launchActivity();
+            return;
+        }
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         boolean isSharing = mSharingManager.inSharingMode();
 
@@ -160,10 +163,8 @@ public class AudioShareTileService extends TileService {
             BluetoothDevice secondary = getCandidateSecondaryDevice();
             if (secondary == null) {
                 Log.i(TAG, "onClick: no candidate secondary device, toggling master switch and opening UI");
-                boolean curMaster = (mSharingManager != null && mSharingManager.isA2dpSharingEnabled())
-                        || prefs.getBoolean(PREF_MASTER_SWITCH, false);
+                boolean curMaster = (mSharingManager != null && mSharingManager.isA2dpSharingEnabled());
                 boolean newMaster = !curMaster;
-                prefs.edit().putBoolean(PREF_MASTER_SWITCH, newMaster).apply();
                 if (mSharingManager != null) {
                     mSharingManager.setA2dpSharingEnabled(newMaster);
                 }
@@ -172,12 +173,10 @@ public class AudioShareTileService extends TileService {
             }
 
             Log.i(TAG, "onClick: enabling master switch and starting sharing to " + secondary.getAddress());
-            prefs.edit().putBoolean(PREF_MASTER_SWITCH, true).apply();
             if (mSharingManager != null) {
                 mSharingManager.setA2dpSharingEnabled(true);
+                mSharingManager.startSharing(secondary, OplusA2dpSharingManager.SHARING_TYPE_BONDED);
             }
-
-            mSharingManager.startSharing(secondary, OplusA2dpSharingManager.SHARING_TYPE_BONDED);
             updateTile();
         }
     }

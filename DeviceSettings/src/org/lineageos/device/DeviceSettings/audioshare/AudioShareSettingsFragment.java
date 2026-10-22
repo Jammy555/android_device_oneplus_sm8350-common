@@ -205,8 +205,20 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 return;
             }
 
-            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)
-                    || BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
+                int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                Log.i(TAG, "BluetoothAdapter state changed: " + state);
+                if (state == BluetoothAdapter.STATE_ON) {
+                    mIsOffloadSwitching = false;
+                    refreshHardwareOffloadSwitch();
+                    refreshBluetoothDevices();
+                    refreshCodecInfo();
+                    updateHardwareEngineDebugInfo();
+                    updateUiState();
+                } else if (state == BluetoothAdapter.STATE_OFF || state == BluetoothAdapter.STATE_TURNING_OFF) {
+                    updateUiState();
+                }
+            } else if (BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)
                     || BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED.equals(action)
                     || BluetoothA2dp.ACTION_ACTIVE_DEVICE_CHANGED.equals(action)) {
                 if (BluetoothA2dp.ACTION_ACTIVE_DEVICE_CHANGED.equals(action)) {
@@ -226,6 +238,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                     mHandler.postDelayed(() -> refreshCodecInfo(), 500);
                 }
                 refreshBluetoothDevices();
+                updateUiState();
             }
         }
     };
@@ -309,19 +322,10 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         refreshBluetoothDevices();
     }
 
-    private final SharedPreferences.OnSharedPreferenceChangeListener mPrefListener = (sharedPreferences, key) -> {
-        if (KEY_MASTER_SWITCH.equals(key) && mMasterSwitch != null) {
-            boolean val = sharedPreferences.getBoolean(KEY_MASTER_SWITCH, false);
-            if (mMasterSwitch.isChecked() != val) {
-                mMasterSwitch.setChecked(val);
-                updateUiState();
-            }
-        }
-    };
-
     @Override
     public void onResume() {
         super.onResume();
+        mIsOffloadSwitching = false;
         if (mPrimaryVolumePref != null && mAudioManager != null) {
             int curVol = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
             int maxVol = mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
@@ -333,11 +337,12 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             mIsSharingActive = mSharingManager.inSharingMode();
         }
         if (getContext() != null) {
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
-            prefs.registerOnSharedPreferenceChangeListener(mPrefListener);
             boolean shouldBeChecked = mIsSharingActive
-                    || (mSharingManager != null && mSharingManager.isA2dpSharingEnabled())
-                    || prefs.getBoolean(KEY_MASTER_SWITCH, false);
+                    || (mSharingManager != null && mSharingManager.isA2dpSharingEnabled());
+            boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+            if (!offloadDisabled) {
+                shouldBeChecked = false;
+            }
             if (mMasterSwitch != null && mMasterSwitch.isChecked() != shouldBeChecked) {
                 mMasterSwitch.setChecked(shouldBeChecked);
             }
@@ -362,13 +367,6 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
     @Override
     public void onPause() {
         super.onPause();
-        Context context = getContext();
-        if (context != null) {
-            try {
-                PreferenceManager.getDefaultSharedPreferences(context)
-                        .unregisterOnSharedPreferenceChangeListener(mPrefListener);
-            } catch (Exception ignored) {}
-        }
     }
 
     @Override
@@ -542,27 +540,42 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             return;
         }
 
-        boolean masterEnabled = mMasterSwitch != null && mMasterSwitch.isChecked();
+        boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
         boolean btOk = mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
+        boolean masterEnabled = mMasterSwitch != null && mMasterSwitch.isChecked();
 
+        // Hardware offload switch is always available when Bluetooth is on and not currently cycling
         if (mHwOffloadSwitch != null) {
-            mHwOffloadSwitch.setEnabled(masterEnabled && !mIsOffloadSwitching);
+            mHwOffloadSwitch.setEnabled(btOk && !mIsOffloadSwitching);
         }
+
+        // Master switch (Force SBC Audio) requires Bluetooth ready and not cycling
+        if (mMasterSwitch != null) {
+            mMasterSwitch.setEnabled(btOk && !mIsOffloadSwitching);
+            // If hardware offload is enabled, force SBC cannot remain active
+            if (!offloadDisabled && mMasterSwitch.isChecked()) {
+                mMasterSwitch.setChecked(false);
+                masterEnabled = false;
+            }
+        }
+
+        // Audio sharing capabilities require: offload disabled AND master switch checked AND Bluetooth ready
+        boolean sharingReady = offloadDisabled && masterEnabled && btOk;
 
         if (mPrimaryDeviceInfo != null) {
-            mPrimaryDeviceInfo.setEnabled(masterEnabled && btOk);
+            mPrimaryDeviceInfo.setEnabled(sharingReady);
         }
         if (mCodecInfoPref != null) {
-            mCodecInfoPref.setEnabled(masterEnabled && btOk && mPrimaryDevice != null);
+            mCodecInfoPref.setEnabled(sharingReady && mPrimaryDevice != null);
         }
         if (mPrimaryVolumePref != null) {
-            mPrimaryVolumePref.setEnabled(masterEnabled && btOk && mPrimaryDevice != null);
+            mPrimaryVolumePref.setEnabled(sharingReady && mPrimaryDevice != null);
         }
         if (mSecondarySelectPref != null) {
-            mSecondarySelectPref.setEnabled(masterEnabled && btOk && !mIsSharingActive);
+            mSecondarySelectPref.setEnabled(sharingReady && !mIsSharingActive);
         }
         if (mSecondaryCodecInfoPref != null) {
-            mSecondaryCodecInfoPref.setEnabled(masterEnabled && btOk && mSecondaryDevice != null);
+            mSecondaryCodecInfoPref.setEnabled(sharingReady && mSecondaryDevice != null);
         }
 
         if (mSecondaryActionPref != null) {
@@ -570,14 +583,14 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 mSecondaryActionPref.setTitle(R.string.audio_share_stop_action);
                 String secName = (mSecondaryDevice != null) ? getDeviceDisplayName(mSecondaryDevice) : "Secondary";
                 mSecondaryActionPref.setSummary(getString(R.string.audio_share_active_status) + " (" + secName + ")");
-                mSecondaryActionPref.setEnabled(masterEnabled && btOk);
+                mSecondaryActionPref.setEnabled(sharingReady);
                 if (mSecondaryVolumePref != null) {
-                    mSecondaryVolumePref.setEnabled(masterEnabled && btOk);
+                    mSecondaryVolumePref.setEnabled(sharingReady);
                 }
             } else {
                 mSecondaryActionPref.setTitle(R.string.audio_share_start_action);
                 mSecondaryActionPref.setSummary(R.string.audio_share_idle_status);
-                mSecondaryActionPref.setEnabled(masterEnabled && btOk);
+                mSecondaryActionPref.setEnabled(sharingReady);
                 if (mSecondaryVolumePref != null) {
                     mSecondaryVolumePref.setEnabled(false);
                 }
@@ -585,7 +598,7 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
         }
 
         if (mSwapRolesPref != null) {
-            mSwapRolesPref.setEnabled(masterEnabled && btOk && mPrimaryDevice != null && mSecondaryDevice != null);
+            mSwapRolesPref.setEnabled(sharingReady && mPrimaryDevice != null && mSecondaryDevice != null);
         }
         if (mSyncVolumesSwitch != null) {
             mSyncVolumesSwitch.setEnabled(masterEnabled && btOk && mIsSharingActive);
@@ -629,15 +642,20 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (preference == mMasterSwitch) {
             boolean enabled = (Boolean) newValue;
+            if (enabled) {
+                boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+                if (!offloadDisabled) {
+                    if (getContext() != null) {
+                        Toast.makeText(requireContext(), R.string.audio_share_hw_offload_must_be_disabled, Toast.LENGTH_LONG).show();
+                    }
+                    return false;
+                }
+            }
             if (mSharingManager != null) {
                 mSharingManager.setA2dpSharingEnabled(enabled);
             }
             if (mMasterSwitch != null) {
                 mMasterSwitch.setChecked(enabled);
-            }
-            if (getContext() != null) {
-                PreferenceManager.getDefaultSharedPreferences(requireContext())
-                        .edit().putBoolean(KEY_MASTER_SWITCH, enabled).apply();
             }
             refreshBluetoothDevices();
             mHandler.postDelayed(this::refreshCodecInfo, 400);
@@ -711,6 +729,19 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 return true;
             }
 
+            // If enabling Hardware Offload, audio sharing cannot run: stop sharing and turn off master switch
+            if (enableOffload) {
+                if (mSharingManager != null) {
+                    if (mIsSharingActive) {
+                        mSharingManager.stopSharing();
+                    }
+                    mSharingManager.setA2dpSharingEnabled(false);
+                }
+                if (mMasterSwitch != null) {
+                    mMasterSwitch.setChecked(false);
+                }
+            }
+
             mIsOffloadSwitching = true;
             mHwOffloadSwitch.setEnabled(false);
             mHwOffloadSwitch.setChecked(enableOffload);
@@ -745,44 +776,58 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                                     if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(intent.getAction())) {
                                         int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                                         if (state == BluetoothAdapter.STATE_OFF) {
-                                            try {
-                                                context.unregisterReceiver(this);
-                                            } catch (Exception ignored) {}
                                             BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
                                             if (adapter != null) {
                                                 adapter.enable();
                                             }
+                                        } else if (state == BluetoothAdapter.STATE_ON) {
+                                            try {
+                                                context.unregisterReceiver(this);
+                                                cycleReceiverHolder[0] = null;
+                                            } catch (Exception ignored) {}
+                                            mHandler.post(() -> {
+                                                mIsOffloadSwitching = false;
+                                                if (isAdded()) {
+                                                    refreshHardwareOffloadSwitch();
+                                                    updateUiState();
+                                                    refreshBluetoothDevices();
+                                                    refreshCodecInfo();
+                                                    updateHardwareEngineDebugInfo();
+                                                }
+                                            });
                                         }
                                     }
                                 }
                             };
                             appContext.registerReceiver(cycleReceiverHolder[0],
                                     new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
-                            // Safety guard: unregister after 5 seconds if state change didn't fire
+                            // Safety guard: unregister after 6 seconds if STATE_ON didn't fire,
+                            // and force-enable adapter if it was left disabled
                             mHandler.postDelayed(() -> {
                                 try {
                                     if (cycleReceiverHolder[0] != null) {
                                         appContext.unregisterReceiver(cycleReceiverHolder[0]);
+                                        cycleReceiverHolder[0] = null;
                                     }
                                 } catch (Exception ignored) {}
-                            }, 5000);
+                                BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                                if (adapter != null && !adapter.isEnabled()) {
+                                    Log.w(TAG, "Offload cycle safety timer: adapter still disabled, forcing enable");
+                                    adapter.enable();
+                                }
+                                mIsOffloadSwitching = false;
+                                if (isAdded()) {
+                                    refreshHardwareOffloadSwitch();
+                                    updateUiState();
+                                }
+                            }, 6000);
                         }
                         bt.disable();
                     }
                 } catch (Throwable t) {
-                    Log.w(TAG, "Failed to cycle BluetoothAdapter", t);
-                }
-
-                mHandler.postDelayed(() -> {
+                    Log.e(TAG, "Failed to cycle BluetoothAdapter", t);
                     mIsOffloadSwitching = false;
-                    if (isAdded()) {
-                        refreshHardwareOffloadSwitch();
-                        updateUiState();
-                        refreshBluetoothDevices();
-                        refreshCodecInfo();
-                        updateHardwareEngineDebugInfo();
-                    }
-                }, 2500);
+                }
             });
             return true;
         }
@@ -801,6 +846,15 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
                 updateUiState();
                 Toast.makeText(getContext(), "Audio sharing stopped", Toast.LENGTH_SHORT).show();
             } else {
+                boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+                if (!offloadDisabled) {
+                    Toast.makeText(getContext(), R.string.audio_share_hw_offload_must_be_disabled, Toast.LENGTH_LONG).show();
+                    return true;
+                }
+                if (mMasterSwitch != null && !mMasterSwitch.isChecked()) {
+                    Toast.makeText(getContext(), R.string.audio_share_must_enable_force_sbc, Toast.LENGTH_LONG).show();
+                    return true;
+                }
                 if (mPrimaryDevice == null) {
                     mPrimaryDevice = getActiveA2dpDevice();
                 }
@@ -847,6 +901,15 @@ public class AudioShareSettingsFragment extends PreferenceFragmentCompat
             showSelectPrimaryDeviceDialog();
             return true;
         } else if (preference == mSwapRolesPref) {
+            boolean offloadDisabled = android.os.SystemProperties.getBoolean("persist.bluetooth.a2dp_offload.disabled", false);
+            if (!offloadDisabled) {
+                Toast.makeText(getContext(), R.string.audio_share_hw_offload_must_be_disabled, Toast.LENGTH_LONG).show();
+                return true;
+            }
+            if (mMasterSwitch != null && !mMasterSwitch.isChecked()) {
+                Toast.makeText(getContext(), R.string.audio_share_must_enable_force_sbc, Toast.LENGTH_LONG).show();
+                return true;
+            }
             swapRoles();
             return true;
         } else if (preference == mSeparateAppSoundPref) {

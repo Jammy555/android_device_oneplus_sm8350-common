@@ -57,8 +57,9 @@ public class SeparateAppSoundFragment extends PreferenceFragmentCompat
         mDevicePref = findPreference(PREF_DEVICE);
         mAppsCategory = findPreference(PREF_CATEGORY_APPS);
 
+        boolean enabled = Settings.System.getInt(context.getContentResolver(), SETTING_ENABLED, 0) == 1;
+
         if (mEnableSwitch != null) {
-            boolean enabled = Settings.System.getInt(context.getContentResolver(), SETTING_ENABLED, 0) == 1;
             mEnableSwitch.setChecked(enabled);
             mEnableSwitch.setOnPreferenceChangeListener(this);
         }
@@ -71,47 +72,57 @@ public class SeparateAppSoundFragment extends PreferenceFragmentCompat
             mDevicePref.setSummary(mDevicePref.getEntry());
         }
 
-        loadApplications(context);
-        updateUiState();
+        loadApplications(context, enabled);
+        updateUiState(enabled);
     }
 
-    private void loadApplications(Context context) {
+    private void loadApplications(Context context, boolean isFeatureEnabled) {
         if (mAppsCategory == null) return;
         mAppsCategory.removeAll();
 
-        PackageManager pm = context.getPackageManager();
-        Intent launchIntent = new Intent(Intent.ACTION_MAIN, null);
-        launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> launchables = pm.queryIntentActivities(launchIntent, 0);
-        List<AppItem> appList = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        Set<String> selectedPackages = getSelectedPackages();
+        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+            PackageManager pm = context.getPackageManager();
+            Intent launchIntent = new Intent(Intent.ACTION_MAIN, null);
+            launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+            List<ResolveInfo> launchables = pm.queryIntentActivities(launchIntent, 0);
+            List<AppItem> appList = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
+            Set<String> selectedPackages = getSelectedPackages();
 
-        for (ResolveInfo ri : launchables) {
-            if (ri.activityInfo == null) continue;
-            String pkg = ri.activityInfo.packageName;
-            if (seen.add(pkg)) {
-                String label = ri.loadLabel(pm).toString();
-                appList.add(new AppItem(label, pkg, ri.loadIcon(pm)));
+            for (ResolveInfo ri : launchables) {
+                if (ri.activityInfo == null) continue;
+                String pkg = ri.activityInfo.packageName;
+                if (seen.add(pkg)) {
+                    String label = ri.loadLabel(pm).toString();
+                    appList.add(new AppItem(label, pkg, ri.loadIcon(pm)));
+                }
             }
-        }
 
-        Collections.sort(appList, (a, b) -> a.label.compareToIgnoreCase(b.label));
+            Collections.sort(appList, (a, b) -> a.label.compareToIgnoreCase(b.label));
 
-        for (AppItem item : appList) {
-            CheckBoxPreference pref = new CheckBoxPreference(context);
-            pref.setKey("app_" + item.packageName);
-            pref.setTitle(item.label);
-            pref.setSummary(item.packageName);
-            pref.setIcon(item.icon);
-            pref.setChecked(selectedPackages.contains(item.packageName));
-            pref.setOnPreferenceChangeListener((preference, newValue) -> {
-                boolean checked = (Boolean) newValue;
-                updatePackageSelection(item.packageName, checked);
-                return true;
+            if (getActivity() == null) return;
+            getActivity().runOnUiThread(() -> {
+                if (mAppsCategory == null || getContext() == null) return;
+                mAppsCategory.removeAll();
+                boolean currentEnabled = (mEnableSwitch != null) ? mEnableSwitch.isChecked() : isFeatureEnabled;
+                for (AppItem item : appList) {
+                    CheckBoxPreference pref = new CheckBoxPreference(context);
+                    pref.setKey("app_" + item.packageName);
+                    pref.setTitle(item.label);
+                    pref.setSummary(item.packageName);
+                    pref.setIcon(item.icon);
+                    pref.setPersistent(false);
+                    pref.setChecked(selectedPackages.contains(item.packageName));
+                    pref.setEnabled(currentEnabled);
+                    pref.setOnPreferenceChangeListener((preference, newValue) -> {
+                        boolean checked = (Boolean) newValue;
+                        updatePackageSelection(item.packageName, checked);
+                        return true;
+                    });
+                    mAppsCategory.addPreference(pref);
+                }
             });
-            mAppsCategory.addPreference(pref);
-        }
+        });
     }
 
     private Set<String> getSelectedPackages() {
@@ -147,10 +158,20 @@ public class SeparateAppSoundFragment extends PreferenceFragmentCompat
         }
     }
 
-    private void updateUiState() {
-        boolean enabled = mEnableSwitch != null && mEnableSwitch.isChecked();
-        if (mDevicePref != null) mDevicePref.setEnabled(enabled);
-        if (mAppsCategory != null) mAppsCategory.setEnabled(enabled);
+    private void updateUiState(boolean enabled) {
+        if (mDevicePref != null) {
+            mDevicePref.setEnabled(enabled);
+        }
+        if (mAppsCategory != null) {
+            mAppsCategory.setEnabled(enabled);
+            int count = mAppsCategory.getPreferenceCount();
+            for (int i = 0; i < count; i++) {
+                Preference p = mAppsCategory.getPreference(i);
+                if (p != null) {
+                    p.setEnabled(enabled);
+                }
+            }
+        }
     }
 
     @Override
@@ -161,7 +182,10 @@ public class SeparateAppSoundFragment extends PreferenceFragmentCompat
             if (context != null) {
                 Settings.System.putInt(context.getContentResolver(), SETTING_ENABLED, enabled ? 1 : 0);
             }
-            updateUiState();
+            if (mEnableSwitch != null) {
+                mEnableSwitch.setChecked(enabled);
+            }
+            updateUiState(enabled);
             notifyRoutingChanged();
             return true;
         } else if (preference == mDevicePref) {
