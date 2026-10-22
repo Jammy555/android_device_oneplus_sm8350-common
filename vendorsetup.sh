@@ -69,6 +69,7 @@ apply_patch "frameworks/base" "frameworks_base_appwidget_no_state_load_while_loc
 apply_patch "frameworks/base" "frameworks_base_camera2_remember_missing_vendor_tags.patch" "camera2: remember a metadata key whose tag does not exist to eliminate lookup flooding"
 apply_patch "frameworks/base" "frameworks_base_alarm_manager_wake_only_epollwakeup.patch" "AlarmManager: only genuine wake alarms need kernel wakeup sources"
 apply_patch "frameworks/base" "frameworks_base_notification_callstyle_icon_only_actions.patch" "Notification: Support icon-only CallStyle action buttons and centered icon spans"
+apply_patch "frameworks/base" "frameworks_base_textinterpolator_lockscreen_clock_glyph_exception.patch" "TextInterpolator: Catch and ignore inconsistent glyph layout exceptions in lockscreen clock"
 
 # Apply patches to frameworks/native
 apply_patch "frameworks/native" "frameworks_native_ahardwarebuffer_qti_p010_venus.patch" "libnativewindow: treat QTI YCbCr_420_P010_VENUS as YUV in lockPlanes"

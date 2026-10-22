@@ -194,8 +194,10 @@
     <string name="audio_share_category_title">Bluetooth &amp; Audio</string>
     <string name="audio_share_title">Audio Sharing</string>
     <string name="audio_share_summary">Stream audio to two Bluetooth headphones simultaneously</string>
-    <string name="audio_share_enable">Enable Audio Sharing</string>
-    <string name="audio_share_enable_summary">Allows dual Bluetooth A2DP audio output to two connected devices</string>
+    <string name="audio_share_enable">Force SBC Audio (Preparation)</string>
+    <string name="audio_share_enable_summary">Locks connected Bluetooth headsets to standard SBC codec in background to prepare for dual streaming</string>
+    <string name="audio_share_hw_offload_must_be_disabled">Disable Hardware Offload first to use Audio Sharing</string>
+    <string name="audio_share_must_enable_force_sbc">Please turn on Force SBC Audio first before sharing</string>
     <string name="audio_share_desc_info">Play music, videos, and media to two Bluetooth headphones or speakers at the same time with synchronized playback and independent volume control.</string>
     <string name="audio_share_primary_category">Primary Audio Output</string>
     <string name="audio_share_primary_device">Primary Headset</string>
