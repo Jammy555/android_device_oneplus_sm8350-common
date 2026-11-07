@@ -1,0 +1,47 @@
+From 2a7c90561ee989f822b966e487e4aff497627fe4 Mon Sep 17 00:00:00 2001
+From: Jammy555 <prathap.venkata@gmail.com>
+Date: Sat, 7 Nov 2026 10:34:16 +0530
+Subject: [PATCH] feat: apply optional device power profile hints
+
+---
+ power-libperfmgr/aidl/service.cpp | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/power-libperfmgr/aidl/service.cpp b/power-libperfmgr/aidl/service.cpp
+index f382e37..6f55449 100644
+--- a/power-libperfmgr/aidl/service.cpp
++++ b/power-libperfmgr/aidl/service.cpp
+@@ -23,6 +23,7 @@
+ #include <android/binder_process.h>
+ #include <processgroup/processgroup.h>
+ #include <perfmgr/HintManager.h>
++#include <sys/system_properties.h>
+ 
+ #include <thread>
+ 
+@@ -79,6 +80,25 @@ int main() {
+         HintManager::GetInstance()->Start();
+         MetricUploader::getInstance()->init();
+         ThermalStateListener::getInstance()->init();
++
++        // Optional device profile; keep its requests inside libperfmgr's node owner.
++        constexpr char profileProperty[] = "vendor.powerhal.profile";
++        ::android::base::WaitForPropertyCreation(profileProperty);
++        const prop_info *property = __system_property_find(profileProperty);
++        if (!property) return;
++        std::string active;
++        for (;;) {
++            const uint32_t serial = __system_property_serial(property);
++            const std::string requested = ::android::base::GetProperty(profileProperty, "");
++            if (requested != active &&
++                (requested.empty() || hm->IsHintSupported(requested))) {
++                if (!active.empty()) hm->EndHint(active);
++                if (!requested.empty()) hm->DoHint(requested);
++                active = requested;
++            }
++            uint32_t nextSerial;
++            __system_property_wait(property, serial, &nextSerial, nullptr);
++        }
+     });
+     initThread.detach();
+ 

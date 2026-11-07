@@ -1,0 +1,66 @@
+From d2fcc0ad3ab0a867731194555b60cbe5ba82936b Mon Sep 17 00:00:00 2001
+From: Jammy555 <prathap.venkata@gmail.com>
+Date: Sat, 7 Nov 2026 10:34:16 +0530
+Subject: [PATCH] fix: release disabled power hint requests
+
+Change-Id: I9de5cd002958b595ca7b7ea075782d514a86d51d
+---
+ .../libperfmgr/NodeLooperThread.cc            |  3 ++-
+ .../libperfmgr/tests/NodeLooperThreadTest.cc  | 23 +++++++++++++++++++
+ 2 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/power-libperfmgr/libperfmgr/NodeLooperThread.cc b/power-libperfmgr/libperfmgr/NodeLooperThread.cc
+index 9c16dc4..81eec0e 100644
+--- a/power-libperfmgr/libperfmgr/NodeLooperThread.cc
++++ b/power-libperfmgr/libperfmgr/NodeLooperThread.cc
+@@ -110,7 +110,8 @@ bool NodeLooperThread::threadLoop() {
+             if (!a.enable_property.empty() &&
+                 !android::base::GetBoolProperty(a.enable_property, true)) {
+                 ATRACE_BEGIN((node_name + ":prop:disabled").c_str());
+-                // Disabled action based on its control property
++                // A disabled action must also release a request already in flight.
++                nodes_[a.node_index]->RemoveRequest(job->hint_type);
+                 ATRACE_END();
+                 continue;
+             }
+diff --git a/power-libperfmgr/libperfmgr/tests/NodeLooperThreadTest.cc b/power-libperfmgr/libperfmgr/tests/NodeLooperThreadTest.cc
+index 8b6280e..2eb0f5e 100644
+--- a/power-libperfmgr/libperfmgr/tests/NodeLooperThreadTest.cc
++++ b/power-libperfmgr/libperfmgr/tests/NodeLooperThreadTest.cc
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include <android-base/file.h>
++#include <android-base/properties.h>
+ #include <gtest/gtest.h>
+ 
+ #include <algorithm>
+@@ -148,6 +149,28 @@ TEST_F(NodeLooperThreadTest, CancelRequest) {
+     EXPECT_FALSE(th->isRunning());
+ }
+ 
++// Test multiple request
++TEST_F(NodeLooperThreadTest, DisabledPropertyReleasesActiveRequest) {
++    constexpr char property[] = "test.libperfmgr.boost_enabled";
++    sp<NodeLooperThread> th = new NodeLooperThread(std::move(nodes_));
++    EXPECT_TRUE(th->Start());
++    std::vector<NodeAction> actions{{0, 0, 0ms, property}};
++    for (bool cancel : {true, false}) {
++        EXPECT_TRUE(android::base::SetProperty(property, "1"));
++        EXPECT_TRUE(th->Request(actions, "INTERACTION"));
++        std::this_thread::sleep_for(kSLEEP_TOLERANCE_MS);
++        _VerifyPathValue(files_[0]->path, "n0_value0");
++
++        EXPECT_TRUE(android::base::SetProperty(property, "0"));
++        EXPECT_TRUE(cancel ? th->Cancel(actions, "INTERACTION")
++                           : th->Request(actions, "INTERACTION"));
++        std::this_thread::sleep_for(kSLEEP_TOLERANCE_MS);
++        _VerifyPathValue(files_[0]->path, "n0_value2");
++    }
++    th->Stop();
++    EXPECT_TRUE(android::base::SetProperty(property, ""));
++}
++
+ // Test multiple request
+ TEST_F(NodeLooperThreadTest, MultipleRequest) {
+     sp<NodeLooperThread> th = new NodeLooperThread(std::move(nodes_));

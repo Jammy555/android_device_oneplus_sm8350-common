@@ -62,6 +62,10 @@ apply_patch() {
     popd >/dev/null
 }
 
+# Apply PowerTools HAL integration patches
+apply_patch "hardware/google/pixel" "hardware_google_pixel_libperfmgr_release_disabled_requests.patch" "libperfmgr: release disabled boost requests" || { return 1 2>/dev/null || exit 1; }
+apply_patch "hardware/lineage/interfaces" "hardware_lineage_interfaces_power_profile_hints.patch" "Power HAL: apply the selected device profile" || { return 1 2>/dev/null || exit 1; }
+
 # Apply patches to frameworks/base
 apply_patch "frameworks/base" "0001-CachedAppOptimizer-Fix-out-of-bounds-exception-for-F.patch" "CachedAppOptimizer FULL Compaction Fix"
 apply_patch "frameworks/base" "frameworks_base_camera2_high_speed_ranges_from_supported_target.patch" "camera2: take high speed fps ranges from a supported target"
