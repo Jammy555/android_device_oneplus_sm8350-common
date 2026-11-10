@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="dock_glass_tint">#AD202126</color>
+    <color name="dock_glass_highlight">#802F323B</color>
+    <color name="dock_drop_start">#FF253D68</color>
+    <color name="dock_drop_end">#FF16243E</color>
+    <color name="dock_drop_text">#FFE4ECFF</color>
+    <color name="dock_glass">#FF1C1E24</color>
+    <color name="dock_glass_stroke">#26FFFFFF</color>
+    <color name="dock_card">#FF2A2D35</color>
+</resources>

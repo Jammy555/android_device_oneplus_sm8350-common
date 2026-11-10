@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings for the Compose Audio Share / Separate App Sound screens. Missing translations fall back to English. -->
+<resources>
+    <string name="audio_share_status_standby">Standby</string>
+    <string name="audio_share_no_active_primary">No active main headset. Play music on it first.</string>
+    <string name="audio_share_select_second_first">Pick a second headset first</string>
+    <string name="audio_share_same_device">Main and second headset cannot be the same</string>
+    <string name="audio_share_need_both">Both headsets must be connected</string>
+    <string name="audio_share_only_one_connected">Only one Bluetooth audio device connected</string>
+    <string name="audio_share_connected_suffix">Connected</string>
+    <string name="audio_share_no_candidates">No other headset connected</string>
+    <string name="audio_share_engine_title">Audio engine</string>
+    <string name="audio_share_engine_label">Engine</string>
+    <string name="audio_share_engine_sw">Software encoding</string>
+    <string name="audio_share_engine_hw">Hexagon DSP offload (software encoding while sharing)</string>
+    <string name="audio_share_engine_prop">Offload disabled property</string>
+    <string name="audio_share_engine_sharing">Audio sharing</string>
+    <string name="audio_share_engine_codec">Sharing codec</string>
+    <string name="audio_share_engine_state">State</string>
+    <string name="audio_share_engine_state_active">Active (dual stream)</string>
+    <string name="audio_share_engine_primary">Main headset</string>
+    <string name="audio_share_engine_secondary">Second headset</string>
+    <string name="common_on">On</string>
+    <string name="common_off">Off</string>
+    <string name="common_none">None</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="audio_share_pick_primary">Choose main headset</string>
+    <string name="audio_share_pick_secondary">Choose second headset</string>
+    <string name="audio_share_pick_codec">Choose sharing codec</string>
+    <string name="audio_share_pick_lipsync_mode">Choose lip sync mode</string>
+    <string name="audio_share_subtitle_active">Sharing to two headsets</string>
+    <string name="audio_share_subtitle_off">Audio sharing off</string>
+    <string name="audio_share_subtitle_bt_off">Bluetooth is off</string>
+    <string name="audio_share_bt_off_hint">Turn Bluetooth on to share audio</string>
+    <string name="separate_app_sound_search">Search apps</string>
+    <string name="separate_app_sound_selected">Selected · %1$d</string>
+    <string name="separate_app_sound_all_apps">All apps</string>
+    <string name="separate_app_sound_none">No apps found</string>
+    <string name="separate_app_sound_routes_to">Selected apps play through</string>
+    <string name="separate_app_sound_subtitle_on">%1$d apps routed</string>
+    <string name="separate_app_sound_subtitle_off">Off</string>
+</resources>

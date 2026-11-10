@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Opaque surfaces keep underlying app text out of clipboard previews. -->
+    <color name="dock_glass">#FFF3F3F7</color>
+    <color name="dock_glass_stroke">#1F000000</color>
+    <color name="dock_glass_tint">#ADF3F3F7</color>
+    <color name="dock_glass_highlight">#80FFFFFF</color>
+    <color name="dock_drop_start">#FFDFE7FF</color>
+    <color name="dock_drop_end">#FFBDCFFF</color>
+    <color name="dock_drop_text">#FF17366A</color>
+    <color name="dock_card">#FFFFFFFF</color>
+</resources>

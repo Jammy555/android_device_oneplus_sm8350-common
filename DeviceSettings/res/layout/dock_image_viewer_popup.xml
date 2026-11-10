@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<org.lineageos.device.DeviceSettings.dock.DockShelfLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/dock_viewer_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -21,12 +21,12 @@
         <!-- Close Button (X) -->
         <ImageView
             android:id="@+id/dock_viewer_btn_close"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
+            android:padding="12dp"
             android:src="@drawable/ic_close"
-            android:tint="#FFFFFFFF" />
+            android:tint="?android:attr/textColorSecondary" android:contentDescription="@string/dock_close" />
 
         <!-- App Icon & Source Info -->
         <ImageView
@@ -47,7 +47,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/dock_title"
-                android:textColor="#FFFFFFFF"
+                android:textColor="?android:attr/textColorPrimary"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -55,31 +55,31 @@
                 android:id="@+id/dock_viewer_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#80FFFFFF"
-                android:textSize="11sp" />
+                android:textColor="?android:attr/textColorPrimary"
+                android:textSize="12sp" />
 
         </LinearLayout>
 
         <!-- Copy URI Button -->
         <ImageView
             android:id="@+id/dock_viewer_btn_copy"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_marginEnd="6dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
+            android:padding="12dp"
             android:src="@drawable/ic_dock_copy"
-            android:tint="#FFFFFFFF" />
+            android:tint="?android:attr/textColorSecondary" android:contentDescription="@string/dock_copy" />
 
         <!-- Share Button -->
         <ImageView
             android:id="@+id/dock_viewer_btn_share"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
+            android:padding="12dp"
             android:src="@drawable/ic_dock_share"
-            android:tint="#FFFFFFFF" />
+            android:tint="?android:attr/textColorSecondary" android:contentDescription="@string/dock_share" />
 
     </LinearLayout>
 
@@ -124,10 +124,10 @@
             android:focusable="true"
             android:paddingHorizontal="20dp"
             android:text="Copy &amp; Paste to app"
-            android:textColor="#FF33A0FF"
+            android:textColor="?android:attr/textColorPrimary"
             android:textSize="13sp"
             android:textStyle="bold" />
 
     </LinearLayout>
 
-</org.lineageos.device.DeviceSettings.dock.DockShelfLayout>
+</LinearLayout>

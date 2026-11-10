@@ -1,179 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<org.lineageos.device.DeviceSettings.dock.DockShelfLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/dock_shelf_root"
-    android:layout_width="180dp"
-    android:layout_height="wrap_content"
-    android:minHeight="380dp"
-    android:background="@drawable/dock_shelf_bg"
-    android:orientation="vertical"
-    android:padding="12dp">
-
-    <!-- Window Header & Drag Bar -->
-    <LinearLayout
-        android:id="@+id/dock_shelf_header"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingBottom="8dp">
-
-        <!-- Title -->
-        <TextView
-            android:id="@+id/dock_shelf_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/dock_title"
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <!-- Count Badge -->
-        <TextView
-            android:id="@+id/dock_shelf_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/dock_badge_bg"
-            android:paddingHorizontal="5dp"
-            android:paddingVertical="1dp"
-            android:text="0"
-            android:textColor="#FF33A0FF"
-            android:textSize="10sp"
-            android:visibility="gone"
-            android:textStyle="bold" />
-
-        <!-- Clear All Button (Trash Icon) -->
-        <ImageView
-            android:id="@+id/dock_shelf_btn_clear"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="6dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="3dp"
-            android:src="@drawable/ic_dock_delete"
-            android:contentDescription="@string/dock_clear_all"
-            android:visibility="gone"
-            android:tint="#A0FFFFFF" />
-
-        <!-- Close Button (Close X Icon) -->
-        <ImageView
-            android:id="@+id/dock_shelf_btn_close"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="2dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="3dp"
-            android:src="@drawable/ic_close"
-            android:contentDescription="Close"
-            android:tint="#80FFFFFF" />
-
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dock_shelf_root" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:orientation="vertical"
+    android:background="@drawable/dock_shelf_bg" android:padding="8dp"
+    android:clipChildren="true" android:clipToPadding="true" android:clipToOutline="true">
+    <LinearLayout android:id="@+id/dock_shelf_header" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="44dp"
+        android:gravity="center_vertical" android:orientation="horizontal">
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:orientation="vertical"
+            android:paddingHorizontal="8dp" android:paddingVertical="4dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/dock_title" android:textSize="16sp"
+                android:fontFamily="sans-serif-medium" android:textColor="?android:attr/textColorPrimary"
+                android:accessibilityHeading="true" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/dock_recent" android:textSize="12sp"
+                android:maxLines="1" android:ellipsize="end" android:textColor="?android:attr/colorAccent" />
+        </LinearLayout>
+        <TextView android:id="@+id/dock_shelf_badge" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:paddingHorizontal="4dp"
+            android:gravity="end" android:maxLines="1" android:ellipsize="end"
+            android:accessibilityHeading="true"
+            android:textColor="?android:attr/textColorSecondary" android:textSize="12sp" />
     </LinearLayout>
-
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#20FFFFFF"
-        android:layout_marginBottom="8dp" />
-
-    <!-- Day Navigation Bar (Daily Pages) -->
-    <LinearLayout
-        android:id="@+id/dock_day_nav_bar"
-        android:layout_width="match_parent"
-        android:layout_height="28dp"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/dock_day_bar_bg"
-        android:paddingHorizontal="4dp"
-        android:orientation="horizontal">
-
-        <ImageView
-            android:id="@+id/dock_day_btn_prev"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="4dp"
-            android:src="@drawable/ic_dock_chevron_left"
-            android:tint="#D0FFFFFF" />
-
-        <TextView
-            android:id="@+id/dock_day_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Today"
-            android:textColor="#FFFFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-
-        <ImageView
-            android:id="@+id/dock_day_btn_next"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="4dp"
-            android:src="@drawable/ic_dock_chevron_right"
-            android:tint="#D0FFFFFF" />
-
+    <LinearLayout android:id="@+id/dock_shelf_empty" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical"
+        android:gravity="center" android:padding="12dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="center" android:text="@string/dock_empty_hint" android:textSize="14sp"
+            android:textColor="?android:attr/textColorSecondary" />
     </LinearLayout>
-
-    <!-- Empty State View (OnePlus Smart Sidebar vertical tray) -->
-    <LinearLayout
-        android:id="@+id/dock_shelf_empty"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:minHeight="280dp"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="16dp">
-
-        <ImageView
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginBottom="12dp"
-            android:src="@drawable/ic_dock_empty"
-            android:tint="#4033A0FF" />
-
-        <TextView
-            android:id="@+id/dock_shelf_empty_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:text="File Dock Empty"
-            android:textColor="#A0FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/dock_shelf_empty_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:lineSpacingExtra="4dp"
-            android:text="@string/dock_empty_hint"
-            android:textColor="#55FFFFFF"
-            android:textSize="11sp" />
-
-    </LinearLayout>
-
-    <!-- Stored Items Container (Vertical Scrollable) -->
-    <ScrollView
-        android:id="@+id/dock_shelf_scroll"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxHeight="520dp"
-        android:scrollbars="vertical"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:id="@+id/dock_items_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
+    <ScrollView android:id="@+id/dock_shelf_scroll" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:visibility="gone">
+        <LinearLayout android:id="@+id/dock_items_container" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical" />
     </ScrollView>
-
-</org.lineageos.device.DeviceSettings.dock.DockShelfLayout>
+    <LinearLayout android:id="@+id/dock_shelf_resize_bar" android:layout_width="match_parent"
+        android:layout_height="32dp" android:gravity="center" android:orientation="horizontal"
+        android:clickable="true" android:focusable="false"
+        android:contentDescription="@string/dock_resize">
+        <View android:id="@+id/dock_shelf_resize_grip" android:layout_width="36dp"
+            android:layout_height="4dp" android:background="@drawable/dock_pill_grip_bg" />
+    </LinearLayout>
+</LinearLayout>

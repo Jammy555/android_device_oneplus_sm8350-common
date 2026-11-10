@@ -291,5 +291,28 @@
         <item>speaker</item>
         <item>bluetooth</item>
     </string-array>
-
+    <string-array name="audio_share_lipsync_mode_entries">
+        <item>Auto</item>
+        <item>Manual</item>
+    </string-array>
+    <string-array name="audio_share_lipsync_mode_values" translatable="false">
+        <item>auto</item>
+        <item>manual</item>
+    </string-array>
+    <string-array name="audio_share_codec_entries">
+        <item>Auto (best codec both headsets support)</item>
+        <item>LDAC</item>
+        <item>aptX HD</item>
+        <item>aptX</item>
+        <item>AAC</item>
+        <item>SBC</item>
+    </string-array>
+    <string-array name="audio_share_codec_values" translatable="false">
+        <item>auto</item>
+        <item>ldac</item>
+        <item>aptx_hd</item>
+        <item>aptx</item>
+        <item>aac</item>
+        <item>sbc</item>
+    </string-array>
 </resources>

@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
-
-    <PreferenceCategory
-        android:title="@string/dock_settings_title">
-
-        <SwitchPreferenceCompat
-            android:key="dock_auto_fade"
-            android:title="@string/dock_auto_fade"
-            android:summary="@string/dock_auto_fade_summary"
-            android:defaultValue="true" />
-
-        <Preference
-            android:key="dock_clear_storage"
-            android:title="@string/dock_clear_all"
-            android:summary="Remove all saved text clips and downloaded photos" />
-
-    </PreferenceCategory>
-
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference android:key="dock_input_helper" android:title="@string/dock_input_title" android:summary="@string/dock_input_disabled" />
+    <SwitchPreferenceCompat android:key="dock_auto_show" android:title="@string/dock_auto_show"
+        android:summary="@string/dock_auto_show_summary" android:defaultValue="true" />
+    <SwitchPreferenceCompat android:key="dock_capture_clipboard" android:title="@string/dock_capture"
+        android:summary="@string/dock_capture_summary" android:defaultValue="true" />
+    <androidx.preference.SeekBarPreference android:key="dock_width" android:title="@string/dock_width"
+        android:defaultValue="48" app:min="20" android:max="72" app:seekBarIncrement="4" app:showSeekBarValue="true" />
+    <androidx.preference.SeekBarPreference android:key="dock_height" android:title="@string/dock_height"
+        android:summary="@string/dock_size_summary" android:defaultValue="80"
+        app:min="40" android:max="160" app:seekBarIncrement="8" app:showSeekBarValue="true" />
+    <SwitchPreferenceCompat android:key="dock_auto_fade" android:title="@string/dock_auto_fade"
+        android:summary="@string/dock_auto_fade_summary" android:defaultValue="false" />
+    <Preference android:key="dock_fade_transparency" android:title="@string/dock_fade_transparency"
+        android:summary="@string/dock_fade_transparency_summary" android:dependency="dock_auto_fade" />
+    <SwitchPreferenceCompat android:key="dock_hide_landscape" android:title="@string/dock_hide_landscape"
+        android:summary="@string/dock_hide_landscape_summary" android:defaultValue="false" />
+    <Preference android:key="dock_clear_storage" android:title="@string/dock_clear_all" />
 </PreferenceScreen>

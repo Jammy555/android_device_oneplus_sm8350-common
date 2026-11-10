@@ -17,11 +17,10 @@
         android:orientation="vertical">
 
         <!-- Idle Handle Grip Line -->
-        <View
+        <org.lineageos.device.DeviceSettings.dock.DockBatteryRailView
             android:id="@+id/dock_pill_grip"
-            android:layout_width="3.5dp"
-            android:layout_height="32dp"
-            android:background="@drawable/dock_pill_grip_bg" />
+            android:layout_width="8dp"
+            android:layout_height="58dp" />
 
         <!-- Expanded Drop Target Container (visible only during drag) -->
         <LinearLayout
@@ -30,26 +29,40 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:paddingHorizontal="4dp"
+            android:padding="10dp"
             android:visibility="gone">
 
             <ImageView
                 android:id="@+id/dock_pill_drop_icon"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_dock_copy"
-                android:tint="#FFFFFFFF" />
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_dock_save"
+                android:tint="@color/dock_drop_text" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/dock_title"
+                android:gravity="center"
+                android:textColor="@color/dock_drop_text"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium" />
 
             <TextView
                 android:id="@+id/dock_pill_drop_text"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Drop\nhere"
+                android:layout_marginTop="3dp"
+                android:text="@string/dock_drop_save"
                 android:gravity="center"
-                android:textColor="#FFFFFFFF"
+                android:textColor="@color/dock_drop_text"
                 android:textSize="11sp"
-                android:textStyle="bold" />
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:accessibilityLiveRegion="polite" />
 
         </LinearLayout>
 

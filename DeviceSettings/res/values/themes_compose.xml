@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Window theme for the Compose screens. Everything visible is drawn by Compose; this only has to
+        avoid a flash before the first frame and let the app draw behind the system bars.
+    -->
+    <style name="Theme.DeviceSettings.Compose" parent="@android:style/Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
+    </style>
+</resources>

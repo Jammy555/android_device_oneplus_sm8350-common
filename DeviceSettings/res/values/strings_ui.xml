@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Strings added for the Compose / Material 3 Expressive UI.
+     Missing translations fall back to English.
+-->
+<resources>
+    <string name="vib_capped_powersave">Vibration capped at level 2 in Power Save mode</string>
+    <string name="common_back">Back</string>
+    <string name="hero_open_powertools">Open Power Tools</string>
+    <string name="live_cpu_little">Little cluster</string>
+    <string name="live_cpu_big">Big cluster</string>
+    <string name="live_cpu_prime">Prime core</string>
+    <string name="live_gpu">GPU</string>
+    <string name="live_battery_temp">Battery %1$s °C</string>
+    <string name="live_battery_level">%1$d%%</string>
+    <string name="live_section_title">Live hardware</string>
+    <string name="live_section_summary">Real-time CPU, GPU and battery stats</string>
+    <string name="live_unavailable">Not available</string>
+    <string name="appearance_title">Appearance</string>
+    <string name="appearance_dynamic_title">Material You colours</string>
+    <string name="appearance_dynamic_summary">Use your wallpaper colours. Turn off for the warm peach palette</string>
+    <string name="powertools_profile_section">Profile</string>
+    <string name="powertools_manual_section">Manual control</string>
+    <string name="powertools_manual_hint">Manual control is available in Normal and Performance profiles</string>
+    <string name="powertools_pick_governor">Choose governor</string>
+    <string name="powertools_pick_scheduler">Choose I/O scheduler</string>
+    <string name="powertools_pick_tcp">Choose TCP algorithm</string>
+    <string name="powertools_range_title">Frequency range</string>
+    <string name="powertools_cluster_state">Now %1$s</string>
+    <string name="dock_handle_section">Handle</string>
+    <string name="dock_subtitle_helper_on">Paste helper on</string>
+    <string name="dock_open_history">Open clipboard history</string>
+    <string name="dock_hold_controls">Hold for brightness and volume</string>
+    <string name="dock_hold_controls_summary">Press and hold the handle, slide into a control, then drag up or down without lifting your finger.</string>
+    <string name="dock_double_tap_screenshot">Double-tap for screenshot</string>
+    <string name="dock_double_tap_screenshot_summary">Double-tap the handle to capture the screen. The handle hides itself for the shot.</string>
+    <string name="dock_history_limit">History size</string>
+    <string name="dock_history_limit_summary">Keep the newest clips. Selecting a smaller limit removes older saved clips and attachments. Export history first to keep a backup.</string>
+    <string name="dock_history_infinite">Infinite</string>
+    <string name="dock_controls_title">Controls</string>
+    <string name="dock_blur">Blur behind expanded panels</string>
+    <string name="dock_blur_summary">Blur around the shelf and controls when supported by Android.</string>
+    <string name="dock_battery_rail">Battery progress on the handle</string>
+    <string name="dock_battery_rail_summary">Show charge level and a moving highlight while charging.</string>
+    <string name="dock_clipboard_timeout">Clear Android clipboard</string>
+    <string name="dock_clipboard_timeout_summary">Clear the current Android clip after copying. Saved File Dock items stay. If the phone sleeps, clearing waits until it wakes.</string>
+    <string name="dock_timeout_off">Off</string>
+    <string name="dock_timeout_one">After 1 minute</string>
+    <string name="dock_timeout_ten">After 10 minutes</string>
+    <string name="dock_history_unlimited">History has no item limit. Saved clips, including sensitive ones, stay until you delete them. Available storage and the 32 MB attachment limit still apply.</string>
+    <string name="dock_export">Export history</string>
+    <string name="dock_export_summary">Save text and attachments to a ZIP file.</string>
+    <string name="dock_import">Import history</string>
+    <string name="dock_import_summary">Add clips from a File Dock ZIP. Your history size limit applies.</string>
+    <string name="dock_archive_error">Could not read or write the File Dock archive. Saved history is unchanged.</string>
+    <string name="dock_imported_count">Imported %1$d clips</string>
+    <string name="dock_exported_count">Exported %1$d clips</string>
+    <string name="dock_history_page_title">Clipboard history</string>
+    <string name="dock_history_page_summary">Everything the dock has saved</string>
+    <string name="dock_history_empty">Nothing copied yet. Copy text, a link or an image and it shows up here.</string>
+    <string name="dock_filter_all">All</string>
+    <string name="dock_filter_text">Text</string>
+    <string name="dock_filter_links">Links</string>
+    <string name="dock_filter_images">Images</string>
+    <string name="dock_filter_files">Files</string>
+    <string name="dock_action_copy">Copy</string>
+    <string name="dock_action_share">Share</string>
+    <string name="dock_action_open">Open</string>
+    <string name="dock_action_delete">Delete</string>
+    <string name="dock_deleted">Deleted</string>
+    <string name="dock_history_count">%1$d clips</string>
+    <string name="profile_cooldown">Profile just changed. Wait a moment before switching again.</string>
+    <string name="audio_share_live">Live</string>
+    <string name="dock_drop_save">Drop to save</string>
+    <string name="dock_drop_release">Release to save</string>
+    <string name="dock_drop_permission_required">This app did not grant access to the dragged file. Try sharing or copying it again.</string>
+    <string name="dock_fade_transparency">Fade transparency</string>
+    <string name="dock_fade_transparency_summary">How transparent the idle sidebar becomes</string>
+    <string name="dock_transparency_percent">%1$d%% transparent</string>
+    <string name="dock_hide_landscape">Hide in landscape</string>
+    <string name="dock_hide_landscape_summary">Hide File Dock while the screen is horizontal. Copied content is still saved.</string>
+</resources>

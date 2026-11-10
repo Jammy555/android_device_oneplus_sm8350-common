@@ -19,11 +19,12 @@
           xmlns:tools="http://schemas.android.com/tools"
           android:sharedUserId="android.uid.system"
           package="org.lineageos.device.DeviceSettings"
-          android:versionCode="1"
+          android:versionCode="2"
           android:versionName="1.0" >
 
-    <uses-permission android:name="android.permission.INJECT_EVENTS"/>
+    <uses-permission android:name="android.permission.READ_CLIPBOARD_IN_BACKGROUND" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="lineageos.permission.HARDWARE_ABSTRACTION_ACCESS" />
@@ -60,10 +61,20 @@
         android:theme="@style/Theme.DeviceSettings"
         android:exported="true">
 
+        <service android:name=".dock.DockInputService" android:label="@string/dock_input_title"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:directBootAware="false" android:exported="true">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/dock_input_service" />
+        </service>
+
         <!-- Device Settings -->
         <activity
             android:name=".DeviceSettingsActivity"
             android:label="@string/device_title"
+            android:theme="@style/Theme.DeviceSettings.Compose"
+            android:enableOnBackInvokedCallback="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.android.settings.action.EXTRA_SETTINGS" />
@@ -81,8 +92,7 @@
                 android:resource="@string/device_summary" />
         </activity>
 
-        <activity android:name=".DeviceSettings"
-            android:exported="false" />
+        <receiver android:name=".dock.DockClipboardTimeout" android:exported="false" />
 
         <!-- KeyHandler removed -->
 
@@ -116,8 +126,9 @@
         <activity
             android:name=".powertools.PowertoolsActivity"
             android:label="@string/Powertools_title"
-            android:theme="@style/Theme.DeviceSettings"
+            android:theme="@style/Theme.DeviceSettings.Compose"
             android:enableOnBackInvokedCallback="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
@@ -128,7 +139,8 @@
         <activity
             android:name=".network.NetworkBandsActivity"
             android:label="@string/network_bands_title"
-            android:theme="@style/Theme.DeviceSettings"
+            android:theme="@style/Theme.DeviceSettings.Compose"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:enableOnBackInvokedCallback="true"
             android:exported="false" />
 
@@ -136,7 +148,8 @@
         <activity
             android:name=".audioshare.AudioShareActivity"
             android:label="@string/audio_share_title"
-            android:theme="@style/Theme.DeviceSettings"
+            android:theme="@style/Theme.DeviceSettings.Compose"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:enableOnBackInvokedCallback="true"
             android:permission="android.permission.BLUETOOTH_PRIVILEGED"
             android:exported="true">
@@ -150,7 +163,8 @@
         <activity
             android:name=".audioshare.SeparateAppSoundActivity"
             android:label="@string/separate_app_sound_title"
-            android:theme="@style/Theme.DeviceSettings"
+            android:theme="@style/Theme.DeviceSettings.Compose"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:enableOnBackInvokedCallback="true"
             android:exported="false" />
 
@@ -222,11 +236,13 @@
         <!-- Smart Sidebar File Dock Service -->
         <service
             android:name=".dock.SmartDockService"
+            android:directBootAware="false"
             android:exported="false" />
 
         <!-- FileProvider for Cross-App Drag-and-Drop and Sharing -->
         <provider
             android:name=".dock.DockFileProvider"
+            android:directBootAware="false"
             android:authorities="org.lineageos.device.DeviceSettings.dockprovider"
             android:exported="false"
             android:grantUriPermissions="true">
