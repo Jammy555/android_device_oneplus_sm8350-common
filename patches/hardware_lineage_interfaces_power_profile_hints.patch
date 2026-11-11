@@ -8,18 +8,18 @@ Subject: [PATCH] feat: apply optional device power profile hints
  1 file changed, 20 insertions(+)
 
 diff --git a/power-libperfmgr/aidl/service.cpp b/power-libperfmgr/aidl/service.cpp
-index f382e37..6f55449 100644
+index 86cce7a..a3c9f9f 100644
 --- a/power-libperfmgr/aidl/service.cpp
 +++ b/power-libperfmgr/aidl/service.cpp
 @@ -23,6 +23,7 @@
  #include <android/binder_process.h>
- #include <processgroup/processgroup.h>
  #include <perfmgr/HintManager.h>
+ #include <processgroup/processgroup.h>
 +#include <sys/system_properties.h>
  
  #include <thread>
  
-@@ -79,6 +80,25 @@ int main() {
+@@ -82,6 +83,25 @@ int main() {
          HintManager::GetInstance()->Start();
          MetricUploader::getInstance()->init();
          ThermalStateListener::getInstance()->init();
