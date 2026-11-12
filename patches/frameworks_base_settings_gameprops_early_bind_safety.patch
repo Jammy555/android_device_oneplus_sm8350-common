@@ -1,0 +1,63 @@
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index 903c8c533ed00..c517e3b053f73 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -21625,10 +21625,13 @@ public final class Settings {
+             getPublicSettingsForClass(Global.class, allKeys, readableKeys,
+                     readableKeysWithMaxTargetSdk);
+             // Add Global.Wearable keys on watches.
+-            if (ActivityThread.currentApplication().getApplicationContext().getPackageManager()
+-                    .hasSystemFeature(PackageManager.FEATURE_WATCH)) {
+-                getPublicSettingsForClass(Global.Wearable.class, allKeys, readableKeys,
+-                        readableKeysWithMaxTargetSdk);
++            Application app = ActivityThread.currentApplication();
++            if (app != null && app.getApplicationContext() != null) {
++                PackageManager pm = app.getApplicationContext().getPackageManager();
++                if (pm != null && pm.hasSystemFeature(PackageManager.FEATURE_WATCH)) {
++                    getPublicSettingsForClass(Global.Wearable.class, allKeys, readableKeys,
++                            readableKeysWithMaxTargetSdk);
++                }
+             }
+         }
+ 
+diff --git a/core/java/android/security/gameprops/GamePropsSpoofService.java b/core/java/android/security/gameprops/GamePropsSpoofService.java
+index 69b212b987bc0..36a745bfdd10b 100644
+--- a/core/java/android/security/gameprops/GamePropsSpoofService.java
++++ b/core/java/android/security/gameprops/GamePropsSpoofService.java
+@@ -21,7 +21,9 @@ import android.app.IActivityManager;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.os.Build;
++import android.os.Process;
+ import android.os.RemoteException;
++import android.os.UserHandle;
+ import android.provider.Settings;
+ import android.text.TextUtils;
+ import android.util.JsonReader;
+@@ -245,7 +247,16 @@ public final class GamePropsSpoofService {
+      * @hide
+      */
+     public void spoofForPackage(String packageName, Context context) {
+-        if (packageName == null) return;
++        int appId = UserHandle.getAppId(Process.myUid());
++        if (packageName == null
++                || appId < Process.FIRST_APPLICATION_UID
++                || Process.isIsolated()
++                || "android".equals(packageName)
++                || "com.android.providers.settings".equals(packageName)
++                || "com.android.systemui".equals(packageName)
++                || "com.google.android.gms".equals(packageName)) {
++            return;
++        }
+ 
+         // Source 1 — JSON game-props config
+         if (mEnabled && mConfigLoaded) {
+@@ -283,7 +294,7 @@ public final class GamePropsSpoofService {
+         // Check master enable flag
+         try {
+             int enabled = Settings.Secure.getInt(
+-                    context.getContentResolver(), SETTING_PER_APPS_ENABLED, 1);
++                    context.getContentResolver(), SETTING_PER_APPS_ENABLED, 0);
+             if (enabled == 0) return;
+         } catch (Exception e) {
+             if (mDebug) Log.d(TAG, "Could not read per-apps enabled flag: " + e.getMessage());

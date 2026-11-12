@@ -1,0 +1,14 @@
+diff --git a/aidl/main.cpp b/aidl/main.cpp
+index 995e1aa..7fa2cdb 100644
+--- a/aidl/main.cpp
++++ b/aidl/main.cpp
+@@ -44,6 +44,9 @@ void qti_healthd_board_init(struct healthd_config *hc)
+     int ret = 0;
+     unsigned char buf;
+ 
++    // Disarm periodic 10-minute timerfd alarm in suspend while on battery.
++    // Battery state transitions continue to be received via kernel uevents.
++    hc->periodic_chores_interval_slow = -1;
+     hc->ignorePowerSupplyNames.push_back(android::String8(ucsiPSYName[0]));
+     hc->ignorePowerSupplyNames.push_back(android::String8(ucsiPSYName[1]));
+ retry:

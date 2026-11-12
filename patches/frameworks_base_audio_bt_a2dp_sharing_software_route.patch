@@ -1,0 +1,41 @@
+diff --git a/services/core/java/com/android/server/audio/BtHelper.java b/services/core/java/com/android/server/audio/BtHelper.java
+index c954bc626459a..eede765db2d63 100644
+--- a/services/core/java/com/android/server/audio/BtHelper.java
++++ b/services/core/java/com/android/server/audio/BtHelper.java
+@@ -51,6 +51,7 @@ import android.media.AudioSystem;
+ import android.media.BluetoothProfileConnectionInfo;
+ import android.os.Binder;
+ import android.os.Bundle;
++import android.os.SystemProperties;
+ import android.os.UserHandle;
+ import android.provider.Settings;
+ import android.text.TextUtils;
+@@ -111,6 +112,14 @@ public class BtHelper {
+     @GuardedBy("BtHelper.this")
+     private @Nullable BluetoothCodecConfig mA2dpCodecConfig;
+ 
++    // Set by the Bluetooth stack while it shares A2DP with a second sink. The stack encodes in
++    // software then, so the device is reported with a format the offload (primary) A2DP device
++    // port doesn't list, and audio policy routes it to the software Bluetooth module.
++    // Native audio_format_t AUDIO_FORMAT_PCM_16_BIT (0x1) from system/audio-base.h
++    private static final String PROP_A2DP_SHARING_ACTIVE = "bluetooth.a2dp_sharing.active";
++    private static final int A2DP_SHARING_FORMAT = 0x1;
++    private boolean mA2dpSharing;
++
+     @GuardedBy("BtHelper.this")
+     private @AudioSystem.AudioFormatNativeEnumForBtCodec
+             int mLeAudioBroadcastCodec = AudioSystem.AUDIO_FORMAT_DEFAULT;
+@@ -313,6 +322,13 @@ public class BtHelper {
+                 }
+                 changed = !btCodecConfig.equals(mA2dpCodecConfig);
+                 mA2dpCodecConfig = btCodecConfig;
++                final boolean sharing = SystemProperties.getBoolean(
++                        PROP_A2DP_SHARING_ACTIVE, false);
++                changed |= sharing != mA2dpSharing;
++                mA2dpSharing = sharing;
++                if (sharing) {
++                    return new Pair<>(A2DP_SHARING_FORMAT, changed);
++                }
+                 return new Pair<>(AudioSystem.bluetoothA2dpCodecToAudioFormat(
+                         btCodecConfig.getCodecType()), changed);
+             }

@@ -73,6 +73,8 @@ apply_patch "frameworks/base" "frameworks_base_appwidget_no_state_load_while_loc
 apply_patch "frameworks/base" "frameworks_base_camera2_remember_missing_vendor_tags.patch" "camera2: remember a metadata key whose tag does not exist to eliminate lookup flooding"
 apply_patch "frameworks/base" "frameworks_base_alarm_manager_wake_only_epollwakeup.patch" "AlarmManager: only genuine wake alarms need kernel wakeup sources"
 apply_patch "frameworks/base" "frameworks_base_textinterpolator_lockscreen_clock_glyph_exception.patch" "TextInterpolator: Catch and ignore inconsistent glyph layout exceptions in lockscreen clock"
+apply_patch "frameworks/base" "frameworks_base_audio_bt_a2dp_sharing_software_route.patch" "AudioService: route a shared A2DP sink to the software Bluetooth module"
+apply_patch "frameworks/base" "frameworks_base_settings_gameprops_early_bind_safety.patch" "Settings & GameProps: guard early process bind against premature SettingsProvider init and watch feature NPE"
 
 # Apply patches to frameworks/native
 apply_patch "frameworks/native" "frameworks_native_ahardwarebuffer_qti_p010_venus.patch" "libnativewindow: treat QTI YCbCr_420_P010_VENUS as YUV in lockPlanes"
@@ -83,6 +85,11 @@ apply_patch "frameworks/av" "frameworks_av_apm_spatialized_reroute_same_criteria
 apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_spkr_prot_thermalclient_soname.patch" "audio HAL spkr_prot_init(): dlopen libthermalclient.so by soname instead of the fixed /vendor/lib path, so a 64-bit libspkrprot finds the lib64 copy"
 apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_close_pcm_on_failed_start.patch" "audio HAL start_output_stream(): close out->pcm when the start fails after the PCM was opened, so the next start does not find the device busy"
 apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_spatializer_stream_hifi_usecase.patch" "audio HAL adev_open_output_stream(): an output opened FAST|DEEP_BUFFER (what libaudiohal sends for the spatializer stream to HALs below 7.1) takes the hifi usecase instead of the low-latency one the primary output holds"
+apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_a2dp_cold_fallback_mute.patch" "audio HAL: mute a cold A2DP stream before speaker fallback" || { return 1 2>/dev/null || exit 1; }
+
+# Apply Singularity Settings & Health HAL suspend audit fixes
+apply_patch "packages/apps/Singularity" "packages_apps_singularity_playintegrityfix_lifecycle_safety.patch" "PlayIntegrityFix: guard coroutines and UI updates against detached fragment lifecycle"
+apply_patch "vendor/qcom/opensource/healthd-ext" "vendor_qcom_opensource_healthd_ext_disable_periodic_chores_slow.patch" "healthd-ext: disarm periodic 10-minute timerfd alarm in suspend on battery"
 
 
 

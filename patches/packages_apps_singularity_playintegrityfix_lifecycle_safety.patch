@@ -1,0 +1,206 @@
+diff --git a/src/org/lunaris/settings/fragments/miscellaneous/PlayIntegrityFix.kt b/src/org/lunaris/settings/fragments/miscellaneous/PlayIntegrityFix.kt
+index e21133fe..e70e864b 100644
+--- a/src/org/lunaris/settings/fragments/miscellaneous/PlayIntegrityFix.kt
++++ b/src/org/lunaris/settings/fragments/miscellaneous/PlayIntegrityFix.kt
+@@ -24,6 +24,7 @@ import com.android.internal.util.lunaris.PixelDeviceRepository
+ import com.android.settings.R
+ import com.android.settings.SettingsPreferenceFragment
+ import java.nio.charset.StandardCharsets
++import kotlinx.coroutines.CancellationException
+ import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.SupervisorJob
+@@ -200,15 +201,18 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+         // daily cooldown checking in for no reason.
+         if (daysLeft != null && daysLeft > REFETCH_WINDOW_DAYS) return
+ 
++        val ctx = context ?: return
++        val appContext = ctx.applicationContext
++        val resolver = appContext.contentResolver
+         markAutoFetchDone()
+         scope.launch {
+             try {
+                 val profiles = withContext(Dispatchers.IO) {
+-                    PixelDeviceRepository.getProfiles(requireContext(), true)
++                    PixelDeviceRepository.getProfiles(appContext, true)
+                 }
+                 val defaultCodename = PixelDeviceRepository.getDefaultPifCodename(profiles)
+                 val matched = withContext(Dispatchers.IO) {
+-                    PixelDeviceRepository.getProfileByCodename(requireContext(), defaultCodename, false)
++                    PixelDeviceRepository.getProfileByCodename(appContext, defaultCodename, false)
+                 } ?: return@launch
+ 
+                 if (!PixelDeviceRepository.isValidFingerprint(matched.fingerprint)) return@launch
+@@ -222,21 +226,24 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+ 
+                 val toSave = buildProfileConfig(content, matched)
+                 Settings.Secure.putString(
+-                    requireContext().contentResolver,
++                    resolver,
+                     PIF_CONFIG_KEY,
+                     toSave.toString(2)
+                 )
+-                updatePatchDateIfSimple(requireContext().contentResolver, matched.securityPatch)
++                updatePatchDateIfSimple(resolver, matched.securityPatch)
+                 // Background auto-fetch shouldn't interrupt with a dialog — stop GMS
+                 // only, skip the Play Store data wipe prompt.
+                 stopGmsPackages()
+-                refreshStatus()
++                if (isAdded) {
++                    refreshStatus()
++                }
+             } catch (_: Exception) {}
+         }
+     }
+ 
+     private fun refreshStatus() {
+-        val content = Settings.Secure.getString(requireContext().contentResolver, PIF_CONFIG_KEY)
++        val ctx = context ?: return
++        val content = Settings.Secure.getString(ctx.contentResolver, PIF_CONFIG_KEY)
+         activeConfigData = if (!content.isNullOrEmpty()) readConfigData(content) else emptyMap()
+         val exists = activeConfigData.isNotEmpty()
+ 
+@@ -417,11 +424,14 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+         fetchPref.isEnabled = false
+ 
+         scope.launch {
++            val ctx = context ?: return@launch
+             try {
+                 val profiles = withContext(Dispatchers.IO) {
+-                    PixelDeviceRepository.getProfiles(requireContext(), true)
++                    PixelDeviceRepository.getProfiles(ctx.applicationContext, true)
+                 }
+ 
++                if (!isAdded) return@launch
++
+                 if (profiles.isEmpty()) {
+                     toast(getString(R.string.pif_failed, getString(R.string.pif_no_devices_found)))
+                     return@launch
+@@ -449,7 +459,9 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+                     .indexOfFirst { it.codename == PixelDeviceRepository.PIF_DEFAULT_CODENAME }
+                     .let { if (it < 0) 0 else it }
+ 
+-                AlertDialog.Builder(requireContext())
++                if (!isAdded) return@launch
++                val dialogCtx = context ?: return@launch
++                AlertDialog.Builder(dialogCtx)
+                     .setTitle(R.string.pif_select_device)
+                     .setSingleChoiceItems(modelNames, preselectedIndex) { dialog, which ->
+                         dialog.dismiss()
+@@ -457,11 +469,17 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+                     }
+                     .setNegativeButton(android.R.string.cancel, null)
+                     .show()
++            } catch (e: CancellationException) {
++                throw e
+             } catch (e: Exception) {
+-                toast(getString(R.string.pif_failed, e.message ?: ""))
++                if (isAdded) {
++                    toast(getString(R.string.pif_failed, e.message ?: ""))
++                }
+             } finally {
+-                fetchPref.summary = getString(R.string.pif_fetch_pixel_beta_summary)
+-                fetchPref.isEnabled = true
++                if (isAdded) {
++                    fetchPref.summary = getString(R.string.pif_fetch_pixel_beta_summary)
++                    fetchPref.isEnabled = true
++                }
+             }
+         }
+     }
+@@ -472,33 +490,45 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+         fetchPref?.isEnabled = false
+ 
+         scope.launch {
++            val ctx = context ?: return@launch
+             try {
+                 if (!isPifEnabled) return@launch
+                 if (!PixelDeviceRepository.isValidFingerprint(profile.fingerprint)) {
+-                    toast(getString(R.string.pif_failed, getString(R.string.pif_invalid_fingerprint)))
++                    if (isAdded) {
++                        toast(getString(R.string.pif_failed, getString(R.string.pif_invalid_fingerprint)))
++                    }
+                     return@launch
+                 }
+                 val pifJson = buildProfileConfig(
+-                    Settings.Secure.getString(requireContext().contentResolver, PIF_CONFIG_KEY),
++                    Settings.Secure.getString(ctx.contentResolver, PIF_CONFIG_KEY),
+                     profile,
+                 )
+                 withContext(Dispatchers.IO) {
+                     Settings.Secure.putString(
+-                        requireContext().contentResolver,
++                        ctx.contentResolver,
+                         PIF_CONFIG_KEY,
+                         pifJson.toString(2)
+                     )
+-                    updatePatchDateIfSimple(requireContext().contentResolver, profile.securityPatch)
++                    updatePatchDateIfSimple(ctx.contentResolver, profile.securityPatch)
+                 }
++                if (!isAdded) return@launch
+                 killGmsWithConfirmation {
+-                    toast(getString(R.string.pif_fetched_model, profile.model))
+-                    refreshStatus()
++                    if (isAdded) {
++                        toast(getString(R.string.pif_fetched_model, profile.model))
++                        refreshStatus()
++                    }
+                 }
++            } catch (e: CancellationException) {
++                throw e
+             } catch (e: Exception) {
+-                toast(getString(R.string.pif_failed, e.message ?: ""))
++                if (isAdded) {
++                    toast(getString(R.string.pif_failed, e.message ?: ""))
++                }
+             } finally {
+-                fetchPref?.summary = getString(R.string.pif_fetch_pixel_beta_summary)
+-                fetchPref?.isEnabled = true
++                if (isAdded) {
++                    fetchPref?.summary = getString(R.string.pif_fetch_pixel_beta_summary)
++                    fetchPref?.isEnabled = true
++                }
+             }
+         }
+     }
+@@ -535,7 +565,7 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+ 
+     private fun stopGmsPackages() {
+         try {
+-            val am = requireContext().getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
++            val am = context?.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
+             am.forceStopPackage(VENDING_PACKAGE)
+             am.forceStopPackage(DROIDGUARD_PACKAGE)
+             am.forceStopPackage(GMS_PACKAGE)
+@@ -550,7 +580,7 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+ 
+     private fun wipeVendingData() {
+         try {
+-            requireContext().packageManager.clearApplicationUserData(
++            context?.packageManager?.clearApplicationUserData(
+                 VENDING_PACKAGE, null)
+         } catch (_: Exception) {}
+     }
+@@ -563,7 +593,11 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+      */
+     private fun killGmsWithConfirmation(onDone: () -> Unit) {
+         stopGmsPackages()
+-        AlertDialog.Builder(requireContext())
++        val ctx = context ?: run {
++            onDone()
++            return
++        }
++        AlertDialog.Builder(ctx)
+             .setTitle(R.string.pif_wipe_playstore_title)
+             .setMessage(R.string.pif_wipe_playstore_message)
+             .setPositiveButton(R.string.pif_wipe_confirm) { _, _ ->
+@@ -577,7 +611,8 @@ class PlayIntegrityFix : SettingsPreferenceFragment() {
+     }
+ 
+     private fun toast(msg: String) {
+-        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
++        val ctx = context ?: return
++        Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+     }
+ 
+     override fun getMetricsCategory(): Int = MetricsProto.MetricsEvent.LUNARIS
