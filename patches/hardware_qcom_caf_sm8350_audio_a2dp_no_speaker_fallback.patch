@@ -1,0 +1,185 @@
+diff --git a/hal/audio_hw.c b/hal/audio_hw.c
+index 3765bc8..ce1b2ab 100644
+--- a/hal/audio_hw.c
++++ b/hal/audio_hw.c
+@@ -4142,6 +4142,7 @@ static int stop_output_stream(struct stream_out *out)
+     }
+ 
+     out->a2dp_muted = false;
++    out->a2dp_lost_muted = false;
+ 
+     if (audio_extn_ext_hw_plugin_usecase_stop(adev->ext_hw_plugin, uc_info))
+         ALOGE("%s: failed to stop ext hw plugin", __func__);
+@@ -5324,6 +5325,7 @@ int route_output_stream(struct stream_out *out,
+     struct listnode new_devices;
+     bool bypass_a2dp = false;
+     bool reconfig = false;
++    bool a2dp_lost = false;
+     unsigned long service_interval = 0;
+ 
+     ALOGD("%s: enter: usecase(%d: %s) devices %x",
+@@ -5350,18 +5352,26 @@ int route_output_stream(struct stream_out *out,
+         reassign_device_list(&new_devices, AUDIO_DEVICE_OUT_SPEAKER, "");
+     }
+     /*
+-     * When A2DP is disconnected the
+-     * music playback is paused and the policy manager sends routing=0
+-     * But the audioflinger continues to write data until standby time
+-     * (3sec). As BT is turned off, the write gets blocked.
+-     * Avoid this by routing audio to speaker until standby.
++     * When A2DP is disconnected or switching, music playback may not be paused
++     * immediately and the policy manager sends routing=0. Do not route to
++     * speaker as that unmutes the hardware smart amplifier and leaks in-flight
++     * audio frames. Instead, tear down the A2DP sound device, keep new_devices
++     * empty, and pace writes with silence until the new route arrives or standby.
+      */
+     if (is_a2dp_out_device_type(&out->device_list) &&
+             list_empty(&new_devices) &&
+             !audio_extn_a2dp_source_is_ready() &&
+             !adev->bt_sco_on) {
+-        reassign_device_list(&new_devices, AUDIO_DEVICE_OUT_SPEAKER, "");
++        struct audio_usecase *uc_info = get_usecase_from_list(adev, out->usecase);
++        if (uc_info && uc_info->out_snd_device == SND_DEVICE_OUT_BT_A2DP) {
++            disable_audio_route(adev, uc_info);
++            disable_snd_device(adev, uc_info->out_snd_device);
++            uc_info->out_snd_device = SND_DEVICE_NONE;
++        }
++        clear_devices(&out->device_list);
++        a2dp_lost = !is_offload_usecase(out->usecase);
+     }
++    out->a2dp_lost_muted = a2dp_lost;
+     /*
+      * When USB headset is disconnected the music playback paused
+      * and the policy manager send routing=0. But if the USB is connected
+@@ -5509,6 +5519,7 @@ int route_output_stream(struct stream_out *out,
+             if (!is_a2dp_out_device_type(&out->device_list) || audio_extn_a2dp_source_is_ready()) {
+                 if (out->a2dp_muted) {
+                     out->a2dp_muted = false;
++                    out->a2dp_lost_muted = false;
+                     if (is_offload_usecase(out->usecase))
+                         out_set_compr_volume(&out->stream, out->volume_l, out->volume_r);
+                     else if (out->usecase != USECASE_AUDIO_PLAYBACK_VOIP)
+@@ -6622,6 +6633,15 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
+         ATRACE_END();
+         return ret;
+     } else {
++        if (out->a2dp_lost_muted) {
++            uint32_t stream_size = audio_stream_out_frame_size(stream);
++            uint32_t srate = out_get_sample_rate(&out->stream.common);
++            if (stream_size && srate) {
++                usleep((uint64_t)bytes * 1000000 / stream_size / srate);
++            }
++            ret = 0;
++            goto exit;
++        }
+         if (out->pcm) {
+             size_t bytes_to_write = bytes;
+             if (out->muted)
+@@ -8390,6 +8410,7 @@ int adev_open_output_stream(struct audio_hw_device *dev,
+     out->convert_buffer = NULL;
+     out->started = 0;
+     out->a2dp_muted = false;
++    out->a2dp_lost_muted = false;
+     out->hal_output_suspend_supported = 0;
+     out->dynamic_pm_qos_config_supported = 0;
+     out->set_dual_mono = false;
+@@ -9276,6 +9297,7 @@ void adev_close_output_stream(struct audio_hw_device *dev __unused,
+     }
+ 
+     out->a2dp_muted = false;
++    out->a2dp_lost_muted = false;
+ 
+     if (is_interactive_usecase(out->usecase))
+         free_interactive_usecase(adev, out->usecase);
+@@ -11241,9 +11263,6 @@ static void adev_snd_mon_cb(void *cookie, struct str_parms *parms)
+ int check_a2dp_restore_l(struct audio_device *adev, struct stream_out *out, bool restore)
+ {
+     struct audio_usecase *uc_info;
+-    struct audio_usecase *usecase;
+-    struct listnode devices;
+-    struct listnode *node;
+ 
+     uc_info = get_usecase_from_list(adev, out->usecase);
+     if (uc_info == NULL) {
+@@ -11251,7 +11270,6 @@ int check_a2dp_restore_l(struct audio_device *adev, struct stream_out *out, bool
+               __func__, out->usecase);
+         return -EINVAL;
+     }
+-    list_init(&devices);
+ 
+     ALOGD("%s: enter: usecase(%d: %s), a2dp muted %d", __func__,
+           out->usecase, use_case_table[out->usecase], out->a2dp_muted);
+@@ -11273,13 +11291,14 @@ int check_a2dp_restore_l(struct audio_device *adev, struct stream_out *out, bool
+                 out_set_pcm_volume(&out->stream, out->volume_l, out->volume_r);
+             }
+             out->a2dp_muted = false;
++            out->a2dp_lost_muted = false;
+         }
+         pthread_mutex_unlock(&out->latch_lock);
+     } else {
+         pthread_mutex_lock(&out->latch_lock);
+-        // mute stream and switch to speaker if suspended
++        // mute stream and tear down a2dp if suspended
+         if (!out->a2dp_muted && !out->standby) {
+-            if ((is_a2dp_out_device_type(&devices) && list_length(&devices) == 1) ||
++            if ((is_a2dp_out_device_type(&out->device_list) && list_length(&out->device_list) == 1) ||
+                 (uc_info->out_snd_device == SND_DEVICE_OUT_BT_A2DP)) {
+                 out->a2dp_muted = true;
+                 if (is_offload_usecase(out->usecase)) {
+@@ -11292,38 +11311,26 @@ int check_a2dp_restore_l(struct audio_device *adev, struct stream_out *out, bool
+                     else
+                         out_set_pcm_volume(&out->stream, (float)0, (float)0);
+ 
+-                    /* wait for stale pcm drained before switching to speaker */
++                    /* wait for stale pcm drained before tearing down */
+                     uint32_t latency =
+                         (out->config.period_count * out->config.period_size * 1000) /
+                         (out->config.rate);
+                     usleep(latency * 1000);
+                 }
+             }
+-            assign_devices(&devices, &out->device_list);
+-            reassign_device_list(&out->device_list, AUDIO_DEVICE_OUT_SPEAKER, "");
+-            list_for_each(node, &adev->usecase_list) {
+-                usecase = node_to_item(node, struct audio_usecase, list);
+-                if ((usecase->type != PCM_CAPTURE) && (usecase != uc_info) &&
+-                    !is_a2dp_out_device_type(&usecase->stream.out->device_list) &&
+-                    !is_sco_out_device_type(&usecase->stream.out->device_list) &&
+-                    platform_check_backends_match(SND_DEVICE_OUT_SPEAKER,
+-                                                  usecase->out_snd_device)) {
+-                    assign_devices(&out->device_list, &usecase->stream.out->device_list);
+-                    break;
+-                }
++            if (uc_info->out_snd_device == SND_DEVICE_OUT_BT_A2DP) {
++                disable_audio_route(adev, uc_info);
++                disable_snd_device(adev, uc_info->out_snd_device);
++                uc_info->out_snd_device = SND_DEVICE_NONE;
+             }
+-            select_devices(adev, out->usecase);
+-            ALOGD("%s: switched to device:%s and stream muted:%d", __func__,
+-                platform_get_snd_device_name(uc_info->out_snd_device), out->a2dp_muted);
++            ALOGD("%s: disabled a2dp snd device and stream muted:%d", __func__, out->a2dp_muted);
+             if (is_offload_usecase(out->usecase)) {
+                 if (out->offload_state == OFFLOAD_STATE_PLAYING)
+                     compress_resume(out->compr);
+             }
+-            assign_devices(&out->device_list, &devices);
+         }
+         pthread_mutex_unlock(&out->latch_lock);
+     }
+-    clear_devices(&devices);
+     ALOGV("%s: exit", __func__);
+     return 0;
+ }
+diff --git a/hal/audio_hw.h b/hal/audio_hw.h
+index ab6cefd..0974e20 100644
+--- a/hal/audio_hw.h
++++ b/hal/audio_hw.h
+@@ -549,6 +549,7 @@ struct stream_out {
+ 
+     bool is_iec61937_info_available;
+     bool a2dp_muted; /* guarded by latch_lock */
++    bool a2dp_lost_muted; /* guarded by lock */
+     float volume_l;
+     float volume_r;
+     bool apply_volume;

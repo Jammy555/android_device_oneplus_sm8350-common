@@ -85,7 +85,7 @@ apply_patch "frameworks/av" "frameworks_av_apm_spatialized_reroute_same_criteria
 apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_spkr_prot_thermalclient_soname.patch" "audio HAL spkr_prot_init(): dlopen libthermalclient.so by soname instead of the fixed /vendor/lib path, so a 64-bit libspkrprot finds the lib64 copy"
 apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_close_pcm_on_failed_start.patch" "audio HAL start_output_stream(): close out->pcm when the start fails after the PCM was opened, so the next start does not find the device busy"
 apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_spatializer_stream_hifi_usecase.patch" "audio HAL adev_open_output_stream(): an output opened FAST|DEEP_BUFFER (what libaudiohal sends for the spatializer stream to HALs below 7.1) takes the hifi usecase instead of the low-latency one the primary output holds"
-apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_a2dp_cold_fallback_mute.patch" "audio HAL: mute a cold A2DP stream before speaker fallback" || { return 1 2>/dev/null || exit 1; }
+apply_patch "hardware/qcom-caf/sm8350/audio" "hardware_qcom_caf_sm8350_audio_a2dp_no_speaker_fallback.patch" "audio HAL: do not route A2DP streams to speaker during disconnect or device switch" || { return 1 2>/dev/null || exit 1; }
 
 # Apply Singularity Settings & Health HAL suspend audit fixes
 apply_patch "packages/apps/Singularity" "packages_apps_singularity_playintegrityfix_lifecycle_safety.patch" "PlayIntegrityFix: guard coroutines and UI updates against detached fragment lifecycle"
